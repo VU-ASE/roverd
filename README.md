@@ -33,12 +33,17 @@ enum RoverdStatus {
   {
     "name": "imaging",
     "status": "Running", // String of ProcStatus
+    "restarts_since": 3, // number of auto restarts since the last manual start
+    "running_since": "some_timestamp", // todo agree on timestamp format unix seconds?
     "cpu": 0.2,
     "mem": 34.4, // KB?
   },
   {
     "name": "controller",
     "status": "Stopped",
+    "last_run": "some_timestamp",
+    "last_duration": "some_time_duration", // todo agree on format, seconds?
+    "last_restarts": 3, // number of auto restarts from last run
     "cpu": 0.05,
     "mem": 14.0,
   },
@@ -53,13 +58,20 @@ enum RoverdStatus {
 ```
 
 
-`GET /procs/{name}`
+`GET /procs/{name}?log_lines=4` - Get the status of a process, optionally add query parameter for number of log lines to receive
 ``` json
 {
     "name": "imaging",
     "status": "Terminated",
+    "pid": 123,
     "cpu": 0.23,
     "mem": 12.8,
+    "logs": [
+      "log line 1"
+      "log line 2"
+      "log line 3"
+      "log line 4"
+    ]
 }
 ```
 
@@ -69,6 +81,8 @@ enum RoverdStatus {
 ``` json
 {
   "status": "Operational", // RoverdStatus
+  "system_time": "some_timestamp", // todo agree upon timestamp format
+  "os": "Ubuntu 22.04 ...", // System information
   "version": "1.0.1" // checked at rutime
 }
 ```
@@ -134,6 +148,16 @@ On Success: HTTP 200
 On Error:
 {
   "error": "Build command failed: 'gcc: skill issue'"
+
+
+  {
+    "name": "imaging",
+    "version": "1.0.0",
+    "service_hash": "123456abcdef123456abcdef123456abcdef",
+    "build_exit_code": 1,
+    "build_error_message": "gcc: skill issue", // empty if build successful
+
+  }
 }
 ```
 
@@ -178,33 +202,26 @@ On Error:
 }
 ```
 
-`GET /services` - List all installed service or all active services?
+`GET /services` - List all available services
 ``` json
 [
   {
     "name": "imaging",
-    "inputs": [],
-    "outputs": ["rawerror"],
+    "enabled_at": "1.0.1"
   },
   {
     "name": "controller",
-    "inputs": [
-      {
-        "service": "imaging",
-        "streams": ["rawerror"]
-      }
-    ],
-    "outputs": ["steering"],
+    "enabled_at": "1.0.0",
   },
   {
     "name": "actuator",
-    "inputs": [
-      {
-        "service": "controller",
-        "streams": ["steering"]
-      }
-    ],
-    "outputs": [],
+    "enabled_at": "1.0.0",
+  },
+  {
+    "name": "rpm",
+  },
+  {
+    "name": "transceiver",
   },
 ]
 ```
@@ -215,12 +232,12 @@ On Error:
 {
   "name": "actuator",
   "versions": ["1.0.0", "1.0.1", "1.0.2"],
+  "enabled_at": "1.0.2"
 }
 ```
 
 
 `GET /services/{name}/{version}` - Get info about a specific service
-
 ``` json
 {
   "name": "actuator",
@@ -232,6 +249,14 @@ On Error:
     }
   ],
   "outputs": [],
+}
+```
+
+`POST /services/{name}/{version}` - Enabled/Disable a specific version, always specified with the version
+``` json
+// body:
+{
+  "enable": true,
 }
 ```
 
