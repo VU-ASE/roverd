@@ -654,10 +654,10 @@ components:
     PipelineStatus:
       type: string
       enum:
-        - invalid # cannot be started
-        - valid # can be started
         - running
         - restarting
+        - invalid # cannot be started
+        - valid # can be started
     ProcessStatus:
       type: string
       enum:
