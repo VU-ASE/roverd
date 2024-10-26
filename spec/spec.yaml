@@ -41,15 +41,19 @@ paths:
                       status:
                         $ref: "#/components/schemas/PipelineStatus"
                         description: "The status of the pipeline"
+                        example: "running"
                       last_start:
                         type: integer
                         description: "Milliseconds since epoch when the pipeline was manually started"
+                        example: 1612345678211
                       last_stop:
                         type: integer
                         description: "Milliseconds since epoch when the pipeline was manually stopped"
+                        example: 1612345678910
                       last_restart:
                         type: integer
                         description: "Milliseconds since epoch when the pipeline was automatically restarted (on process faults)"
+                        example: 1612345678901
                   processes:
                     type: array
                     items:
@@ -58,24 +62,31 @@ paths:
                         name:
                           type: string
                           description: "The name of the service running as a process"
+                          example: "imaging"
                         status:
                           $ref: "#/components/schemas/ProcessStatus"
                           description: "The status of the process"
+                          example: "running"
                         pid:
                           type: integer
                           description: "The process ID"
+                          example: 7890
                         uptime:
                           type: integer
                           description: "The number of seconds the process has been running"
+                          example: 121
                         memory:
                           type: integer
                           description: "The amount of memory used by the process in megabytes"
+                          example: 1024
                         cpu:
-                          type: number
+                          type: integer
                           description: "The percentage of CPU used by the process"
+                          example: 20
                         faults:
                           type: integer
                           description: "The number of faults that have occurred (causing the pipeline to restart) since last_start"
+                          example: 1
         "400":
           description: "An error occurred"
           content:
@@ -96,6 +107,7 @@ paths:
               - start
               - stop
           description: "The action to perform on the pipeline"
+          example: "start"
       responses:
         "200":
           description: "The pipeline action was performed successfully"
@@ -117,6 +129,7 @@ paths:
           description: "The name or pid of the service running as a process in the pipeline"
           schema:
             type: string
+          example: "imaging"
         - name: log_lines
           in: query
           required: false
@@ -126,6 +139,7 @@ paths:
             default: 50
             maximum: 1000
           description: "The number of log lines to retrieve"
+          example: 100
       responses:
         "200":
           description: "The status of the process"
@@ -137,35 +151,49 @@ paths:
                   name:
                     type: string
                     description: "The name of the service running as a process"
+                    example: "imaging"
                   status:
                     $ref: "#/components/schemas/ProcessStatus"
                     description: "The status of the process"
+                    example: "running"
                   pid:
                     type: integer
                     description: "The process ID"
+                    example: 7890
                   uptime:
                     type: integer
                     description: "The number of seconds the process has been running"
+                    example: 121
                   memory:
                     type: integer
                     description: "The amount of memory used by the process in megabytes"
+                    example: 1024
                   cpu:
-                    type: number
+                    type: integer
                     description: "The percentage of CPU used by the process"
+                    example: 20
                   faults:
                     type: integer
                     description: "The number of faults that have occurred (causing the pipeline to restart) since last_start"
+                    example: 1
                   service_name:
                     type: string
                     description: "The name of the service that this process is running"
+                    example: "imaging"
                   service_version:
                     type: string
                     description: "The version of the service that this process is running"
+                    example: "1.0.0"
                   logs:
                     type: array
                     description: "The latest <log_lines> log lines of the process"
                     items:
                       type: string
+                    example:
+                      [
+                        "INFO: Starting imaging service",
+                        "INFO: Imaging service completed",
+                      ]
         "400":
           description: "An error occurred"
           content:
@@ -194,12 +222,15 @@ paths:
                     name:
                       type: string
                       description: "The name of the service"
+                      example: "imaging"
                     status:
                       $ref: "#/components/schemas/ServiceStatus"
                       description: "The status of the service"
+                      example: "enabled"
                     enabled_version:
                       type: string
                       description: "The version that is enabled for this service (if any)"
+                      example: "1.0.0"
         "400":
           description: "An error occurred"
           content:
@@ -224,6 +255,19 @@ paths:
       responses:
         "200":
           description: "The service action was performed successfully"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    description: "The name of the service"
+                    example: "imaging"
+                  version:
+                    type: string
+                    description: "The version of the service"
+                    example: "1.0.0"
         "400":
           description: "An error occurred"
           content:
@@ -242,6 +286,7 @@ paths:
           description: "The name of the service"
           schema:
             type: string
+          example: "imaging"
       responses:
         "200":
           description: "The status of the service"
@@ -253,17 +298,22 @@ paths:
                   name:
                     type: string
                     description: "The name of the service"
+                    example: "imaging"
                   status:
                     $ref: "#/components/schemas/ServiceStatus"
                     description: "The status of the service"
+                    example: "enabled"
                   versions:
                     type: array
                     items:
                       type: string
                       description: "The versions of the service that are installed"
+                    example: ["1.0.0", "1.0.1"]
                   enabled_version:
                     type: string
                     description: "The version that is enabled for this service (if any)"
+                    example: "1.0.0"
+
         "400":
           description: "An error occurred"
           content:
@@ -282,12 +332,14 @@ paths:
           description: "The name of the service"
           schema:
             type: string
+          example: "imaging"
         - name: version
           in: path
           required: true
           description: "The version of the service"
           schema:
             type: string
+          example: "1.0.0"
       responses:
         "200":
           description: "The status of the service"
@@ -299,18 +351,23 @@ paths:
                   name:
                     type: string
                     description: "The name of the service"
+                    example: "imaging"
                   version:
                     type: string
                     description: "The version of the service"
+                    example: "1.0.0"
                   status:
                     $ref: "#/components/schemas/ServiceStatus"
                     description: "The status of the service"
-                  enabled:
-                    type: boolean
-                    description: "Whether this version is enabled"
+                    example: "enabled"
                   built_at:
                     type: integer
                     description: "The time this version was last built as milliseconds since epoch"
+                    example: 1612345678142
+                  author:
+                    type: string
+                    description: "The author of the service"
+                    example: "Elias"
                   inputs:
                     type: array
                     description: "The dependencies/inputs of this service version"
@@ -325,16 +382,25 @@ paths:
                           description: "The streams of the service dependency"
                           items:
                             type: string
+                    example:
+                      [
+                        {
+                          "service": "lux",
+                          "streams": ["light_level", "temperature"],
+                        },
+                      ]
                   outputs:
                     type: array
                     description: "The output streams of this service version"
                     items:
                       type: string
+                    example: ["image"]
                   errors:
                     type: array
                     description: "The validation errors of this service version (one error per line)"
                     items:
                       type: string
+                    example: ["Missing input stream 'light_level'"]
         "400":
           description: "An error occurred"
           content:
@@ -352,12 +418,14 @@ paths:
           description: "The name of the service"
           schema:
             type: string
+          example: "imaging"
         - name: version
           in: path
           required: true
           description: "The version of the service"
           schema:
             type: string
+          example: "1.0.0"
         - name: action
           in: query
           required: true
@@ -367,6 +435,7 @@ paths:
               - enable
               - disable
               - build
+          example: "enable"
           description: "The action to perform on the service version"
       responses:
         "200":
@@ -388,12 +457,14 @@ paths:
           description: "The name of the service"
           schema:
             type: string
+          example: "imaging"
         - name: version
           in: path
           required: true
           description: "The version of the service"
           schema:
             type: string
+          example: "1.0.0"
       responses:
         "200":
           description: "The service version was deleted successfully"
@@ -425,14 +496,18 @@ paths:
                     name:
                       type: string
                       description: "The name of the source"
+                      example: "imaging"
                     url:
                       type: string
                       description: "The URL of the source (without scheme)"
+                      example: "github.com/VU-ASE/imaging"
                     version:
                       type: string
+                      example: "1.0.0"
                     sha:
                       type: string
                       description: "The SHA256 hash of the source download"
+                      example: 68c4008de241ee6f8c17de9162f80c38533b94fc0ee6de2a83740cdc2e0edf64
         "400":
           description: "An error occurred"
           content:
@@ -453,12 +528,15 @@ paths:
                 name:
                   type: string
                   description: "The name of the source"
+                  example: "imaging"
                 url:
                   type: string
                   description: "The URL of the source (without scheme)"
+                  example: "github.com/VU-ASE/imaging"
                 version:
                   type: string
                   description: "The version of the source"
+                  example: "1.0.0"
       responses:
         "200":
           description: "The source was added successfully"
@@ -480,6 +558,7 @@ paths:
           description: "The name of the source"
           schema:
             type: string
+          example: "imaging"
       responses:
         "200":
           description: "The service was downloaded and installed successfully"
@@ -500,6 +579,7 @@ paths:
           description: "The name of the source"
           schema:
             type: string
+          example: "imaging"
       responses:
         "200":
           description: "The source was deleted successfully"
@@ -529,24 +609,31 @@ paths:
                   status:
                     $ref: "#/components/schemas/DaemonStatus"
                     description: "The status of the roverd daemon process"
+                    example: "operational"
                   version:
                     type: string
                     description: "The version of the roverd daemon"
+                    example: "1.0.0"
                   uptime:
                     type: integer
                     description: "The number of seconds the roverd daemon process has been running"
+                    example: 2751
                   os:
                     type: string
                     description: "The operating system of the rover"
+                    example: "linux 5.4.0-65-generic x86_64 ubuntu 20.04"
                   systime:
                     type: integer
                     description: "The system time of the rover as milliseconds since epoch"
-                  roverid:
+                    example: 1612345674703
+                  rover_id:
                     type: integer
                     description: "The unique identifier of the rover"
-                  rovername:
+                    example: 12
+                  rover_name:
                     type: string
                     description: "The unique name of the rover"
+                    example: "zenith"
   /update:
     post:
       tags:
