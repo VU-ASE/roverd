@@ -88,11 +88,10 @@ paths:
                           description: "The number of faults that have occurred (causing the pipeline to restart) since last_start"
                           example: 1
         "400":
-          description: "An error occurred"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/BasicError"
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
     post:
       tags:
         - "Pipeline"
@@ -112,11 +111,10 @@ paths:
         "200":
           description: "The pipeline action was performed successfully"
         "400":
-          description: "An error occurred"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/BasicError"
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
   /pipeline/{name_or_pid}:
     get:
       tags:
@@ -195,11 +193,9 @@ paths:
                         "INFO: Imaging service completed",
                       ]
         "400":
-          description: "An error occurred"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/BasicError"
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
 
   #
   # Services
@@ -232,11 +228,10 @@ paths:
                       description: "The version that is enabled for this service (if any)"
                       example: "1.0.0"
         "400":
-          description: "An error occurred"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/BasicError"
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
     post:
       tags:
         - "Services"
@@ -269,11 +264,10 @@ paths:
                     description: "The version of the service"
                     example: "1.0.0"
         "400":
-          description: "An error occurred"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/BasicError"
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
   /services/{name}:
     get:
       tags:
@@ -315,11 +309,10 @@ paths:
                     example: "1.0.0"
 
         "400":
-          description: "An error occurred"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/BasicError"
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
   /services/{name}/{version}:
     get:
       tags:
@@ -402,11 +395,10 @@ paths:
                       type: string
                     example: ["Missing input stream 'light_level'"]
         "400":
-          description: "An error occurred"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/BasicError"
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
     post:
       tags:
         - "Services"
@@ -441,11 +433,10 @@ paths:
         "200":
           description: "The service action was performed successfully"
         "400":
-          description: "An error occurred"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/BasicError"
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
     delete:
       tags:
         - "Services"
@@ -469,11 +460,9 @@ paths:
         "200":
           description: "The service version was deleted successfully"
         "400":
-          description: "An error occurred"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/BasicError"
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
 
   #
   # Sources
@@ -509,11 +498,10 @@ paths:
                       description: "The SHA256 hash of the source download"
                       example: 68c4008de241ee6f8c17de9162f80c38533b94fc0ee6de2a83740cdc2e0edf64
         "400":
-          description: "An error occurred"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/BasicError"
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
     post:
       tags:
         - "Sources"
@@ -541,11 +529,10 @@ paths:
         "200":
           description: "The source was added successfully"
         "400":
-          description: "An error occurred"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/BasicError"
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
   /sources/{name}:
     post:
       tags:
@@ -563,11 +550,10 @@ paths:
         "200":
           description: "The service was downloaded and installed successfully"
         "400":
-          description: "An error occurred"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/BasicError"
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
     delete:
       tags:
         - "Sources"
@@ -584,11 +570,9 @@ paths:
         "200":
           description: "The source was deleted successfully"
         "400":
-          description: "An error occurred"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/BasicError"
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
 
   #
   # Health
@@ -634,6 +618,9 @@ paths:
                     type: string
                     description: "The unique name of the rover"
                     example: "zenith"
+        "400":
+          $ref: "#/components/responses/Error"
+
   /update:
     post:
       tags:
@@ -643,13 +630,20 @@ paths:
         "200":
           description: "The roverd daemon process initiated a self-update successfully. You should expect the process to terminate and restart soon."
         "400":
-          description: "An error occurred"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/BasicError"
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
+# Set global security requirement
+security:
+  - BasicAuth: []
 
 components:
+  # We require basic auth for all endpoints
+  securitySchemes:
+    BasicAuth:
+      type: http
+      scheme: basic
   schemas:
     PipelineStatus:
       type: string
@@ -678,7 +672,7 @@ components:
         - recoverable
         - unrecoverable
       description: "The status of the roverd process"
-    BasicError:
+    GenericError:
       type: object
       properties:
         message:
@@ -687,3 +681,16 @@ components:
         code:
           type: integer
           description: "A code describing the error (this is not an HTTP status code)"
+  responses:
+    Error:
+      description: "An error occurred"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/GenericError"
+    UnauthorizedError:
+      description: "Unauthorized access"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/GenericError"
