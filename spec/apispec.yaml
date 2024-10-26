@@ -582,6 +582,7 @@ paths:
       tags:
         - "Health"
       summary: "Retrieve the health and versioning information"
+      security: []
       responses:
         "200":
           description: "The health and versioning information"
@@ -689,8 +690,4 @@ components:
           schema:
             $ref: "#/components/schemas/GenericError"
     UnauthorizedError:
-      description: "Unauthorized access"
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/GenericError"
+      description: "Unauthorized access (you need to set the Authorization header with a valid username and password)"
