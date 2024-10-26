@@ -7,11 +7,15 @@
         "vscode": {
             "extensions": [
                 "streetsidesoftware.code-spell-checker",
-                "rust-lang.rust-analyzer",         // Rust language server
-                "serayuzgur.crates",               // Crates.io dependencies helper
-                "tamasfe.even-better-toml",        // TOML syntax support
-                "ms-vscode.makefile-tools",        // Makefile Tools extension
-                "usernamehw.errorlens"             // Error Lens for inline error highlighting
+                "rust-lang.rust-analyzer", // Rust language server
+                "serayuzgur.crates", // Crates.io dependencies helper
+                "tamasfe.even-better-toml", // TOML syntax support
+                "ms-vscode.makefile-tools", // Makefile Tools extension
+                "usernamehw.errorlens", // Error Lens for inline error highlighting
+                "42Crunch.vscode-openapi", // OpenAPI Editor
+                "Arjun.swagger-viewer", // Swagger Viewer
+                "philosowaffle.openapi-snippets", // OpenAPI Snippets
+                "dbankier.vscode-quick-select" // Quick select with cmd/ctrl+k "
             ]
         }
     },

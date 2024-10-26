@@ -1,0 +1,602 @@
+openapi: "3.0.0"
+info:
+  title: "roverd REST API"
+  description: "API exposed from each rover to allow process, service, source and file management"
+  version: "1.0.0"
+
+servers:
+  - url: "http://rover.ase.vu.nl"
+    description: "Local rover instance"
+
+tags:
+  - name: "Pipeline"
+    description: "Managing pipeline execution and processes"
+  - name: "Services"
+    description: "Managing services that compose a pipeline"
+  - name: "Sources"
+    description: "Managing sources that services can be downloaded from"
+  - name: "Health"
+    description: "Health and versioning information"
+
+paths:
+  #
+  # Pipeline processes and commands
+  #
+  /pipeline:
+    get:
+      tags:
+        - "Pipeline"
+      summary: "Retrieve pipeline status and process execution information"
+      responses:
+        "200":
+          description: "Pipeline status and an array of processes"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pipeline:
+                    type: object
+                    properties:
+                      status:
+                        $ref: "#/components/schemas/PipelineStatus"
+                        description: "The status of the pipeline"
+                      last_start:
+                        type: integer
+                        description: "Milliseconds since epoch when the pipeline was manually started"
+                      last_stop:
+                        type: integer
+                        description: "Milliseconds since epoch when the pipeline was manually stopped"
+                      last_restart:
+                        type: integer
+                        description: "Milliseconds since epoch when the pipeline was automatically restarted (on process faults)"
+                  processes:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                          description: "The name of the service running as a process"
+                        status:
+                          $ref: "#/components/schemas/ProcessStatus"
+                          description: "The status of the process"
+                        pid:
+                          type: integer
+                          description: "The process ID"
+                        uptime:
+                          type: integer
+                          description: "The number of seconds the process has been running"
+                        memory:
+                          type: integer
+                          description: "The amount of memory used by the process in megabytes"
+                        cpu:
+                          type: number
+                          description: "The percentage of CPU used by the process"
+                        faults:
+                          type: integer
+                          description: "The number of faults that have occurred (causing the pipeline to restart) since last_start"
+        "400":
+          description: "An error occurred"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BasicError"
+    post:
+      tags:
+        - "Pipeline"
+      summary: "Start or stop the pipeline of all enabled services"
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - start
+              - stop
+          description: "The action to perform on the pipeline"
+      responses:
+        "200":
+          description: "The pipeline action was performed successfully"
+        "400":
+          description: "An error occurred"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BasicError"
+  /pipeline/{name_or_pid}:
+    get:
+      tags:
+        - "Pipeline"
+      summary: "Retrieve the status of a service running as a process in the pipeline"
+      parameters:
+        - name: name_or_pid
+          in: path
+          required: true
+          description: "The name or pid of the service running as a process in the pipeline"
+          schema:
+            type: string
+        - name: log_lines
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 50
+            maximum: 1000
+          description: "The number of log lines to retrieve"
+      responses:
+        "200":
+          description: "The status of the process"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    description: "The name of the service running as a process"
+                  status:
+                    $ref: "#/components/schemas/ProcessStatus"
+                    description: "The status of the process"
+                  pid:
+                    type: integer
+                    description: "The process ID"
+                  uptime:
+                    type: integer
+                    description: "The number of seconds the process has been running"
+                  memory:
+                    type: integer
+                    description: "The amount of memory used by the process in megabytes"
+                  cpu:
+                    type: number
+                    description: "The percentage of CPU used by the process"
+                  faults:
+                    type: integer
+                    description: "The number of faults that have occurred (causing the pipeline to restart) since last_start"
+                  service_name:
+                    type: string
+                    description: "The name of the service that this process is running"
+                  service_version:
+                    type: string
+                    description: "The version of the service that this process is running"
+                  logs:
+                    type: array
+                    description: "The latest <log_lines> log lines of the process"
+                    items:
+                      type: string
+        "400":
+          description: "An error occurred"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BasicError"
+
+  #
+  # Services
+  #
+  /services:
+    get:
+      tags:
+        - "Services"
+      summary: "Retrieve all services and their status"
+      responses:
+        "200":
+          description: "An array of services"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                      description: "The name of the service"
+                    status:
+                      $ref: "#/components/schemas/ServiceStatus"
+                      description: "The status of the service"
+                    enabled_version:
+                      type: string
+                      description: "The version that is enabled for this service (if any)"
+        "400":
+          description: "An error occurred"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BasicError"
+    post:
+      tags:
+        - "Services"
+      summary: "Upload a new service or new version to the rover by uploading a ZIP file"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+                  format: binary
+                  description: "The content of the ZIP file to upload"
+      responses:
+        "200":
+          description: "The service action was performed successfully"
+        "400":
+          description: "An error occurred"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BasicError"
+  /services/{name}:
+    get:
+      tags:
+        - "Services"
+      summary: "Retrieve the status and versions of a service"
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: "The name of the service"
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "The status of the service"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    description: "The name of the service"
+                  status:
+                    $ref: "#/components/schemas/ServiceStatus"
+                    description: "The status of the service"
+                  versions:
+                    type: array
+                    items:
+                      type: string
+                      description: "The versions of the service that are installed"
+                  enabled_version:
+                    type: string
+                    description: "The version that is enabled for this service (if any)"
+        "400":
+          description: "An error occurred"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BasicError"
+  /services/{name}/{version}:
+    get:
+      tags:
+        - "Services"
+      summary: "Retrieve the status of a specific version of a service"
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: "The name of the service"
+          schema:
+            type: string
+        - name: version
+          in: path
+          required: true
+          description: "The version of the service"
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "The status of the service"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    description: "The name of the service"
+                  version:
+                    type: string
+                    description: "The version of the service"
+                  status:
+                    $ref: "#/components/schemas/ServiceStatus"
+                    description: "The status of the service"
+                  enabled:
+                    type: boolean
+                    description: "Whether this version is enabled"
+                  built_at:
+                    type: integer
+                    description: "The time this version was last built as milliseconds since epoch"
+                  inputs:
+                    type: array
+                    description: "The dependencies/inputs of this service version"
+                    items:
+                      type: object
+                      properties:
+                        service:
+                          type: string
+                          description: "The name of the service dependency"
+                        streams:
+                          type: array
+                          description: "The streams of the service dependency"
+                          items:
+                            type: string
+                  outputs:
+                    type: array
+                    description: "The output streams of this service version"
+                    items:
+                      type: string
+                  errors:
+                    type: array
+                    description: "The validation errors of this service version (one error per line)"
+                    items:
+                      type: string
+        "400":
+          description: "An error occurred"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BasicError"
+    post:
+      tags:
+        - "Services"
+      summary: "Enable, disable or build a specific version of a service in the pipeline"
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: "The name of the service"
+          schema:
+            type: string
+        - name: version
+          in: path
+          required: true
+          description: "The version of the service"
+          schema:
+            type: string
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - enable
+              - disable
+              - build
+          description: "The action to perform on the service version"
+      responses:
+        "200":
+          description: "The service action was performed successfully"
+        "400":
+          description: "An error occurred"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BasicError"
+    delete:
+      tags:
+        - "Services"
+      summary: "Delete a specific version of a service"
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: "The name of the service"
+          schema:
+            type: string
+        - name: version
+          in: path
+          required: true
+          description: "The version of the service"
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "The service version was deleted successfully"
+        "400":
+          description: "An error occurred"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BasicError"
+
+  #
+  # Sources
+  #
+  /sources:
+    get:
+      tags:
+        - "Sources"
+      summary: "Retrieve all sources"
+      responses:
+        "200":
+          description: "An array of sources"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                      description: "The name of the source"
+                    url:
+                      type: string
+                      description: "The URL of the source (without scheme)"
+                    version:
+                      type: string
+                    sha:
+                      type: string
+                      description: "The SHA256 hash of the source download"
+        "400":
+          description: "An error occurred"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BasicError"
+    post:
+      tags:
+        - "Sources"
+      summary: "Add a new source"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: "The name of the source"
+                url:
+                  type: string
+                  description: "The URL of the source (without scheme)"
+                version:
+                  type: string
+                  description: "The version of the source"
+      responses:
+        "200":
+          description: "The source was added successfully"
+        "400":
+          description: "An error occurred"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BasicError"
+  /sources/{name}:
+    post:
+      tags:
+        - "Sources"
+      summary: Download and install a service from a source
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: "The name of the source"
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "The service was downloaded and installed successfully"
+        "400":
+          description: "An error occurred"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BasicError"
+    delete:
+      tags:
+        - "Sources"
+      summary: "Delete a source"
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: "The name of the source"
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "The source was deleted successfully"
+        "400":
+          description: "An error occurred"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BasicError"
+
+  #
+  # Health
+  #
+  /status:
+    get:
+      tags:
+        - "Health"
+      summary: "Retrieve the health and versioning information"
+      responses:
+        "200":
+          description: "The health and versioning information"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    $ref: "#/components/schemas/DaemonStatus"
+                    description: "The status of the roverd daemon process"
+                  version:
+                    type: string
+                    description: "The version of the roverd daemon"
+                  uptime:
+                    type: integer
+                    description: "The number of seconds the roverd daemon process has been running"
+                  os:
+                    type: string
+                    description: "The operating system of the rover"
+                  systime:
+                    type: integer
+                    description: "The system time of the rover as milliseconds since epoch"
+                  roverid:
+                    type: integer
+                    description: "The unique identifier of the rover"
+                  rovername:
+                    type: string
+                    description: "The unique name of the rover"
+  /update:
+    post:
+      tags:
+        - "Health"
+      summary: "Self-update the roverd daemon process"
+      responses:
+        "200":
+          description: "The roverd daemon process initiated a self-update successfully. You should expect the process to terminate and restart soon."
+        "400":
+          description: "An error occurred"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BasicError"
+
+components:
+  schemas:
+    PipelineStatus:
+      type: string
+      enum:
+        - invalid # cannot be started
+        - valid # can be started
+        - running
+        - restarting
+    ProcessStatus:
+      type: string
+      enum:
+        - running
+        - stopped
+        - terminated
+        - killed
+      description: "The status of a process in the pipeline"
+    ServiceStatus:
+      type: string
+      enum:
+        - enabled
+        - disabled
+    DaemonStatus:
+      type: string
+      enum:
+        - operational
+        - recoverable
+        - unrecoverable
+      description: "The status of the roverd process"
+    BasicError:
+      type: object
+      properties:
+        message:
+          type: string
+          description: "A message describing the error"
+        code:
+          type: integer
+          description: "A code describing the error (this is not an HTTP status code)"
