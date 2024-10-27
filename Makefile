@@ -1,17 +1,17 @@
 # Makefile in accordance with the docs on git management (to use in combination with meta)
 .PHONY: build start clean test
 
-BUILD_DIR=bin/
-BINARY_NAME=rovervalidate
+BUILD_DIR=target/release
+BINARY_NAME=roverd
 
 lint:
-	# todo: lint checks here
+	cargo clippy
 
 build: lint
-	# todo: rust build here
+	cargo build --release
 
 clean:
-	# todo: clean here
+	crgo clean
 
 test: lint
-	# todo: rust tests here
+	cargo test
