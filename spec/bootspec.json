@@ -10,13 +10,15 @@
             "properties": {
                 "name": {
                     "type": "string",
-                    "description": "The name of the service",
-                    "example": "controller"
+                    "description": "The name of the service (only lowercase letters and hyphens)",
+                    "example": "controller",
+                    "pattern": "^[a-z]+(-[a-z]+)*$"
                 },
                 "version": {
                     "type": "string",
                     "description": "The specific version of the service",
-                    "example": "1.0.1"
+                    "example": "1.0.1",
+                    "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-([0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*))?(?:\\+([0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*))?$"
                 }
             }
         },
@@ -29,7 +31,8 @@
                     "service": {
                         "type": "string",
                         "description": "The name of the service for this dependency",
-                        "example": "imaging"
+                        "example": "imaging",
+                        "pattern": "^[a-z]+(-[a-z]+)*$"
                     },
                     "streams": {
                         "type": "array",
@@ -39,7 +42,8 @@
                                 "name": {
                                     "type": "string",
                                     "description": "The name of the stream as outputted by the dependency service",
-                                    "example": "track_data"
+                                    "example": "track_data",
+                                    "pattern": "^[a-z]+(-[a-z]+)*$"
                                 },
                                 "address": {
                                     "type": "string",
@@ -60,7 +64,8 @@
                     "name": {
                         "type": "string",
                         "description": "Name of the output published by this service",
-                        "example": "motor_movement"
+                        "example": "motor-movement",
+                        "pattern": "^[a-z]+(-[a-z]+)*$"
                     },
                     "address": {
                         "type": "string",
@@ -78,7 +83,8 @@
                     "name": {
                         "type": "string",
                         "description": "Unique name of this configuration option",
-                        "example": "max-iterations"
+                        "example": "max-iterations",
+                        "pattern": "^[a-z]+(-[a-z]+)*$"
                     },
                     "type": {
                         "type": "string",
