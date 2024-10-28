@@ -56,4 +56,6 @@ if ! shopt -oq posix; then
 fi
 
 
-export PATH=$PATH:/usr/local/go/bin:/usr/go/bin:/home/dev/go/bin/:/home/dev/.local/bin
+export PATH=$PATH:/usr/local/go/bin:/usr/go/bin:/home/devbox/go/bin/:/home/devbox/.local/bin
+
+eval "$(devbox global shellenv --init-hook)"

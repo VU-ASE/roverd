@@ -1,29 +1,32 @@
 {
-    "name": "ASE-roverd",
-    "build": {
-        "dockerfile": "Dockerfile"
-    },
-    "customizations": {
-        "vscode": {
-            "extensions": [
-                "streetsidesoftware.code-spell-checker",
-                "rust-lang.rust-analyzer", // Rust language server
-                "serayuzgur.crates", // Crates.io dependencies helper
-                "tamasfe.even-better-toml", // TOML syntax support
-                "ms-vscode.makefile-tools", // Makefile Tools extension
-                "usernamehw.errorlens", // Error Lens for inline error highlighting
-                "42Crunch.vscode-openapi", // OpenAPI Editor
-                "Arjun.swagger-viewer", // Swagger Viewer
-                "philosowaffle.openapi-snippets", // OpenAPI Snippets
-                "dbankier.vscode-quick-select" // Quick select with cmd/ctrl+k "
-            ]
-        }
-    },
-    "capAdd": [
-        "SYS_PTRACE"
-    ],
-    "securityOpt": [
-        "seccomp=unconfined"
-    ],
-    "forwardPorts": []
+  "name": "ASE-template",
+  "build": {
+    "dockerfile": "./Dockerfile",
+    "context": ".."
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "streetsidesoftware.code-spell-checker",
+        "jetpack-io.devbox",
+        "rust-lang.rust-analyzer", // Rust language server
+        "serayuzgur.crates", // Crates.io dependencies helper
+        "tamasfe.even-better-toml", // TOML syntax support
+        "ms-vscode.makefile-tools", // Makefile Tools extension
+        "usernamehw.errorlens", // Error Lens for inline error highlighting
+        "42Crunch.vscode-openapi", // OpenAPI Editor
+        "Arjun.swagger-viewer", // Swagger Viewer
+        "philosowaffle.openapi-snippets", // OpenAPI Snippets
+        "dbankier.vscode-quick-select" // Quick select with cmd/ctrl+k "
+      ]
+    }
+  },
+  "capAdd": [
+    "SYS_PTRACE"
+  ],
+  "securityOpt": [
+    "seccomp=unconfined"
+  ],
+  "forwardPorts": [],
+  "remoteUser": "devbox"
 }

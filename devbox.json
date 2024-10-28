@@ -7,7 +7,6 @@
   ],
   "shell": {
     "init_hook": [
-      "rustup default stable",
       "export PS1='\\W \\e[01;31m$\\e[m '"
     ],
     "scripts": {
