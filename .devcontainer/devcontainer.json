@@ -1,5 +1,5 @@
 {
-  "name": "ASE-template",
+  "name": "roverd",
   "build": {
     "dockerfile": "./Dockerfile",
     "context": ".."

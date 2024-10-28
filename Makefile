@@ -5,18 +5,19 @@ BUILD_DIR=target/release
 BINARY_NAME=roverd
 
 lint:
-	cargo clippy
+	@cargo clippy
 
 build: lint
-	cargo build --release
+	@cargo build --release
 
 clean:
+	rm -rf openapi/
 	cargo clean
 
 test: lint
-	cargo test
+	@cargo test
 
 generate-types:
-	openapi-generator-cli generate -i spec/apispec.yaml -g rust -o types/
+	@openapi-generator-cli generate -i spec/apispec.yaml -g rust -o openapi/
 
 
