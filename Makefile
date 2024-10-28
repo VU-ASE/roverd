@@ -7,17 +7,20 @@ BINARY_NAME=roverd
 lint:
 	@cargo clippy
 
-build: lint
+open-api:
+	@openapi-generator-cli generate -i spec/apispec.yaml -g rust -o openapi/
+
+build: lint open-api
 	@cargo build --release
+
+test: lint
+	@cargo test
 
 clean:
 	rm -rf openapi/
 	cargo clean
 
-test: lint
-	@cargo test
 
-generate-types:
-	@openapi-generator-cli generate -i spec/apispec.yaml -g rust -o openapi/
+
 
 

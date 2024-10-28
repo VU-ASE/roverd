@@ -33,7 +33,7 @@ RUN devbox global install ; echo "Installed devbox packages."
 RUN devbox global run -- rustup default stable
 RUN devbox global run -- rustup component add clippy rustfmt
 
-RUN sudo apt install -y libssl-dev pkg-config
+RUN sudo apt install -y pkg-config libssl-dev
 
 # -----------------------------
 

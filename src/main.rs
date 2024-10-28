@@ -1,8 +1,4 @@
 
-
-
-
-
 fn main() {
     println!("hello")
 }
