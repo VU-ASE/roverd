@@ -73,7 +73,7 @@ paths:
                           example: 7890
                         uptime:
                           type: integer
-                          description: "The number of seconds the process has been running"
+                          description: "The number of milliseconds the process has been running"
                           example: 121
                         memory:
                           type: integer
@@ -115,16 +115,16 @@ paths:
         "401":
           $ref: "#/components/responses/UnauthorizedError"
 
-  /pipeline/{name_or_pid}:
+  /pipeline/{name}:
     get:
       tags:
         - "Pipeline"
       summary: "Retrieve the status of a service running as a process in the pipeline"
       parameters:
-        - name: name_or_pid
+        - name: name
           in: path
           required: true
-          description: "The name or pid of the service running as a process in the pipeline"
+          description: "The name of the service running as a process in the pipeline"
           schema:
             type: string
           example: "imaging"
@@ -160,7 +160,7 @@ paths:
                     example: 7890
                   uptime:
                     type: integer
-                    description: "The number of seconds the process has been running"
+                    description: "The number of milliseconds the process has been running"
                     example: 121
                   memory:
                     type: integer
@@ -601,7 +601,7 @@ paths:
                     example: "1.0.0"
                   uptime:
                     type: integer
-                    description: "The number of seconds the roverd daemon process has been running"
+                    description: "The number of milliseconds the roverd daemon process has been running"
                     example: 2751
                   os:
                     type: string
