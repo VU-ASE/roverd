@@ -11,7 +11,7 @@ build: lint
 	cargo build --release
 
 clean:
-	crgo clean
+	cargo clean
 
 test: lint
 	cargo test
