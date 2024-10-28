@@ -29,6 +29,54 @@
         }
       }
     },
+    "openapi-generator-cli@latest": {
+      "last_modified": "2024-10-15T08:13:08Z",
+      "resolved": "github:NixOS/nixpkgs/7881fbfd2e3ed1dfa315fca889b2cfd94be39337#openapi-generator-cli",
+      "source": "devbox-search",
+      "version": "7.9.0",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/659hzf9ppq8c0xs4v23vdijl8j3x2snv-openapi-generator-cli-7.9.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/659hzf9ppq8c0xs4v23vdijl8j3x2snv-openapi-generator-cli-7.9.0"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/wlmblwbpn867f7h806m052l662f1vx75-openapi-generator-cli-7.9.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/wlmblwbpn867f7h806m052l662f1vx75-openapi-generator-cli-7.9.0"
+        },
+        "x86_64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/6sv62bhl6his088nhmav5fvq7wz96d8z-openapi-generator-cli-7.9.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/6sv62bhl6his088nhmav5fvq7wz96d8z-openapi-generator-cli-7.9.0"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/v38wk1ndqfnxinmcnss1akjgvychdkpn-openapi-generator-cli-7.9.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/v38wk1ndqfnxinmcnss1akjgvychdkpn-openapi-generator-cli-7.9.0"
+        }
+      }
+    },
     "rustup@1.27.1": {
       "last_modified": "2024-10-13T23:44:06Z",
       "plugin_version": "0.0.1",

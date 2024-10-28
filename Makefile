@@ -11,7 +11,12 @@ build: lint
 	cargo build --release
 
 clean:
-	crgo clean
+	cargo clean
 
 test: lint
 	cargo test
+
+generate-types:
+	openapi-generator-cli generate -i spec/apispec.yaml -g rust -o types/
+
+
