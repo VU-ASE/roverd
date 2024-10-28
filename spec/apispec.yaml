@@ -194,6 +194,8 @@ paths:
                       ]
         "400":
           $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
 
@@ -307,9 +309,10 @@ paths:
                     type: string
                     description: "The version that is enabled for this service (if any)"
                     example: "1.0.0"
-
         "400":
           $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
 
@@ -396,6 +399,8 @@ paths:
                     example: ["Missing input stream 'light_level'"]
         "400":
           $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
 
@@ -434,6 +439,8 @@ paths:
           description: "The service action was performed successfully"
         "400":
           $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
 
@@ -461,6 +468,8 @@ paths:
           description: "The service version was deleted successfully"
         "400":
           $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
 
@@ -495,7 +504,7 @@ paths:
                       example: "1.0.0"
                     sha:
                       type: string
-                      description: "The SHA256 hash of the source download"
+                      description: "The SHA256 hash of the source download, computed over the ZIP file downloaded"
                       example: 68c4008de241ee6f8c17de9162f80c38533b94fc0ee6de2a83740cdc2e0edf64
         "400":
           $ref: "#/components/responses/Error"
@@ -551,6 +560,8 @@ paths:
           description: "The service was downloaded and installed successfully"
         "400":
           $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
 
@@ -571,6 +582,8 @@ paths:
           description: "The source was deleted successfully"
         "400":
           $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
 
@@ -691,3 +704,5 @@ components:
             $ref: "#/components/schemas/GenericError"
     UnauthorizedError:
       description: "Unauthorized access (you need to set the Authorization header with a valid username and password)"
+    NotFoundError:
+      description: "Entity not found"
