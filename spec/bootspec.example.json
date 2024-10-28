@@ -1,8 +1,6 @@
 {
-    "service": {
-        "name": "controller",
-        "version": "1.0.1"
-    },
+    "name": "controller",
+    "version": "1.0.1",
     "inputs": [
         {
             "service": "imaging",
