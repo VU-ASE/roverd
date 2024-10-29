@@ -1,4 +1,4 @@
-// use tracing::info;
+use tracing::info;
 
 use axum::async_trait;
 
@@ -9,6 +9,8 @@ use openapi::models;
 use axum::extract::Host;
 use axum::http::Method;
 use axum_extra::extract::CookieJar;
+
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::state::Roverd;
 
@@ -23,9 +25,30 @@ impl Health for Roverd {
         _host: Host,
         _cookies: CookieJar,
     ) -> Result<StatusGetResponse, String> {
+        info!(">>> [GET] /status");
+
+
+
+        let uptime = SystemTime::now()
+            .duration_since(self.status.start_time)
+            .unwrap()
+            .as_millis() as i64;
+        let time_now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_millis() as i64;
+
         Ok(
             StatusGetResponse::Status200_TheHealthAndVersioningInformation(
-                models::StatusGet200Response::new(),
+                models::StatusGet200Response {
+                    os: Some(self.status.os.clone()),
+                    rover_id: Some(self.status.rover_id),
+                    rover_name: Some(self.status.rover_name.clone()),
+                    uptime: Some(uptime),
+                    status: Some(self.status.status),
+                    version: Some(self.status.version.clone()),
+                    systime: Some(time_now),
+                },
             ),
         )
     }

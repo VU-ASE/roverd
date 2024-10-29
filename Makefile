@@ -26,7 +26,7 @@ build-dev: build-open-api lint
 build: lint
 	@cargo build
 
-run: build
+run: build-dev
 	@sudo ./target/debug/roverd
 
 test: lint

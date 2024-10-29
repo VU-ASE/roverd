@@ -5,7 +5,7 @@ info:
   version: "1.0.0"
 
 servers:
-  - url: "http://rover.ase.vu.nl"
+  - url: "http://localhost"
     description: "Local rover instance"
 
 tags:
@@ -44,14 +44,17 @@ paths:
                         example: "running"
                       last_start:
                         type: integer
+                        format: "int64"
                         description: "Milliseconds since epoch when the pipeline was manually started"
                         example: 1612345678211
                       last_stop:
                         type: integer
+                        format: "int64"
                         description: "Milliseconds since epoch when the pipeline was manually stopped"
                         example: 1612345678910
                       last_restart:
                         type: integer
+                        format: "int64"
                         description: "Milliseconds since epoch when the pipeline was automatically restarted (on process faults)"
                         example: 1612345678901
                   processes:
@@ -73,6 +76,7 @@ paths:
                           example: 7890
                         uptime:
                           type: integer
+                          format: "int64"
                           description: "The number of milliseconds the process has been running"
                           example: 121
                         memory:
@@ -160,6 +164,7 @@ paths:
                     example: 7890
                   uptime:
                     type: integer
+                    format: "int64"
                     description: "The number of milliseconds the process has been running"
                     example: 121
                   memory:
@@ -358,6 +363,7 @@ paths:
                     example: "enabled"
                   built_at:
                     type: integer
+                    format: "int64"
                     description: "The time this version was last built as milliseconds since epoch"
                     example: 1612345678142
                   author:
@@ -614,6 +620,7 @@ paths:
                     example: "1.0.0"
                   uptime:
                     type: integer
+                    format: "int64"
                     description: "The number of milliseconds the roverd daemon process has been running"
                     example: 2751
                   os:
@@ -622,6 +629,7 @@ paths:
                     example: "linux 5.4.0-65-generic x86_64 ubuntu 20.04"
                   systime:
                     type: integer
+                    format: "int64"
                     description: "The system time of the rover as milliseconds since epoch"
                     example: 1612345674703
                   rover_id:
