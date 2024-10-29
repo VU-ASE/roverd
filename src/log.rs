@@ -4,7 +4,7 @@ use tracing::Level;
 /// otherwise change to Level::WARN for just warn! & error!
 pub fn init() {
     tracing_subscriber::fmt()
-        .with_max_level(Level::TRACE)
+        .with_max_level(Level::INFO)
         .without_time()
         .with_line_number(false)
         .with_file(false)

@@ -27,8 +27,6 @@ impl Health for Roverd {
     ) -> Result<StatusGetResponse, String> {
         info!(">>> [GET] /status");
 
-
-
         let uptime = SystemTime::now()
             .duration_since(self.status.start_time)
             .unwrap()

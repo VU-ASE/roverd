@@ -1,4 +1,4 @@
-use std::time::{SystemTime};
+use std::time::SystemTime;
 
 use openapi::models::DaemonStatus;
 
@@ -6,6 +6,9 @@ mod health;
 mod pipeline;
 mod services;
 mod sources;
+
+// The script in src/build.rs populates a const containing the version
+include!(concat!(env!("OUT_DIR"), "/version.rs"));
 
 #[derive(Debug, Clone)]
 pub struct RoverdStatus {
@@ -21,9 +24,9 @@ impl RoverdStatus {
     fn new() -> Self {
         Self {
             status: DaemonStatus::Operational,
-            version: String::from("todo roverd version"),
+            version: VERSION.to_string(),
             start_time: SystemTime::now(),
-            os: String::from("todo os version"),
+            os: os_info::get().to_string(),
             rover_id: 69, // todo get rover_id
             rover_name: String::from("todo get rover"),
         }
@@ -38,7 +41,7 @@ pub struct Roverd {
 impl Roverd {
     pub fn new() -> Self {
         Self {
-            status: RoverdStatus::new()
+            status: RoverdStatus::new(),
         }
     }
 }
