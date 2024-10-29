@@ -755,6 +755,7 @@ name = "roverd"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "axum-extra",
  "openapi",
  "tokio",
  "tracing",

@@ -1,4 +1,5 @@
-pub type Result<T> = core::result::Result<T, Error>;
+// pub type Result<T> = core::result::Result<T, Error>;
+// pub type Result<T, E> = core::result::Result<T, Error>;
 
 #[derive(Debug)]
 pub enum Error {
