@@ -26,7 +26,11 @@
   ],
   "securityOpt": [
     "seccomp=unconfined"
+    
   ],
-  "forwardPorts": [],
+  "runArgs": ["--network=host"],
+  "forwardPorts": [
+    80
+  ],
   "remoteUser": "devbox"
 }

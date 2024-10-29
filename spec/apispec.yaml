@@ -661,6 +661,7 @@ components:
   schemas:
     PipelineStatus:
       type: string
+      description: The status of the entire pipeline corresponding to a state machine
       enum:
         - running
         - restarting
@@ -676,6 +677,7 @@ components:
       description: "The status of a process in the pipeline"
     ServiceStatus:
       type: string
+      description: The status of any given service is either enabled or disabled
       enum:
         - enabled
         - disabled

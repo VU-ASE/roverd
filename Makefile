@@ -7,11 +7,27 @@ BINARY_NAME=roverd
 lint:
 	@cargo clippy
 
-open-api:
-	@openapi-generator-cli generate -i spec/apispec.yaml -g rust -o openapi/
+# build-open-api:
+# 	@openapi-generator-cli generate -i spec/apispec.yaml -g rust -o openapi/
+# 	@cat misc/openapi_lints.rs | cat - openapi/src/lib.rs > openapi/src/lib-temp.rs && mv openapi/src/lib-temp.rs openapi/src/lib.rs
+# 	@cargo clippy --fix --lib -p openapi --allow-dirty
 
-build: lint open-api
+build-open-api:
+	@openapi-generator-cli generate -i spec/apispec.yaml -g rust-axum  -o openapi/
+	@cd openapi ; cargo fmt
+	@cargo clippy
+
+build-prod: build-open-api lint
 	@cargo build --release
+
+build-dev: build-open-api lint
+	@cargo build
+
+build: lint
+	@cargo build
+
+run: build
+	@sudo ./target/debug/roverd
 
 test: lint
 	@cargo test
