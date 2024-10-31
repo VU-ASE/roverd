@@ -1,14 +1,36 @@
-use std::time::SystemTime;
+use std::path::Path;
+use std::{fs::read_to_string, time::SystemTime};
 
 use openapi::models::DaemonStatus;
+
+use super::error::*;
 
 mod health;
 mod pipeline;
 mod services;
 mod sources;
 
+const ROVER_INFO_PATH: &str = "/etc/rover";
+
 // The script in src/build.rs populates a const containing the version
 include!(concat!(env!("OUT_DIR"), "/version.rs"));
+
+fn read_rover_info() -> Result<(i32, String)> {
+    let text = read_to_string(Path::new(ROVER_INFO_PATH))
+        .map_err(|e| Error::RoverInfoFile(format!("Could not open {} {}", ROVER_INFO_PATH, e)))?;
+
+    let text = text.split_whitespace().collect::<Vec<&str>>();
+    if text.len() != 2 {
+        return Err(Error::RoverInfoFile(format!(
+            "Expected 2 lines, got {}",
+            text.len()
+        )));
+    }
+    let id: i32 = text[0].trim().parse()?;
+    let rover_name: String = text[1].to_string();
+
+    Ok((id, rover_name))
+}
 
 #[derive(Debug, Clone)]
 pub struct RoverdStatus {
@@ -21,15 +43,16 @@ pub struct RoverdStatus {
 }
 
 impl RoverdStatus {
-    fn new() -> Self {
-        Self {
+    fn new() -> Result<Self> {
+        let (rover_id, rover_name) = read_rover_info()?;
+        Ok(Self {
             status: DaemonStatus::Operational,
             version: VERSION.to_string(),
             start_time: SystemTime::now(),
             os: os_info::get().to_string(),
-            rover_id: 69, // todo get rover_id
-            rover_name: String::from("todo get rover"),
-        }
+            rover_id,
+            rover_name,
+        })
     }
 }
 
@@ -39,10 +62,10 @@ pub struct Roverd {
 }
 
 impl Roverd {
-    pub fn new() -> Self {
-        Self {
-            status: RoverdStatus::new(),
-        }
+    pub fn new() -> Result<Self> {
+        Ok(Self {
+            status: RoverdStatus::new()?,
+        })
     }
 }
 
