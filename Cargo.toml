@@ -8,6 +8,7 @@ build = "src/build.rs"
 [dependencies]
 axum = "0.7.7"
 axum-extra = "0.9.4"
+base64 = "0.22.1"
 openapi = { path = "./openapi", features = ["server"]}
 os_info = "3.5.1"
 pgs-files = "0.0.7"
