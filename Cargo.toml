@@ -10,6 +10,7 @@ axum = "0.7.7"
 axum-extra = "0.9.4"
 openapi = { path = "./openapi", features = ["server"]}
 os_info = "3.5.1"
+pgs-files = "0.0.7"
 tokio = {version = "1.41.0", features = ["full"]}
 tower-http = {version = "0.6.1", features = ["cors"]}
 tracing = "0.1.40"

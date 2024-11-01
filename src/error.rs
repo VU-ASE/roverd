@@ -5,6 +5,9 @@ pub enum Error {
     RoverInfoFileIo(String, std::io::Error),
     RoverInfoFileFormat(String),
 
+    RoverShadowFile(String, std::io::Error),
+    RoverPassword(String),
+
     ParseIntFromStr(String),
     Io(String),
 }

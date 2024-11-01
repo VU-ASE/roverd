@@ -25,8 +25,6 @@ impl Health for Roverd {
         _host: Host,
         _cookies: CookieJar,
     ) -> Result<StatusGetResponse, String> {
-        info!(">>> [GET] /status");
-
         let uptime = SystemTime::now()
             .duration_since(self.info.start_time)
             .unwrap()
@@ -57,10 +55,13 @@ impl Health for Roverd {
     /// UpdatePost - POST /update
     async fn update_post(
         &self,
-        _method: Method,
-        _host: Host,
-        _cookies: CookieJar,
+        method: Method,
+        host: Host,
+        cookies: CookieJar,
     ) -> Result<UpdatePostResponse, String> {
+        info!("{:#?}", method);
+        info!("{:#?}", host);
+        info!("{:#?}", cookies);
         Ok(UpdatePostResponse::Status200_TheRoverdDaemonProcessInitiatedASelf)
     }
 }
