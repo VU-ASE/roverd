@@ -614,6 +614,10 @@ paths:
                     $ref: "#/components/schemas/DaemonStatus"
                     description: "The status of the roverd daemon process"
                     example: "operational"
+                  error_message:
+                    type: string
+                    description: "Error message of the daemon status"
+                    example: "none"
                   version:
                     type: string
                     description: "The version of the roverd daemon"

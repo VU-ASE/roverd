@@ -2,7 +2,7 @@ use tracing::info;
 
 use axum::async_trait;
 
-use openapi::apis::health::*;
+use openapi::{apis::health::*, models::DaemonStatus};
 
 use openapi::models;
 
@@ -28,7 +28,7 @@ impl Health for Roverd {
         info!(">>> [GET] /status");
 
         let uptime = SystemTime::now()
-            .duration_since(self.status.start_time)
+            .duration_since(self.info.start_time)
             .unwrap()
             .as_millis() as i64;
         let time_now = SystemTime::now()
@@ -39,12 +39,13 @@ impl Health for Roverd {
         Ok(
             StatusGetResponse::Status200_TheHealthAndVersioningInformation(
                 models::StatusGet200Response {
-                    os: Some(self.status.os.clone()),
-                    rover_id: Some(self.status.rover_id),
-                    rover_name: Some(self.status.rover_name.clone()),
+                    status: Some(self.info.status),
+                    error_message: self.info.error_msg.clone(),
+                    os: Some(self.info.os.clone()),
+                    rover_id: self.info.rover_id,
+                    rover_name: self.info.rover_name.clone(),
                     uptime: Some(uptime),
-                    status: Some(self.status.status),
-                    version: Some(self.status.version.clone()),
+                    version: Some(self.info.version.clone()),
                     systime: Some(time_now),
                 },
             ),
