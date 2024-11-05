@@ -21,3 +21,17 @@ We assume by default all rovers are used with the default `debix` user which mea
 * **author** - For example, all service provided by the ase team will have the github organization name here, so the author in this case would be "vu-ase".
 * **service** - The name of a service, for example "controller".
 * **version** - The SemVer of the service, for example "0.1.0".
+
+
+### Example `/etc/rover` file
+```
+12
+zenith
+e887ecf790605da0544a71b29fe91f21a44a0ec2d5934d77a06831a7d0afc2fa
+```
+This static file is created during the ansible setup and never changes. The id and name of the rover are on the first and second line respectively. They both serve as unique identifiers of a rover in the fleet. On the third line is a `sha256` digest of the string of the user's password. This can be generated with the following bash command `echo -n "some-passord" | sha256sum | cut -d ' ' -f 1`
+
+The hash is checked by roverd for all web authentication. This file should be read-only and must be protected with elevated privileges. 
+
+> NOTE: The user and password is setup statically "at birth" which means that this file does not reflect any runtime changes made to the password. Thus, the password should not be changed, ever.
+

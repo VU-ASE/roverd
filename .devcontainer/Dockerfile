@@ -17,7 +17,6 @@ RUN apt-get update && apt-get install -y \
 	xz-utils \
 	wget
 
-
 USER ${DEVBOX_USER}:${DEVBOX_USER}
 
 COPY --chown=${DEVBOX_USER}:${DEVBOX_USER} .devcontainer/scripts/gu /usr/local/bin/gu
@@ -31,14 +30,23 @@ RUN devbox global install ; echo "Installed devbox packages."
 # --- DEPENDENCIES ---
 
 RUN devbox global run -- rustup default stable
-RUN devbox global run -- rustup component add clippy rustfmt
-
 RUN sudo apt install -y pkg-config libssl-dev
 
-# -----------------------------
+# --- debix user setup ---
+USER root:root
+RUN useradd -ms /bin/bash debix
+RUN echo "debix:debix" | chpasswd
+
+# --- /etc/rover configuration ---
+# Rover ID
+RUN echo "13" > /etc/rover
+# Rover name
+RUN echo "bunny" >> /etc/rover
+# Roverd password
+RUN echo -n "debix" | sha256sum | cut -d ' ' -f 1 >> /etc/rover
 
 
 
-
-
+# --- switch to dev user ---
+USER ${DEVBOX_USER}:${DEVBOX_USER}
 

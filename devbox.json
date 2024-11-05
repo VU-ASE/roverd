@@ -3,8 +3,12 @@
   "packages": [
     "rustup@1.27.1",
     "libiconv@2.40",
-    "openapi-generator-cli@latest"
+    "openapi-generator-cli@7.9.0",
+    "ansible@2.17.5"
   ],
+  "env": {
+    "LC_ALL": "C.UTF-8"
+  },
   "shell": {
     "init_hook": [
       "export PS1='\\W \\e[01;31m$\\e[m '"

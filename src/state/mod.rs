@@ -22,25 +22,17 @@ const ROVER_USER: &str = "debix";
 
 use super::Error;
 
-fn get_password() -> Result<String, Error> {
-    // We can read /etc/shadow since we are root
-
-    let user = pgs_files::shadow::get_entry_by_name(ROVER_USER)
-        .ok_or_else(|| Error::RoverPassword(format!("Could not find user '{}'", ROVER_USER)))?;
-
-    info!("{:#?}", user.passwd);
-
-    Ok(user.passwd)
-}
-
-fn read_rover_info() -> Result<(i32, String), Error> {
+/// Reads the /etc/rover file and parses out basic information. Expects to see
+/// the rover's id on the first line, the rover's name on the second, and a sha256
+/// hash of the user password on the last line.
+fn read_rover_info() -> Result<(i32, String, String), Error> {
     let text = read_to_string(Path::new(ROVER_INFO_PATH))
         .map_err(|e| Error::RoverInfoFileIo(ROVER_INFO_PATH.to_string(), e))?;
 
     let text = text.split_whitespace().collect::<Vec<&str>>();
-    if text.len() != 2 {
+    if text.len() < 3 {
         return Err(Error::RoverInfoFileFormat(format!(
-            "Expected 2 lines, got {}",
+            "Expected 3 lines, got {}",
             text.len()
         )));
     }
@@ -50,42 +42,34 @@ fn read_rover_info() -> Result<(i32, String), Error> {
 
     let rover_name: String = text[1].to_string();
 
-    Ok((id, rover_name))
+    let pass_hash: String = text[2].to_string();
+
+    Ok((id, rover_name, pass_hash))
 }
 
 #[derive(Debug, Clone)]
 pub struct Info {
-    status: DaemonStatus,
-    version: String,
-    start_time: SystemTime,
-    os: String,
-    rover_id: Option<i32>,
-    rover_name: Option<String>,
-    username: String,
-    password: Option<String>,
-    error_msg: Option<String>,
+    pub status: DaemonStatus,
+    pub version: String,
+    pub start_time: SystemTime,
+    pub os: String,
+    pub rover_id: Option<i32>,
+    pub rover_name: Option<String>,
+    pub username: String,
+    pub password: Option<String>,
+    pub error_msg: Option<String>,
 }
 
 impl Info {
     fn new() -> Self {
         let mut status = DaemonStatus::Operational;
 
-        let (id, name, mut msg) = match read_rover_info() {
-            Ok((id, name)) => (Some(id), Some(name), None),
+        let (id, name, hash, mut msg) = match read_rover_info() {
+            Ok((id, name, hash)) => (Some(id), Some(name), Some(hash), None),
             Err(e) => {
                 error!("{:?}", e);
                 status = DaemonStatus::Recoverable;
-                (None, None, Some(format!("{:?}", e)))
-            }
-        };
-
-        let password = match get_password() {
-            Ok(pass) => Some(pass),
-            Err(e) => {
-                error!("{:?}", e);
-                status = DaemonStatus::Recoverable;
-                msg = Some(format!("{:?}", e));
-                None
+                (None, None, None, Some(format!("{:?}", e)))
             }
         };
 
@@ -97,7 +81,7 @@ impl Info {
             rover_id: id,
             rover_name: name,
             username: ROVER_USER.to_string(),
-            password,
+            password: hash,
             error_msg: msg,
         }
     }

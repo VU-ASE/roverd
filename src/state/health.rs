@@ -2,7 +2,7 @@ use tracing::info;
 
 use axum::async_trait;
 
-use openapi::{apis::health::*, models::DaemonStatus};
+use openapi::apis::health::*;
 
 use openapi::models;
 
@@ -55,13 +55,13 @@ impl Health for Roverd {
     /// UpdatePost - POST /update
     async fn update_post(
         &self,
-        method: Method,
-        host: Host,
-        cookies: CookieJar,
+        _method: Method,
+        _host: Host,
+        _cookies: CookieJar,
     ) -> Result<UpdatePostResponse, String> {
-        info!("{:#?}", method);
-        info!("{:#?}", host);
-        info!("{:#?}", cookies);
-        Ok(UpdatePostResponse::Status200_TheRoverdDaemonProcessInitiatedASelf)
+        
+        
+        Ok(UpdatePostResponse::Status400_AnErrorOccurred(models::GenericError { message: Some("todo: /update is not yet fully implemented".to_string()), code: None }))
+
     }
 }
