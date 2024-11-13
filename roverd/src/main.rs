@@ -108,3 +108,12 @@ async fn main() -> Result<(), Error> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod test {
+
+    #[test]
+    fn unit_test() {
+        // todo add unit tests
+    }
+}

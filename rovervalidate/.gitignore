@@ -1,5 +1,6 @@
-.devbox
-target
+bin
 .DS_Store
+/target
 
+.devbox
 devbox.lock

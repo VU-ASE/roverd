@@ -1,16 +1,14 @@
-.PHONY: build start clean test
+.PHONY: lint test build clean
 SHELL := /bin/bash
-
-# This Makefile entrypoint is used by CI
 
 lint:
 	@cargo fmt
 	@cargo clippy
 
-test:
+test: lint
 	@cargo test
 
-build:
+build: lint
 	@cargo build --release
 
 clean:

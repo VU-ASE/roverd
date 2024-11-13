@@ -59,9 +59,11 @@ impl Health for Roverd {
         _host: Host,
         _cookies: CookieJar,
     ) -> Result<UpdatePostResponse, String> {
-        
-        
-        Ok(UpdatePostResponse::Status400_AnErrorOccurred(models::GenericError { message: Some("todo: /update is not yet fully implemented".to_string()), code: None }))
-
+        Ok(UpdatePostResponse::Status400_AnErrorOccurred(
+            models::GenericError {
+                message: Some("todo: /update is not yet fully implemented".to_string()),
+                code: None,
+            },
+        ))
     }
 }

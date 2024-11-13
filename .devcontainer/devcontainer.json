@@ -8,7 +8,6 @@
     "vscode": {
       "extensions": [
         "streetsidesoftware.code-spell-checker",
-        "jetpack-io.devbox",
         "rust-lang.rust-analyzer", // Rust language server
         "serayuzgur.crates", // Crates.io dependencies helper
         "tamasfe.even-better-toml", // TOML syntax support

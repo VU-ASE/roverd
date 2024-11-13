@@ -19,9 +19,6 @@ RUN apt-get update && apt-get install -y \
 
 USER ${DEVBOX_USER}:${DEVBOX_USER}
 
-COPY --chown=${DEVBOX_USER}:${DEVBOX_USER} .devcontainer/scripts/gu /usr/local/bin/gu
-COPY --chown=${DEVBOX_USER}:${DEVBOX_USER} .devcontainer/scripts/.bashrc /home/${DEVBOX_USER}/.bashrc
-
 # Install all devbox packages globally
 COPY --chown=${DEVBOX_USER}:${DEVBOX_USER} devbox.json /home/${DEVBOX_USER}/.local/share/devbox/global/default/devbox.json
 RUN devbox global install ; echo "Installed devbox packages."
@@ -49,4 +46,5 @@ RUN echo -n "debix" | sha256sum | cut -d ' ' -f 1 >> /etc/rover
 
 # --- switch to dev user ---
 USER ${DEVBOX_USER}:${DEVBOX_USER}
-
+COPY --chown=${DEVBOX_USER}:${DEVBOX_USER} .devcontainer/scripts/gu /usr/local/bin/gu
+COPY --chown=${DEVBOX_USER}:${DEVBOX_USER} .devcontainer/scripts/.bashrc /home/${DEVBOX_USER}/.bashrc
