@@ -1,16 +1,13 @@
 name: test
 
 on:
-  workflow_call:
-    secrets:
-      gh_pat:
-        required: true
+  push:
+    branches-ignore:
+      - release-please--branches--main
 
 permissions:
   contents: read
-  # Optional: allow read access to pull request. Use with `only-new-issues` option.
-  pull-requests: read
-
+  pull-requests: read # Optional: Use with `only-new-issues` option.
 
 jobs:
   test:
@@ -33,6 +30,3 @@ jobs:
           cacheFrom: ghcr.io/vu-ase/roverd-dev
           # Assumes each repository has a Makefile with a test target
           runCmd: make test
-
-
-
