@@ -1,16 +1,38 @@
 name: test
 
 on:
-  push:
-    branches-ignore:
-      - release-please--branches--main
+  workflow_call:
+    secrets:
+      gh_pat:
+        required: true
 
 permissions:
   contents: read
-  pull-requests: read # Optional: Use with `only-new-issues` option.
+  # Optional: allow read access to pull request. Use with `only-new-issues` option.
+  pull-requests: read
+
 
 jobs:
   test:
-    uses: VU-ASE/actions/.github/workflows/test.yaml@main
-    secrets:
-      gh_pat: ${{ secrets.GH_PAT }}
+    name: run make test
+    defaults:
+      run:
+        shell: bash
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.gh_pat }}
+          submodules: pwdrecursive
+      - name: Run tests in devcontainer
+        uses: devcontainers/ci@v0.3
+        with:
+          push: never
+          imageName: ghcr.io/vu-ase/roverd-dev
+          cacheFrom: ghcr.io/vu-ase/roverd-dev
+          # Assumes each repository has a Makefile with a test target
+          runCmd: make test
+
+
+
