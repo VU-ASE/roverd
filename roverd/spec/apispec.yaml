@@ -675,7 +675,7 @@ components:
       type: string
       description: The status of the entire pipeline corresponding to a state machine
       enum:
-        - running
+        - started
         - restarting
         - invalid # cannot be started
         - valid # can be started

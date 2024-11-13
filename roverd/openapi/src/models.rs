@@ -1097,8 +1097,8 @@ impl std::convert::TryFrom<HeaderValue> for header::IntoHeaderValue<PipelineName
 )]
 #[cfg_attr(feature = "conversion", derive(frunk_enum_derive::LabelledGenericEnum))]
 pub enum PipelineStatus {
-    #[serde(rename = "running")]
-    Running,
+    #[serde(rename = "started")]
+    Started,
     #[serde(rename = "restarting")]
     Restarting,
     #[serde(rename = "invalid")]
@@ -1110,7 +1110,7 @@ pub enum PipelineStatus {
 impl std::fmt::Display for PipelineStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match *self {
-            PipelineStatus::Running => write!(f, "running"),
+            PipelineStatus::Started => write!(f, "started"),
             PipelineStatus::Restarting => write!(f, "restarting"),
             PipelineStatus::Invalid => write!(f, "invalid"),
             PipelineStatus::Valid => write!(f, "valid"),
@@ -1123,7 +1123,7 @@ impl std::str::FromStr for PipelineStatus {
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         match s {
-            "running" => std::result::Result::Ok(PipelineStatus::Running),
+            "started" => std::result::Result::Ok(PipelineStatus::Started),
             "restarting" => std::result::Result::Ok(PipelineStatus::Restarting),
             "invalid" => std::result::Result::Ok(PipelineStatus::Invalid),
             "valid" => std::result::Result::Ok(PipelineStatus::Valid),
