@@ -1,7 +1,12 @@
-# roverd API spec
+# roverd communication spec
+
+## API spec
 
 The spec is defined formally in apispec.yaml (using OpenAPI swagger). Using this spec, one can generate types and structs for their language. The description below is an intuition, but the spec should be used when in doubt.
 
+## Service boot information spec
+
+The spec is defined as JSON schema, from which types for many programming languages can be generated easily. This spec defines what data is "injected" into a rover service by roverd and then parsed by roverlib to be available in the user program. The spec can also be used in VS code to verify valid inputs.
 
 # Enums
 The following are Rust enums which can have an equivalent string representation in JSON. This would be useful for setting up status / state codes.

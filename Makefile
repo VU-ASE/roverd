@@ -1,17 +1,17 @@
-# Makefile in accordance with the docs on git management (to use in combination with meta)
 .PHONY: build start clean test
+SHELL := /bin/bash
 
-BUILD_DIR=bin/
-BINARY_NAME=rovervalidate
+# This Makefile entrypoint is used by CI
 
 lint:
-	# todo: lint checks here
+	@cargo fmt
+	@cargo clippy
 
-build: lint
-	# todo: rust build here
+test:
+	@cargo test
+
+build:
+	@cargo build --release
 
 clean:
-	# todo: clean here
-
-test: lint
-	# todo: rust tests here
+	@cargo clean
