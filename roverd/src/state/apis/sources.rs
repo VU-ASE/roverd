@@ -1,4 +1,4 @@
-use tracing::{info, warn};
+use tracing::{warn};
 
 use axum::async_trait;
 
@@ -30,11 +30,12 @@ impl Sources for Roverd {
                         message: Some(format!("{:#?}", e)),
                         code: Some(1),
                     },
-                ))
+                ));
             }
         };
 
         let sources: Vec<SourcesGet200ResponseInner> = config
+            .0
             .downloaded
             .iter()
             .map(|downloaded| SourcesGet200ResponseInner {

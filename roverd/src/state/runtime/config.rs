@@ -1,7 +1,5 @@
 // use std::path::PathBuf;
 
-use tracing::info;
-
 use crate::error::Error;
 
 use rovervalidate::config::{Configuration, Validate, ValidatedConfiguration};
@@ -15,15 +13,13 @@ pub struct Config;
 
 impl Config {
     /// Retrieves rover.yaml file from disk, performs validation and returns object.
-    pub fn get(&self) -> Result<rovervalidate::config::Configuration, Error> {
+    pub fn get(&self) -> Result<rovervalidate::config::ValidatedConfiguration, Error> {
         let file_content =
             std::fs::read_to_string(ROVER_CONFIG_PATH).map_err(|_| Error::ConfigFileNotFound)?;
 
         let config: ValidatedConfiguration =
             serde_yaml::from_str::<Configuration>(&file_content)?.validate()?;
 
-        info!("{:#?}", config);
-
-        Err(Error::ConfigValidation)
+        Ok(config)
     }
 }

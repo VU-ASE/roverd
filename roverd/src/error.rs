@@ -1,5 +1,7 @@
 #![allow(unused)]
 
+use tracing::warn;
+
 #[derive(Debug)]
 pub enum Error {
     RoverInfoFileIo(String, std::io::Error),
@@ -9,7 +11,7 @@ pub enum Error {
     RoverPassword(String),
 
     ConfigFileNotFound,
-    ConfigValidation,
+    ConfigValidation(String),
 
     ServiceValidation,
 
@@ -29,7 +31,6 @@ pub enum Error {
 //     }
 // }
 
-
 // impl From<std::io::Error> for Error {
 //     fn from(value: std::io::Error) -> Self {
 //         Error::Io(value)
@@ -43,10 +44,10 @@ impl From<serde_yaml::Error> for Error {
 }
 
 impl From<Vec<rovervalidate::error::Error>> for Error {
-    fn from(value: Vec<rovervalidate::error::Error>) -> Self {
-        Error::SerializationError
+    // Not efficient, someday change, see: https://rust-lang.github.io/rust-clippy/master/index.html#format_collect
+    #[allow(clippy::format_collect)]
+    fn from(error_vec: Vec<rovervalidate::error::Error>) -> Self {
+        let error_string: String = error_vec.iter().map(|s| format!("{s}\n")).collect();
+        Error::ConfigValidation(format!("{}", error_string))
     }
 }
-
-
-
