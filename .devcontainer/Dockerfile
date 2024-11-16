@@ -48,3 +48,5 @@ RUN echo -n "debix" | sha256sum | cut -d ' ' -f 1 >> /etc/rover
 USER ${DEVBOX_USER}:${DEVBOX_USER}
 COPY --chown=${DEVBOX_USER}:${DEVBOX_USER} .devcontainer/scripts/gu /usr/local/bin/gu
 COPY --chown=${DEVBOX_USER}:${DEVBOX_USER} .devcontainer/scripts/.bashrc /home/${DEVBOX_USER}/.bashrc
+
+USER root:root
