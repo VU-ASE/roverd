@@ -1,4 +1,4 @@
-use tracing::{warn};
+use tracing::warn;
 
 use axum::async_trait;
 
@@ -51,28 +51,15 @@ impl Sources for Roverd {
 
     /// Delete a source.
     ///
-    /// SourcesNameDelete - DELETE /sources/{name}
-    async fn sources_name_delete(
+    /// SourcesDelete - DELETE /sources
+    async fn sources_delete(
         &self,
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
-        _path_params: SourcesNameDeletePathParams,
-    ) -> Result<SourcesNameDeleteResponse, String> {
-        Ok(SourcesNameDeleteResponse::Status401_UnauthorizedAccess)
-    }
-
-    /// Download and install a service from a source.
-    ///
-    /// SourcesNamePost - POST /sources/{name}
-    async fn sources_name_post(
-        &self,
-        _method: Method,
-        _host: Host,
-        _cookies: CookieJar,
-        _path_params: SourcesNamePostPathParams,
-    ) -> Result<SourcesNamePostResponse, String> {
-        Ok(SourcesNamePostResponse::Status401_UnauthorizedAccess)
+        _body: SourcesPostRequest,
+    ) -> Result<SourcesDeleteResponse, String> {
+        Ok(SourcesDeleteResponse::Status404_EntityNotFound)
     }
 
     /// Add a new source.
@@ -83,8 +70,18 @@ impl Sources for Roverd {
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
-        _body: SourcesPostRequest,
+        body: SourcesPostRequest,
     ) -> Result<SourcesPostResponse, String> {
-        Ok(SourcesPostResponse::Status401_UnauthorizedAccess)
+        if let Err(e) = self.config.add_source(body).await {
+            warn!("{:#?}", e);
+            return Ok(SourcesPostResponse::Status400_AnErrorOccurred(
+                GenericError {
+                    message: Some(format!("{:#?}", e)),
+                    code: Some(1),
+                },
+            ));
+        }
+
+        Ok(SourcesPostResponse::Status200_TheSourceWasAddedSuccessfully)
     }
 }

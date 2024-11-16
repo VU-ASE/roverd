@@ -1,14 +1,14 @@
 downloaded:
   - name: imaging
-    source: github.com/test/imaging
+    source: github.com/VU-ASE/imaging
     version: 1.0.0
     sha: 5829df15ab1154f296dd22f00f4a74e865cee6145cc5423c9ae5377713fc2b26
   - name: controller
-    source: github.com/test/controller
+    source: github.com/VU-ASE/controller
     version: 1.0.0
     sha: 5829df15ab1154f296dd22f00f4a74e865cee6145cc5423c9ae5377713fc2b26
   - name: actuator
-    source: github.com/test/actuator
+    source: github.com/VU-ASE/actuator
     version: 1.0.0
 enabled:
   - /home/debix/.rover/services/imaging

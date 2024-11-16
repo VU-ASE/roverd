@@ -10,19 +10,7 @@ use crate::{models, types::*};
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[must_use]
 #[allow(clippy::large_enum_variant)]
-pub enum SourcesGetResponse {
-    /// An array of sources
-    Status200_AnArrayOfSources(Vec<models::SourcesGet200ResponseInner>),
-    /// An error occurred
-    Status400_AnErrorOccurred(models::GenericError),
-    /// Unauthorized access (you need to set the Authorization header with a valid username and password)
-    Status401_UnauthorizedAccess,
-}
-
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-#[must_use]
-#[allow(clippy::large_enum_variant)]
-pub enum SourcesNameDeleteResponse {
+pub enum SourcesDeleteResponse {
     /// The source was deleted successfully
     Status200_TheSourceWasDeletedSuccessfully,
     /// An error occurred
@@ -36,13 +24,11 @@ pub enum SourcesNameDeleteResponse {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[must_use]
 #[allow(clippy::large_enum_variant)]
-pub enum SourcesNamePostResponse {
-    /// The service was downloaded and installed successfully
-    Status200_TheServiceWasDownloadedAndInstalledSuccessfully(models::SourcesNamePost200Response),
+pub enum SourcesGetResponse {
+    /// An array of sources
+    Status200_AnArrayOfSources(Vec<models::SourcesGet200ResponseInner>),
     /// An error occurred
     Status400_AnErrorOccurred(models::GenericError),
-    /// Entity not found
-    Status404_EntityNotFound,
     /// Unauthorized access (you need to set the Authorization header with a valid username and password)
     Status401_UnauthorizedAccess,
 }
@@ -63,6 +49,17 @@ pub enum SourcesPostResponse {
 #[async_trait]
 #[allow(clippy::ptr_arg)]
 pub trait Sources {
+    /// Delete a source.
+    ///
+    /// SourcesDelete - DELETE /sources
+    async fn sources_delete(
+        &self,
+        method: Method,
+        host: Host,
+        cookies: CookieJar,
+        body: models::SourcesPostRequest,
+    ) -> Result<SourcesDeleteResponse, String>;
+
     /// Retrieve all sources.
     ///
     /// SourcesGet - GET /sources
@@ -73,29 +70,7 @@ pub trait Sources {
         cookies: CookieJar,
     ) -> Result<SourcesGetResponse, String>;
 
-    /// Delete a source.
-    ///
-    /// SourcesNameDelete - DELETE /sources/{name}
-    async fn sources_name_delete(
-        &self,
-        method: Method,
-        host: Host,
-        cookies: CookieJar,
-        path_params: models::SourcesNameDeletePathParams,
-    ) -> Result<SourcesNameDeleteResponse, String>;
-
-    /// Download and install a service from a source.
-    ///
-    /// SourcesNamePost - POST /sources/{name}
-    async fn sources_name_post(
-        &self,
-        method: Method,
-        host: Host,
-        cookies: CookieJar,
-        path_params: models::SourcesNamePostPathParams,
-    ) -> Result<SourcesNamePostResponse, String>;
-
-    /// Add a new source.
+    /// Downloads and installs a new source, adds it the 'downloaded' in rover.yaml.
     ///
     /// SourcesPost - POST /sources
     async fn sources_post(

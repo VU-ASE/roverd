@@ -42,11 +42,9 @@ where
         )
         .route(
             "/sources",
-            get(sources_get::<I, A>).post(sources_post::<I, A>),
-        )
-        .route(
-            "/sources/:name",
-            delete(sources_name_delete::<I, A>).post(sources_name_post::<I, A>),
+            delete(sources_delete::<I, A>)
+                .get(sources_get::<I, A>)
+                .post(sources_post::<I, A>),
         )
         .route("/status", get(status_get::<I, A>))
         .route("/update", post(update_post::<I, A>))
@@ -1156,6 +1154,105 @@ where
     })
 }
 
+#[derive(validator::Validate)]
+#[allow(dead_code)]
+struct SourcesDeleteBodyValidator<'a> {
+    #[validate(nested)]
+    body: &'a models::SourcesPostRequest,
+}
+
+#[tracing::instrument(skip_all)]
+fn sources_delete_validation(
+    body: models::SourcesPostRequest,
+) -> std::result::Result<(models::SourcesPostRequest,), ValidationErrors> {
+    let b = SourcesDeleteBodyValidator { body: &body };
+    b.validate()?;
+
+    Ok((body,))
+}
+/// SourcesDelete - DELETE /sources
+#[tracing::instrument(skip_all)]
+async fn sources_delete<I, A>(
+    method: Method,
+    host: Host,
+    cookies: CookieJar,
+    State(api_impl): State<I>,
+    Json(body): Json<models::SourcesPostRequest>,
+) -> Result<Response, StatusCode>
+where
+    I: AsRef<A> + Send + Sync,
+    A: apis::sources::Sources,
+{
+    #[allow(clippy::redundant_closure)]
+    let validation = tokio::task::spawn_blocking(move || sources_delete_validation(body))
+        .await
+        .unwrap();
+
+    let Ok((body,)) = validation else {
+        return Response::builder()
+            .status(StatusCode::BAD_REQUEST)
+            .body(Body::from(validation.unwrap_err().to_string()))
+            .map_err(|_| StatusCode::BAD_REQUEST);
+    };
+
+    let result = api_impl
+        .as_ref()
+        .sources_delete(method, host, cookies, body)
+        .await;
+
+    let mut response = Response::builder();
+
+    let resp = match result {
+        Ok(rsp) => match rsp {
+            apis::sources::SourcesDeleteResponse::Status200_TheSourceWasDeletedSuccessfully => {
+                let mut response = response.status(200);
+                response.body(Body::empty())
+            }
+            apis::sources::SourcesDeleteResponse::Status400_AnErrorOccurred(body) => {
+                let mut response = response.status(400);
+                {
+                    let mut response_headers = response.headers_mut().unwrap();
+                    response_headers.insert(
+                        CONTENT_TYPE,
+                        HeaderValue::from_str("application/json").map_err(|e| {
+                            error!(error = ?e);
+                            StatusCode::INTERNAL_SERVER_ERROR
+                        })?,
+                    );
+                }
+
+                let body_content = tokio::task::spawn_blocking(move || {
+                    serde_json::to_vec(&body).map_err(|e| {
+                        error!(error = ?e);
+                        StatusCode::INTERNAL_SERVER_ERROR
+                    })
+                })
+                .await
+                .unwrap()?;
+                response.body(Body::from(body_content))
+            }
+            apis::sources::SourcesDeleteResponse::Status404_EntityNotFound => {
+                let mut response = response.status(404);
+                response.body(Body::empty())
+            }
+            apis::sources::SourcesDeleteResponse::Status401_UnauthorizedAccess => {
+                let mut response = response.status(401);
+                response.body(Body::empty())
+            }
+        },
+        Err(_) => {
+            // Application code returned an error. This should not happen, as the implementation should
+            // return a valid response.
+            response.status(500).body(Body::empty())
+        }
+    };
+
+    resp.map_err(|e| {
+        error!(error = ?e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })
+}
+
 #[tracing::instrument(skip_all)]
 fn sources_get_validation() -> std::result::Result<(), ValidationErrors> {
     Ok(())
@@ -1247,200 +1344,6 @@ where
             response.status(500).body(Body::empty())
         }
     };
-
-    resp.map_err(|e| {
-        error!(error = ?e);
-        StatusCode::INTERNAL_SERVER_ERROR
-    })
-}
-
-#[tracing::instrument(skip_all)]
-fn sources_name_delete_validation(
-    path_params: models::SourcesNameDeletePathParams,
-) -> std::result::Result<(models::SourcesNameDeletePathParams,), ValidationErrors> {
-    path_params.validate()?;
-
-    Ok((path_params,))
-}
-/// SourcesNameDelete - DELETE /sources/{name}
-#[tracing::instrument(skip_all)]
-async fn sources_name_delete<I, A>(
-    method: Method,
-    host: Host,
-    cookies: CookieJar,
-    Path(path_params): Path<models::SourcesNameDeletePathParams>,
-    State(api_impl): State<I>,
-) -> Result<Response, StatusCode>
-where
-    I: AsRef<A> + Send + Sync,
-    A: apis::sources::Sources,
-{
-    #[allow(clippy::redundant_closure)]
-    let validation =
-        tokio::task::spawn_blocking(move || sources_name_delete_validation(path_params))
-            .await
-            .unwrap();
-
-    let Ok((path_params,)) = validation else {
-        return Response::builder()
-            .status(StatusCode::BAD_REQUEST)
-            .body(Body::from(validation.unwrap_err().to_string()))
-            .map_err(|_| StatusCode::BAD_REQUEST);
-    };
-
-    let result = api_impl
-        .as_ref()
-        .sources_name_delete(method, host, cookies, path_params)
-        .await;
-
-    let mut response = Response::builder();
-
-    let resp = match result {
-        Ok(rsp) => match rsp {
-            apis::sources::SourcesNameDeleteResponse::Status200_TheSourceWasDeletedSuccessfully => {
-                let mut response = response.status(200);
-                response.body(Body::empty())
-            }
-            apis::sources::SourcesNameDeleteResponse::Status400_AnErrorOccurred(body) => {
-                let mut response = response.status(400);
-                {
-                    let mut response_headers = response.headers_mut().unwrap();
-                    response_headers.insert(
-                        CONTENT_TYPE,
-                        HeaderValue::from_str("application/json").map_err(|e| {
-                            error!(error = ?e);
-                            StatusCode::INTERNAL_SERVER_ERROR
-                        })?,
-                    );
-                }
-
-                let body_content = tokio::task::spawn_blocking(move || {
-                    serde_json::to_vec(&body).map_err(|e| {
-                        error!(error = ?e);
-                        StatusCode::INTERNAL_SERVER_ERROR
-                    })
-                })
-                .await
-                .unwrap()?;
-                response.body(Body::from(body_content))
-            }
-            apis::sources::SourcesNameDeleteResponse::Status404_EntityNotFound => {
-                let mut response = response.status(404);
-                response.body(Body::empty())
-            }
-            apis::sources::SourcesNameDeleteResponse::Status401_UnauthorizedAccess => {
-                let mut response = response.status(401);
-                response.body(Body::empty())
-            }
-        },
-        Err(_) => {
-            // Application code returned an error. This should not happen, as the implementation should
-            // return a valid response.
-            response.status(500).body(Body::empty())
-        }
-    };
-
-    resp.map_err(|e| {
-        error!(error = ?e);
-        StatusCode::INTERNAL_SERVER_ERROR
-    })
-}
-
-#[tracing::instrument(skip_all)]
-fn sources_name_post_validation(
-    path_params: models::SourcesNamePostPathParams,
-) -> std::result::Result<(models::SourcesNamePostPathParams,), ValidationErrors> {
-    path_params.validate()?;
-
-    Ok((path_params,))
-}
-/// SourcesNamePost - POST /sources/{name}
-#[tracing::instrument(skip_all)]
-async fn sources_name_post<I, A>(
-    method: Method,
-    host: Host,
-    cookies: CookieJar,
-    Path(path_params): Path<models::SourcesNamePostPathParams>,
-    State(api_impl): State<I>,
-) -> Result<Response, StatusCode>
-where
-    I: AsRef<A> + Send + Sync,
-    A: apis::sources::Sources,
-{
-    #[allow(clippy::redundant_closure)]
-    let validation = tokio::task::spawn_blocking(move || sources_name_post_validation(path_params))
-        .await
-        .unwrap();
-
-    let Ok((path_params,)) = validation else {
-        return Response::builder()
-            .status(StatusCode::BAD_REQUEST)
-            .body(Body::from(validation.unwrap_err().to_string()))
-            .map_err(|_| StatusCode::BAD_REQUEST);
-    };
-
-    let result = api_impl
-        .as_ref()
-        .sources_name_post(method, host, cookies, path_params)
-        .await;
-
-    let mut response = Response::builder();
-
-    let resp = match result {
-                                            Ok(rsp) => match rsp {
-                                                apis::sources::SourcesNamePostResponse::Status200_TheServiceWasDownloadedAndInstalledSuccessfully
-                                                    (body)
-                                                => {
-                                                  let mut response = response.status(200);
-                                                  {
-                                                    let mut response_headers = response.headers_mut().unwrap();
-                                                    response_headers.insert(
-                                                        CONTENT_TYPE,
-                                                        HeaderValue::from_str("application/json").map_err(|e| { error!(error = ?e); StatusCode::INTERNAL_SERVER_ERROR })?);
-                                                  }
-
-                                                  let body_content =  tokio::task::spawn_blocking(move ||
-                                                      serde_json::to_vec(&body).map_err(|e| {
-                                                        error!(error = ?e);
-                                                        StatusCode::INTERNAL_SERVER_ERROR
-                                                      })).await.unwrap()?;
-                                                  response.body(Body::from(body_content))
-                                                },
-                                                apis::sources::SourcesNamePostResponse::Status400_AnErrorOccurred
-                                                    (body)
-                                                => {
-                                                  let mut response = response.status(400);
-                                                  {
-                                                    let mut response_headers = response.headers_mut().unwrap();
-                                                    response_headers.insert(
-                                                        CONTENT_TYPE,
-                                                        HeaderValue::from_str("application/json").map_err(|e| { error!(error = ?e); StatusCode::INTERNAL_SERVER_ERROR })?);
-                                                  }
-
-                                                  let body_content =  tokio::task::spawn_blocking(move ||
-                                                      serde_json::to_vec(&body).map_err(|e| {
-                                                        error!(error = ?e);
-                                                        StatusCode::INTERNAL_SERVER_ERROR
-                                                      })).await.unwrap()?;
-                                                  response.body(Body::from(body_content))
-                                                },
-                                                apis::sources::SourcesNamePostResponse::Status404_EntityNotFound
-                                                => {
-                                                  let mut response = response.status(404);
-                                                  response.body(Body::empty())
-                                                },
-                                                apis::sources::SourcesNamePostResponse::Status401_UnauthorizedAccess
-                                                => {
-                                                  let mut response = response.status(401);
-                                                  response.body(Body::empty())
-                                                },
-                                            },
-                                            Err(_) => {
-                                                // Application code returned an error. This should not happen, as the implementation should
-                                                // return a valid response.
-                                                response.status(500).body(Body::empty())
-                                            },
-                                        };
 
     resp.map_err(|e| {
         error!(error = ?e);

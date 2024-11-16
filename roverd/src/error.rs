@@ -13,16 +13,21 @@ pub enum Error {
     ConfigFileNotFound,
     ConfigValidation(String),
 
+    Source(String),
+
     ServiceValidation,
 
     PipielineValidation,
 
-    SerializationError,
+    Serialization,
+
+    Download,
 
     Http(axum::http::StatusCode),
 
     ParseIntFromStr(String),
     Io(std::io::Error),
+    Reqwest(reqwest::Error),
 }
 
 // impl std::fmt::Display for Error {
@@ -31,15 +36,21 @@ pub enum Error {
 //     }
 // }
 
-// impl From<std::io::Error> for Error {
-//     fn from(value: std::io::Error) -> Self {
-//         Error::Io(value)
-//     }
-// }
+impl From<std::io::Error> for Error {
+    fn from(value: std::io::Error) -> Self {
+        Error::Io(value)
+    }
+}
+
+impl From<reqwest::Error> for Error {
+    fn from(value: reqwest::Error) -> Self {
+        Error::Reqwest(value)
+    }
+}
 
 impl From<serde_yaml::Error> for Error {
     fn from(value: serde_yaml::Error) -> Self {
-        Error::SerializationError
+        Error::Serialization
     }
 }
 

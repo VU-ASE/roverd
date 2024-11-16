@@ -20,6 +20,8 @@ mod log;
 mod state;
 use state::*;
 
+mod util;
+
 const LISTEN_ADDRESS: &str = "0.0.0.0:80";
 
 /// TODO: this is not ideal, since middleware::from_fn_with_state expects

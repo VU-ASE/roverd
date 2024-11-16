@@ -520,7 +520,7 @@ paths:
     post:
       tags:
         - "Sources"
-      summary: "Add a new source"
+      summary: "Downloads and installs a new source, adds it the 'downloaded' in rover.yaml"
       requestBody:
         required: true
         content:
@@ -548,54 +548,29 @@ paths:
         "401":
           $ref: "#/components/responses/UnauthorizedError"
 
-  /sources/{name}:
-    post:
-      tags:
-        - "Sources"
-      summary: Download and install a service from a source
-      parameters:
-        - name: name
-          in: path
-          required: true
-          description: "The name of the source"
-          schema:
-            type: string
-          example: "imaging"
-      responses:
-        "200":
-          description: "The service was downloaded and installed successfully"
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  version:
-                    type: string
-                    description: "The version of the just downloaded service"
-                    example: "v1.0.1"
-                  new:
-                    type: boolean
-                    description: "Whether or not this is the first time this service was downloaded"
-                    example: false
-        "400":
-          $ref: "#/components/responses/Error"
-        "404":
-          $ref: "#/components/responses/NotFoundError"
-        "401":
-          $ref: "#/components/responses/UnauthorizedError"
-
     delete:
       tags:
         - "Sources"
       summary: "Delete a source"
-      parameters:
-        - name: name
-          in: path
-          required: true
-          description: "The name of the source"
-          schema:
-            type: string
-          example: "imaging"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: "The name of the source"
+                  example: "imaging"
+                url:
+                  type: string
+                  description: "The URL of the source (without scheme)"
+                  example: "github.com/VU-ASE/imaging"
+                version:
+                  type: string
+                  description: "The version of the source"
+                  example: "1.0.0"
       responses:
         "200":
           description: "The source was deleted successfully"
