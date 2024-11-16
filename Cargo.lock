@@ -1117,6 +1117,8 @@ dependencies = [
  "openapi",
  "os_info",
  "pgs-files",
+ "rovervalidate",
+ "serde_yaml",
  "sha256",
  "tokio",
  "tower-http",

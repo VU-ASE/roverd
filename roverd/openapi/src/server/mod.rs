@@ -181,9 +181,30 @@ where
 
     let resp = match result {
         Ok(rsp) => match rsp {
-            apis::health::UpdatePostResponse::Status200_TheRoverdDaemonProcessInitiatedASelf => {
+            apis::health::UpdatePostResponse::Status200_TheRoverdDaemonProcessInitiatedASelf(
+                body,
+            ) => {
                 let mut response = response.status(200);
-                response.body(Body::empty())
+                {
+                    let mut response_headers = response.headers_mut().unwrap();
+                    response_headers.insert(
+                        CONTENT_TYPE,
+                        HeaderValue::from_str("application/json").map_err(|e| {
+                            error!(error = ?e);
+                            StatusCode::INTERNAL_SERVER_ERROR
+                        })?,
+                    );
+                }
+
+                let body_content = tokio::task::spawn_blocking(move || {
+                    serde_json::to_vec(&body).map_err(|e| {
+                        error!(error = ?e);
+                        StatusCode::INTERNAL_SERVER_ERROR
+                    })
+                })
+                .await
+                .unwrap()?;
+                response.body(Body::from(body_content))
             }
             apis::health::UpdatePostResponse::Status400_AnErrorOccurred(body) => {
                 let mut response = response.status(400);
@@ -1368,9 +1389,22 @@ where
     let resp = match result {
                                             Ok(rsp) => match rsp {
                                                 apis::sources::SourcesNamePostResponse::Status200_TheServiceWasDownloadedAndInstalledSuccessfully
+                                                    (body)
                                                 => {
                                                   let mut response = response.status(200);
-                                                  response.body(Body::empty())
+                                                  {
+                                                    let mut response_headers = response.headers_mut().unwrap();
+                                                    response_headers.insert(
+                                                        CONTENT_TYPE,
+                                                        HeaderValue::from_str("application/json").map_err(|e| { error!(error = ?e); StatusCode::INTERNAL_SERVER_ERROR })?);
+                                                  }
+
+                                                  let body_content =  tokio::task::spawn_blocking(move ||
+                                                      serde_json::to_vec(&body).map_err(|e| {
+                                                        error!(error = ?e);
+                                                        StatusCode::INTERNAL_SERVER_ERROR
+                                                      })).await.unwrap()?;
+                                                  response.body(Body::from(body_content))
                                                 },
                                                 apis::sources::SourcesNamePostResponse::Status400_AnErrorOccurred
                                                     (body)

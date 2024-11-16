@@ -1,6 +1,6 @@
 use axum::async_trait;
 
-use openapi::apis::health::*;
+use openapi::{apis::health::*, models::DaemonStatus};
 
 use openapi::models;
 
@@ -32,11 +32,22 @@ impl Health for Roverd {
             .unwrap()
             .as_millis() as i64;
 
+        let error_message = Some(match self.info.status {
+            DaemonStatus::Unrecoverable => {
+                format!("❌ check logs and restart roverd")
+            }
+            DaemonStatus::Recoverable => match &self.info.error_msg {
+                Some(msg) => format!("⚠️ {}", msg),
+                None => format!("⚠️ recoverable error, check logs"),
+            },
+            DaemonStatus::Operational => format!("✅ operational"),
+        });
+
         Ok(
             StatusGetResponse::Status200_TheHealthAndVersioningInformation(
                 models::StatusGet200Response {
                     status: Some(self.info.status),
-                    error_message: self.info.error_msg.clone(),
+                    error_message,
                     os: Some(self.info.os.clone()),
                     rover_id: self.info.rover_id,
                     rover_name: self.info.rover_name.clone(),

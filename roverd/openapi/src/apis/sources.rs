@@ -38,7 +38,7 @@ pub enum SourcesNameDeleteResponse {
 #[allow(clippy::large_enum_variant)]
 pub enum SourcesNamePostResponse {
     /// The service was downloaded and installed successfully
-    Status200_TheServiceWasDownloadedAndInstalledSuccessfully,
+    Status200_TheServiceWasDownloadedAndInstalledSuccessfully(models::SourcesNamePost200Response),
     /// An error occurred
     Status400_AnErrorOccurred(models::GenericError),
     /// Entity not found

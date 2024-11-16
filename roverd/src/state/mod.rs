@@ -2,12 +2,16 @@ use std::path::Path;
 use std::{fs::read_to_string, time::SystemTime};
 
 use openapi::models::DaemonStatus;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
+/// Apis
 mod health;
 mod pipeline;
 mod services;
 mod sources;
+
+/// Run-time mutable configuration (rover.yaml)
+mod config;
 
 // The script in src/build.rs populates a const containing the version
 include!(concat!(env!("OUT_DIR"), "/version.rs"));
@@ -65,8 +69,13 @@ impl Info {
             Ok((id, name, hash)) => (Some(id), Some(name), Some(hash), None),
             Err(e) => {
                 error!("{:?}", e);
-                status = DaemonStatus::Recoverable;
-                (None, None, None, Some(format!("{:?}", e)))
+                status = DaemonStatus::Unrecoverable;
+                (
+                    None,
+                    None,
+                    None,
+                    Some(format!("Unrecoverable! Fix and restart roverd: {:?}", e)),
+                )
             }
         };
 
@@ -95,17 +104,23 @@ pub enum State {
 pub struct Roverd {
     pub info: Info,
     pub state: State,
+    pub config: config::Config,
 }
 
 impl Roverd {
     pub fn new() -> Self {
+        let info = Info::new();
+
         let roverd = Self {
-            info: Info::new(),
+            info,
             state: State::InvalidRunnable,
+            config: config::Config::new(),
         };
 
         if roverd.info.status == DaemonStatus::Operational {
-            info!("initialized successully: {:#?}", roverd);
+            info!("initialized successully");
+        } else {
+            warn!("did not initialize successfully {:#?}", roverd);
         }
 
         roverd

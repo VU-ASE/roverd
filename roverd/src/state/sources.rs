@@ -1,4 +1,4 @@
-// use tracing::info;
+use tracing::info;
 
 use axum::async_trait;
 
@@ -14,7 +14,7 @@ use crate::state::Roverd;
 
 #[async_trait]
 impl Sources for Roverd {
-    /// Retrieve all sources.
+    /// Retrieves all sources in the rover.yaml
     ///
     /// SourcesGet - GET /sources
     async fn sources_get(
@@ -23,6 +23,8 @@ impl Sources for Roverd {
         _host: Host,
         _cookies: CookieJar,
     ) -> Result<SourcesGetResponse, String> {
+        info!("get sources!!");
+
         Ok(SourcesGetResponse::Status401_UnauthorizedAccess)
     }
 
