@@ -13,8 +13,15 @@ test:
 build:
 	@cargo build --release
 
-run: build
+setup:
+	sudo ./scripts/setup_rover_files.sh
+
+run: build setup
 	sudo ./target/release/roverd
 
 clean:
 	@cargo clean
+
+
+
+

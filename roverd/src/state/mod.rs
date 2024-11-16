@@ -5,13 +5,14 @@ use openapi::models::DaemonStatus;
 use tracing::{error, info, warn};
 
 /// Apis
-mod health;
-mod pipeline;
-mod services;
-mod sources;
+mod apis;
 
 /// Run-time mutable configuration (rover.yaml)
-mod config;
+mod runtime;
+
+use runtime::config;
+use runtime::pipeline;
+use runtime::services;
 
 // The script in src/build.rs populates a const containing the version
 include!(concat!(env!("OUT_DIR"), "/version.rs"));
@@ -65,17 +66,12 @@ impl Info {
     fn new() -> Self {
         let mut status = DaemonStatus::Operational;
 
-        let (id, name, hash, msg) = match read_rover_info() {
-            Ok((id, name, hash)) => (Some(id), Some(name), Some(hash), None),
+        let (id, name, hash) = match read_rover_info() {
+            Ok((id, name, hash)) => (Some(id), Some(name), Some(hash)),
             Err(e) => {
                 error!("{:?}", e);
                 status = DaemonStatus::Unrecoverable;
-                (
-                    None,
-                    None,
-                    None,
-                    Some(format!("Unrecoverable! Fix and restart roverd: {:?}", e)),
-                )
+                (None, None, None)
             }
         };
 
@@ -88,7 +84,7 @@ impl Info {
             rover_name: name,
             username: ROVER_USER.to_string(),
             password: hash,
-            error_msg: msg,
+            error_msg: None,
         }
     }
 }
@@ -100,11 +96,23 @@ pub enum State {
     ValidRunning,
 }
 
+/// This struct implements functions that are called from the api and holds all objects
+/// in memory necessary for operation.
 #[derive(Debug, Clone)]
 pub struct Roverd {
+    /// Information related to the roverd daemon, contains status.
     pub info: Info,
+
+    /// Run-time state machine of car
     pub state: State,
+
+    /// Central configuration of sources.
     pub config: config::Config,
+
+    /// Run-time encapsulation of pipeline data (running processes)
+    pub pipeline: pipeline::Pipeline,
+
+    pub services: services::Services,
 }
 
 impl Roverd {
@@ -114,7 +122,9 @@ impl Roverd {
         let roverd = Self {
             info,
             state: State::InvalidRunnable,
-            config: config::Config::new(),
+            config: config::Config,
+            pipeline: pipeline::Pipeline::new(),
+            services: services::Services::new(),
         };
 
         if roverd.info.status == DaemonStatus::Operational {

@@ -8,10 +8,19 @@ pub enum Error {
     RoverShadowFile(String, std::io::Error),
     RoverPassword(String),
 
+    ConfigFileNotFound,
+    ConfigValidation,
+
+    ServiceValidation,
+
+    PipielineValidation,
+
+    SerializationError,
+
     Http(axum::http::StatusCode),
 
     ParseIntFromStr(String),
-    Io(String),
+    Io(std::io::Error),
 }
 
 // impl std::fmt::Display for Error {
@@ -19,3 +28,25 @@ pub enum Error {
 
 //     }
 // }
+
+
+// impl From<std::io::Error> for Error {
+//     fn from(value: std::io::Error) -> Self {
+//         Error::Io(value)
+//     }
+// }
+
+impl From<serde_yaml::Error> for Error {
+    fn from(value: serde_yaml::Error) -> Self {
+        Error::SerializationError
+    }
+}
+
+impl From<Vec<rovervalidate::error::Error>> for Error {
+    fn from(value: Vec<rovervalidate::error::Error>) -> Self {
+        Error::SerializationError
+    }
+}
+
+
+

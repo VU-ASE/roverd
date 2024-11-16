@@ -33,14 +33,12 @@ impl Health for Roverd {
             .as_millis() as i64;
 
         let error_message = Some(match self.info.status {
-            DaemonStatus::Unrecoverable => {
-                format!("❌ check logs and restart roverd")
-            }
+            DaemonStatus::Unrecoverable => "❌ check logs and restart roverd".to_string(),
             DaemonStatus::Recoverable => match &self.info.error_msg {
                 Some(msg) => format!("⚠️ {}", msg),
-                None => format!("⚠️ recoverable error, check logs"),
+                None => "⚠️ recoverable error, check logs".to_string(),
             },
-            DaemonStatus::Operational => format!("✅ operational"),
+            DaemonStatus::Operational => "✅ operational".to_string(),
         });
 
         Ok(

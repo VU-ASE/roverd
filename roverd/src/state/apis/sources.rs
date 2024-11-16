@@ -1,10 +1,10 @@
-use tracing::info;
+use tracing::{info, warn};
 
 use axum::async_trait;
 
 use openapi::apis::sources::*;
 
-use openapi::models;
+use openapi::models::*;
 
 use axum::extract::Host;
 use axum::http::Method;
@@ -15,17 +15,37 @@ use crate::state::Roverd;
 #[async_trait]
 impl Sources for Roverd {
     /// Retrieves all sources in the rover.yaml
-    ///
-    /// SourcesGet - GET /sources
     async fn sources_get(
         &self,
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
     ) -> Result<SourcesGetResponse, String> {
-        info!("get sources!!");
+        let config = match self.config.get() {
+            Ok(data) => data,
+            Err(e) => {
+                warn!("{:#?}", e);
+                return Ok(SourcesGetResponse::Status400_AnErrorOccurred(
+                    GenericError {
+                        message: Some(format!("{:#?}", e)),
+                        code: Some(1),
+                    },
+                ))
+            }
+        };
 
-        Ok(SourcesGetResponse::Status401_UnauthorizedAccess)
+        let sources: Vec<SourcesGet200ResponseInner> = config
+            .downloaded
+            .iter()
+            .map(|downloaded| SourcesGet200ResponseInner {
+                name: Some(downloaded.name.clone()),
+                url: Some(downloaded.source.clone()),
+                version: Some(downloaded.version.clone()),
+                sha: downloaded.sha.clone(),
+            })
+            .collect();
+
+        Ok(SourcesGetResponse::Status200_AnArrayOfSources(sources))
     }
 
     /// Delete a source.
@@ -36,7 +56,7 @@ impl Sources for Roverd {
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
-        _path_params: models::SourcesNameDeletePathParams,
+        _path_params: SourcesNameDeletePathParams,
     ) -> Result<SourcesNameDeleteResponse, String> {
         Ok(SourcesNameDeleteResponse::Status401_UnauthorizedAccess)
     }
@@ -49,7 +69,7 @@ impl Sources for Roverd {
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
-        _path_params: models::SourcesNamePostPathParams,
+        _path_params: SourcesNamePostPathParams,
     ) -> Result<SourcesNamePostResponse, String> {
         Ok(SourcesNamePostResponse::Status401_UnauthorizedAccess)
     }
@@ -62,7 +82,7 @@ impl Sources for Roverd {
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
-        _body: models::SourcesPostRequest,
+        _body: SourcesPostRequest,
     ) -> Result<SourcesPostResponse, String> {
         Ok(SourcesPostResponse::Status401_UnauthorizedAccess)
     }
