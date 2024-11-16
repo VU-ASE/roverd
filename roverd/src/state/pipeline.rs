@@ -52,7 +52,7 @@ impl Pipeline for Roverd {
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
-        query_params: models::PipelinePostQueryParams,
+        _query_params: models::PipelinePostQueryParams,
     ) -> Result<PipelinePostResponse, String> {
         Ok(PipelinePostResponse::Status200_ThePipelineActionWasPerformedSuccessfully)
     }

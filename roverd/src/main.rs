@@ -33,7 +33,7 @@ async fn auth_wrapper(
     match auth(state, req, next).await {
         Ok(response) => Ok(response),
         Err(e) => match e {
-            HttpError(status_code) => Err(status_code),
+            Http(status_code) => Err(status_code),
             _ => Err(StatusCode::BAD_REQUEST),
         },
     }
@@ -42,7 +42,7 @@ async fn auth_wrapper(
 fn check_auth(state: &Roverd, auth_str: &str) -> Result<(), Error> {
     let (user, password) = auth_str
         .split_once(':')
-        .ok_or(HttpError(StatusCode::BAD_REQUEST))?;
+        .ok_or(Http(StatusCode::BAD_REQUEST))?;
 
     let stored_hash = digest(password);
 
@@ -51,7 +51,7 @@ fn check_auth(state: &Roverd, auth_str: &str) -> Result<(), Error> {
             return Ok(());
         }
     }
-    Err(HttpError(StatusCode::UNAUTHORIZED))
+    Err(Http(StatusCode::UNAUTHORIZED))
 }
 
 async fn auth(State(state): State<Roverd>, req: Request, next: Next) -> Result<Response, Error> {
@@ -61,22 +61,21 @@ async fn auth(State(state): State<Roverd>, req: Request, next: Next) -> Result<R
             .headers()
             .get(http::header::AUTHORIZATION)
             .and_then(|header| header.to_str().ok())
-            .ok_or(HttpError(StatusCode::UNAUTHORIZED))?;
+            .ok_or(Http(StatusCode::UNAUTHORIZED))?;
 
         let basic_auth: Vec<&str> = auth_header.split(' ').collect();
 
         if basic_auth.len() != 2 || basic_auth[0] != "Basic" {
-            return Err(HttpError(StatusCode::BAD_REQUEST));
+            return Err(Http(StatusCode::BAD_REQUEST));
         }
 
         let base64_data = basic_auth[1];
 
         let raw_bytes = base64::prelude::BASE64_STANDARD
             .decode(base64_data)
-            .map_err(|_| HttpError(StatusCode::BAD_REQUEST))?;
+            .map_err(|_| Http(StatusCode::BAD_REQUEST))?;
 
-        let auth_str =
-            str::from_utf8(&raw_bytes).map_err(|_| HttpError(StatusCode::BAD_REQUEST))?;
+        let auth_str = str::from_utf8(&raw_bytes).map_err(|_| Http(StatusCode::BAD_REQUEST))?;
 
         check_auth(&state, auth_str)?;
     }

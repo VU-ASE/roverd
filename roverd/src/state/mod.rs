@@ -2,7 +2,6 @@ use std::path::Path;
 use std::{fs::read_to_string, time::SystemTime};
 
 use openapi::models::DaemonStatus;
-use tokio::sync::broadcast::error;
 use tracing::{error, info};
 
 mod health;
@@ -14,8 +13,6 @@ mod sources;
 include!(concat!(env!("OUT_DIR"), "/version.rs"));
 
 const ROVER_INFO_PATH: &str = "/etc/rover";
-
-const ROVER_SHADOW_PATH: &str = "/etc/shadow";
 
 /// The rover will never be used with a different user.
 const ROVER_USER: &str = "debix";
@@ -64,7 +61,7 @@ impl Info {
     fn new() -> Self {
         let mut status = DaemonStatus::Operational;
 
-        let (id, name, hash, mut msg) = match read_rover_info() {
+        let (id, name, hash, msg) = match read_rover_info() {
             Ok((id, name, hash)) => (Some(id), Some(name), Some(hash), None),
             Err(e) => {
                 error!("{:?}", e);
@@ -88,7 +85,7 @@ impl Info {
 }
 
 #[derive(Debug, Clone)]
-enum State {
+pub enum State {
     InvalidRunnable,
     ValidRunnable,
     ValidRunning,

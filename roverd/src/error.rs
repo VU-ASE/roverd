@@ -8,7 +8,7 @@ pub enum Error {
     RoverShadowFile(String, std::io::Error),
     RoverPassword(String),
 
-    HttpError(axum::http::StatusCode),
+    Http(axum::http::StatusCode),
 
     ParseIntFromStr(String),
     Io(String),
