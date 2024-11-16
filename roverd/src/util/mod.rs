@@ -18,36 +18,29 @@ const DOWNLOAD_DESTINATION: &str = "/tmp";
 /// Extracts the contents of the zip file into the directory at 
 /// destination_dir.
 fn extract_zip(zip_file: &str, destination_dir: &str) -> Result<(), Error> {
-
     info!("going to extract {} into {}", zip_file, destination_dir);
+    
     // Ensure the output directory exists
-    // fs::create_dir_all(output_dir)?;
+    std::fs::create_dir_all(destination_dir)?;
 
-    // // Open the zip file
-    // let input_path = PathBuf::from(input_path);
-    // let output_dir = PathBuf::from(output_dir);
-    
-    // let archive = zip::ZipArchive::new(input_path)?;
-    
-    // // Extract each file from the archive
-    // for entry in archive.entries() {
+    // let zip_path = Path::new(zip_file);
+    // let archive = zip::ZipArchive::new(zip_path)?;
+
+    // for entry in archive.entries().map(|e| e.map(|e| e.unwrap())) {
     //     let mut entry = entry?;
         
-    //     // Skip directories
-    //     if entry.file_name().is_none() || entry.name().ends_with('/').unwrap_or(false) {
-    //         continue;
+    //     if entry.file_name() == "" || entry.name().ends_with('/') {
+    //         continue; // Skip directories and empty entries
     //     }
         
-    //     // Create the directory structure if it doesn't exist
-    //     let out_path = output_dir.join(entry.name());
-    //     let parent = out_path.parent().unwrap_or(&output_dir);
+    //     let out_path = Path::new(destination_dir).join(entry.name());
+        
+    //     // Create parent directories if they don't exist
+    //     let parent = out_path.parent().unwrap_or(Path::new(destination_dir));
     //     fs::create_dir_all(parent)?;
         
-    //     // Extract the file content
-    //     let mut dest = fs::File::create(out_path)?;
-    //     let mut cursor = Cursor::new(Vec::new());
-    //     entry.read_to_end(&mut cursor)?;
-    //     dest.write_all(&cursor.get_ref())?;
+    //     let mut file = fs::File::create(out_path)?;
+    //     archive.extract(entry, &mut file)?;
     // }
     
     Ok(())
