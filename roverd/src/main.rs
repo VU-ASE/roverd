@@ -7,13 +7,9 @@ use tracing::info;
 
 use sha256::digest;
 
-use std::collections::HashMap;
-
 use tower_http::cors::CorsLayer;
 
-use axum::extract::Path;
-use axum::middleware::{self, map_request, Next};
-use axum::routing::{get, Router};
+use axum::middleware::{self, Next};
 
 mod error;
 use error::Error::*;

@@ -20,7 +20,7 @@ pub fn validate_helper<T, F>(
 #[macro_export]
 macro_rules! validate_field {
     ($root:ident . $($field:ident).+ , $errors:expr, $validator:expr) => {{
-        use crate::validate::validate_helper;
+        use $crate::validate::validate_helper;
         let field_name = stringify!($($field).+);
         validate_helper(&$root.$($field).+, field_name, $errors, $validator);
     }};

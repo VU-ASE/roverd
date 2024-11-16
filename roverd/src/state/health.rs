@@ -1,5 +1,3 @@
-use tracing::info;
-
 use axum::async_trait;
 
 use openapi::apis::health::*;
