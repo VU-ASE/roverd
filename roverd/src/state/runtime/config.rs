@@ -69,8 +69,7 @@ impl Config {
 
         let path = PathBuf::from(path);
 
-        info!("success! {path:#?}");
-
+        info!("download success! {path:#?}");
 
         // Now that Source is downloaded, insert it into config and write back to rover.yaml
 

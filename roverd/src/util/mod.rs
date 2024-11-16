@@ -1,4 +1,6 @@
-use std::{io::Write, path::PathBuf};
+use std::{io::Write, path::Path, path::PathBuf};
+
+
 
 use tracing::info;
 
@@ -16,6 +18,8 @@ const DOWNLOAD_DESTINATION: &str = "/tmp";
 /// Extracts the contents of the zip file into the directory at 
 /// destination_dir.
 fn extract_zip(zip_file: &str, destination_dir: &str) -> Result<(), Error> {
+
+    info!("going to extract {} into {}", zip_file, destination_dir);
     // Ensure the output directory exists
     // fs::create_dir_all(output_dir)?;
 
@@ -49,14 +53,44 @@ fn extract_zip(zip_file: &str, destination_dir: &str) -> Result<(), Error> {
     Ok(())
 }
 
+
+
+fn delete_directory_contents(full_path: &Path) -> Result<(), Error> {
+    // Iterate over all entries in the directory
+    for entry in std::fs::read_dir(full_path)? {
+        let entry = entry?;
+        let path = entry.path();
+        // Recursively delete subdirectories
+        if path.is_dir() {
+            delete_directory_contents(&path)?;
+        }
+        
+        // Delete regular files
+        if path.is_file() {
+            std::fs::remove_file(&path)?;
+        }
+    }
+
+    Ok(())
+}
+
 /// Makes sure the directories for a given service exist. If there is an
 /// existing service at a given path it will delete it and prepare it such
 /// that the new service can be safely moved in place.
 fn prepare_dirs(author: &str, name: &str, version: &str) -> Result<String, Error> {
+    // Define the base directory
+    let base_dir = ROVER_DIR.to_string();
 
+    // Construct the full path
+    let full_path_string = format!("{ROVER_DIR}/{author}/{name}/{version}");
+    let full_path = PathBuf::from(full_path_string.clone());
 
+    // Ensure the directory exists
+    std::fs::create_dir_all(full_path.clone())?;
 
-    Ok(format!("{ROVER_DIR}/{author}/{name}/{version}"))
+    delete_directory_contents(full_path.as_path())?;
+
+    Ok(full_path_string)
 }
 
 pub async fn download_service(name: &str, version: &str) -> Result<String, Error> {
