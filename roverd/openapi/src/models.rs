@@ -118,6 +118,55 @@ impl std::str::FromStr for DaemonStatus {
     }
 }
 
+/// DuplicateServiceError
+#[derive(Debug, Clone, PartialEq, PartialOrd, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "conversion", derive(frunk::LabelledGeneric))]
+pub struct DuplicateServiceError(String);
+
+impl validator::Validate for DuplicateServiceError {
+    fn validate(&self) -> std::result::Result<(), validator::ValidationErrors> {
+        std::result::Result::Ok(())
+    }
+}
+
+impl std::convert::From<String> for DuplicateServiceError {
+    fn from(x: String) -> Self {
+        DuplicateServiceError(x)
+    }
+}
+
+impl std::fmt::Display for DuplicateServiceError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.0)
+    }
+}
+
+impl std::str::FromStr for DuplicateServiceError {
+    type Err = std::string::ParseError;
+    fn from_str(x: &str) -> std::result::Result<Self, Self::Err> {
+        std::result::Result::Ok(DuplicateServiceError(x.to_string()))
+    }
+}
+
+impl std::convert::From<DuplicateServiceError> for String {
+    fn from(x: DuplicateServiceError) -> Self {
+        x.0
+    }
+}
+
+impl std::ops::Deref for DuplicateServiceError {
+    type Target = String;
+    fn deref(&self) -> &String {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for DuplicateServiceError {
+    fn deref_mut(&mut self) -> &mut String {
+        &mut self.0
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize, validator::Validate)]
 #[cfg_attr(feature = "conversion", derive(frunk::LabelledGeneric))]
 pub struct GenericError {
@@ -415,33 +464,39 @@ impl std::convert::TryFrom<HeaderValue> for header::IntoHeaderValue<PipelineGet2
 #[cfg_attr(feature = "conversion", derive(frunk::LabelledGeneric))]
 pub struct PipelineGet200ResponsePipeline {
     #[serde(rename = "status")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub status: Option<models::PipelineStatus>,
+    pub status: models::PipelineStatus,
 
     /// Milliseconds since epoch when the pipeline was manually started
     #[serde(rename = "last_start")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub last_start: Option<i64>,
+    pub last_start: i64,
 
     /// Milliseconds since epoch when the pipeline was manually stopped
     #[serde(rename = "last_stop")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub last_stop: Option<i64>,
+    pub last_stop: i64,
 
     /// Milliseconds since epoch when the pipeline was automatically restarted (on process faults)
     #[serde(rename = "last_restart")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_restart: Option<i64>,
+
+    #[serde(rename = "validation_errors")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub validation_errors: Option<models::PipelineGet200ResponsePipelineValidationErrors>,
 }
 
 impl PipelineGet200ResponsePipeline {
     #[allow(clippy::new_without_default, clippy::too_many_arguments)]
-    pub fn new() -> PipelineGet200ResponsePipeline {
+    pub fn new(
+        status: models::PipelineStatus,
+        last_start: i64,
+        last_stop: i64,
+    ) -> PipelineGet200ResponsePipeline {
         PipelineGet200ResponsePipeline {
-            status: None,
-            last_start: None,
-            last_stop: None,
+            status,
+            last_start,
+            last_stop,
             last_restart: None,
+            validation_errors: None,
         }
     }
 }
@@ -453,15 +508,14 @@ impl std::fmt::Display for PipelineGet200ResponsePipeline {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let params: Vec<Option<String>> = vec![
             // Skipping status in query parameter serialization
-            self.last_start
-                .as_ref()
-                .map(|last_start| ["last_start".to_string(), last_start.to_string()].join(",")),
-            self.last_stop
-                .as_ref()
-                .map(|last_stop| ["last_stop".to_string(), last_stop.to_string()].join(",")),
+            Some("last_start".to_string()),
+            Some(self.last_start.to_string()),
+            Some("last_stop".to_string()),
+            Some(self.last_stop.to_string()),
             self.last_restart.as_ref().map(|last_restart| {
                 ["last_restart".to_string(), last_restart.to_string()].join(",")
             }),
+            // Skipping validation_errors in query parameter serialization
         ];
 
         write!(
@@ -487,6 +541,7 @@ impl std::str::FromStr for PipelineGet200ResponsePipeline {
             pub last_start: Vec<i64>,
             pub last_stop: Vec<i64>,
             pub last_restart: Vec<i64>,
+            pub validation_errors: Vec<models::PipelineGet200ResponsePipelineValidationErrors>,
         }
 
         let mut intermediate_rep = IntermediateRep::default();
@@ -509,28 +564,16 @@ impl std::str::FromStr for PipelineGet200ResponsePipeline {
                 #[allow(clippy::match_single_binding)]
                 match key {
                     #[allow(clippy::redundant_clone)]
-                    "status" => intermediate_rep.status.push(
-                        <models::PipelineStatus as std::str::FromStr>::from_str(val)
-                            .map_err(|x| x.to_string())?,
-                    ),
+                    "status" => intermediate_rep.status.push(<models::PipelineStatus as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?),
                     #[allow(clippy::redundant_clone)]
-                    "last_start" => intermediate_rep.last_start.push(
-                        <i64 as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?,
-                    ),
+                    "last_start" => intermediate_rep.last_start.push(<i64 as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?),
                     #[allow(clippy::redundant_clone)]
-                    "last_stop" => intermediate_rep.last_stop.push(
-                        <i64 as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?,
-                    ),
+                    "last_stop" => intermediate_rep.last_stop.push(<i64 as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?),
                     #[allow(clippy::redundant_clone)]
-                    "last_restart" => intermediate_rep.last_restart.push(
-                        <i64 as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?,
-                    ),
-                    _ => {
-                        return std::result::Result::Err(
-                            "Unexpected key while parsing PipelineGet200ResponsePipeline"
-                                .to_string(),
-                        )
-                    }
+                    "last_restart" => intermediate_rep.last_restart.push(<i64 as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?),
+                    #[allow(clippy::redundant_clone)]
+                    "validation_errors" => intermediate_rep.validation_errors.push(<models::PipelineGet200ResponsePipelineValidationErrors as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?),
+                    _ => return std::result::Result::Err("Unexpected key while parsing PipelineGet200ResponsePipeline".to_string())
                 }
             }
 
@@ -540,10 +583,25 @@ impl std::str::FromStr for PipelineGet200ResponsePipeline {
 
         // Use the intermediate representation to return the struct
         std::result::Result::Ok(PipelineGet200ResponsePipeline {
-            status: intermediate_rep.status.into_iter().next(),
-            last_start: intermediate_rep.last_start.into_iter().next(),
-            last_stop: intermediate_rep.last_stop.into_iter().next(),
+            status: intermediate_rep
+                .status
+                .into_iter()
+                .next()
+                .ok_or_else(|| "status missing in PipelineGet200ResponsePipeline".to_string())?,
+            last_start: intermediate_rep
+                .last_start
+                .into_iter()
+                .next()
+                .ok_or_else(|| {
+                    "last_start missing in PipelineGet200ResponsePipeline".to_string()
+                })?,
+            last_stop: intermediate_rep
+                .last_stop
+                .into_iter()
+                .next()
+                .ok_or_else(|| "last_stop missing in PipelineGet200ResponsePipeline".to_string())?,
             last_restart: intermediate_rep.last_restart.into_iter().next(),
+            validation_errors: intermediate_rep.validation_errors.into_iter().next(),
         })
     }
 }
@@ -583,6 +641,163 @@ impl std::convert::TryFrom<HeaderValue>
                         std::result::Result::Ok(value) => std::result::Result::Ok(header::IntoHeaderValue(value)),
                         std::result::Result::Err(err) => std::result::Result::Err(
                             format!("Unable to convert header value '{}' into PipelineGet200ResponsePipeline - {}",
+                                value, err))
+                    }
+             },
+             std::result::Result::Err(e) => std::result::Result::Err(
+                 format!("Unable to convert header: {:?} to string: {}",
+                     hdr_value, e))
+        }
+    }
+}
+
+/// If status is invalid, this array shows the validation errors
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize, validator::Validate)]
+#[cfg_attr(feature = "conversion", derive(frunk::LabelledGeneric))]
+pub struct PipelineGet200ResponsePipelineValidationErrors {
+    #[serde(rename = "unmet_streams")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub unmet_streams: Option<Vec<models::UnmetStreamError>>,
+
+    #[serde(rename = "unmet_services")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub unmet_services: Option<Vec<models::UnmetServiceError>>,
+
+    #[serde(rename = "duplicate_service")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub duplicate_service: Option<Vec<models::DuplicateServiceError>>,
+}
+
+impl PipelineGet200ResponsePipelineValidationErrors {
+    #[allow(clippy::new_without_default, clippy::too_many_arguments)]
+    pub fn new() -> PipelineGet200ResponsePipelineValidationErrors {
+        PipelineGet200ResponsePipelineValidationErrors {
+            unmet_streams: None,
+            unmet_services: None,
+            duplicate_service: None,
+        }
+    }
+}
+
+/// Converts the PipelineGet200ResponsePipelineValidationErrors value to the Query Parameters representation (style=form, explode=false)
+/// specified in https://swagger.io/docs/specification/serialization/
+/// Should be implemented in a serde serializer
+impl std::fmt::Display for PipelineGet200ResponsePipelineValidationErrors {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let params: Vec<Option<String>> = vec![
+            // Skipping unmet_streams in query parameter serialization
+
+            // Skipping unmet_services in query parameter serialization
+            self.duplicate_service.as_ref().map(|duplicate_service| {
+                [
+                    "duplicate_service".to_string(),
+                    duplicate_service
+                        .iter()
+                        .map(|x| x.to_string())
+                        .collect::<Vec<_>>()
+                        .join(","),
+                ]
+                .join(",")
+            }),
+        ];
+
+        write!(
+            f,
+            "{}",
+            params.into_iter().flatten().collect::<Vec<_>>().join(",")
+        )
+    }
+}
+
+/// Converts Query Parameters representation (style=form, explode=false) to a PipelineGet200ResponsePipelineValidationErrors value
+/// as specified in https://swagger.io/docs/specification/serialization/
+/// Should be implemented in a serde deserializer
+impl std::str::FromStr for PipelineGet200ResponsePipelineValidationErrors {
+    type Err = String;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        /// An intermediate representation of the struct to use for parsing.
+        #[derive(Default)]
+        #[allow(dead_code)]
+        struct IntermediateRep {
+            pub unmet_streams: Vec<Vec<models::UnmetStreamError>>,
+            pub unmet_services: Vec<Vec<models::UnmetServiceError>>,
+            pub duplicate_service: Vec<Vec<models::DuplicateServiceError>>,
+        }
+
+        let mut intermediate_rep = IntermediateRep::default();
+
+        // Parse into intermediate representation
+        let mut string_iter = s.split(',');
+        let mut key_result = string_iter.next();
+
+        while key_result.is_some() {
+            let val = match string_iter.next() {
+                Some(x) => x,
+                None => return std::result::Result::Err(
+                    "Missing value while parsing PipelineGet200ResponsePipelineValidationErrors"
+                        .to_string(),
+                ),
+            };
+
+            if let Some(key) = key_result {
+                #[allow(clippy::match_single_binding)]
+                match key {
+                    "unmet_streams" => return std::result::Result::Err("Parsing a container in this style is not supported in PipelineGet200ResponsePipelineValidationErrors".to_string()),
+                    "unmet_services" => return std::result::Result::Err("Parsing a container in this style is not supported in PipelineGet200ResponsePipelineValidationErrors".to_string()),
+                    "duplicate_service" => return std::result::Result::Err("Parsing a container in this style is not supported in PipelineGet200ResponsePipelineValidationErrors".to_string()),
+                    _ => return std::result::Result::Err("Unexpected key while parsing PipelineGet200ResponsePipelineValidationErrors".to_string())
+                }
+            }
+
+            // Get the next key
+            key_result = string_iter.next();
+        }
+
+        // Use the intermediate representation to return the struct
+        std::result::Result::Ok(PipelineGet200ResponsePipelineValidationErrors {
+            unmet_streams: intermediate_rep.unmet_streams.into_iter().next(),
+            unmet_services: intermediate_rep.unmet_services.into_iter().next(),
+            duplicate_service: intermediate_rep.duplicate_service.into_iter().next(),
+        })
+    }
+}
+
+// Methods for converting between header::IntoHeaderValue<PipelineGet200ResponsePipelineValidationErrors> and HeaderValue
+
+#[cfg(feature = "server")]
+impl std::convert::TryFrom<header::IntoHeaderValue<PipelineGet200ResponsePipelineValidationErrors>>
+    for HeaderValue
+{
+    type Error = String;
+
+    fn try_from(
+        hdr_value: header::IntoHeaderValue<PipelineGet200ResponsePipelineValidationErrors>,
+    ) -> std::result::Result<Self, Self::Error> {
+        let hdr_value = hdr_value.to_string();
+        match HeaderValue::from_str(&hdr_value) {
+             std::result::Result::Ok(value) => std::result::Result::Ok(value),
+             std::result::Result::Err(e) => std::result::Result::Err(
+                 format!("Invalid header value for PipelineGet200ResponsePipelineValidationErrors - value: {} is invalid {}",
+                     hdr_value, e))
+        }
+    }
+}
+
+#[cfg(feature = "server")]
+impl std::convert::TryFrom<HeaderValue>
+    for header::IntoHeaderValue<PipelineGet200ResponsePipelineValidationErrors>
+{
+    type Error = String;
+
+    fn try_from(hdr_value: HeaderValue) -> std::result::Result<Self, Self::Error> {
+        match hdr_value.to_str() {
+             std::result::Result::Ok(value) => {
+                    match <PipelineGet200ResponsePipelineValidationErrors as std::str::FromStr>::from_str(value) {
+                        std::result::Result::Ok(value) => std::result::Result::Ok(header::IntoHeaderValue(value)),
+                        std::result::Result::Err(err) => std::result::Result::Err(
+                            format!("Unable to convert header value '{}' into PipelineGet200ResponsePipelineValidationErrors - {}",
                                 value, err))
                     }
              },
@@ -2655,6 +2870,326 @@ impl std::convert::TryFrom<HeaderValue> for header::IntoHeaderValue<StatusGet200
                     }
                     std::result::Result::Err(err) => std::result::Result::Err(format!(
                         "Unable to convert header value '{}' into StatusGet200Response - {}",
+                        value, err
+                    )),
+                }
+            }
+            std::result::Result::Err(e) => std::result::Result::Err(format!(
+                "Unable to convert header: {:?} to string: {}",
+                hdr_value, e
+            )),
+        }
+    }
+}
+
+/// UnmetServiceError
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize, validator::Validate)]
+#[cfg_attr(feature = "conversion", derive(frunk::LabelledGeneric))]
+pub struct UnmetServiceError {
+    #[serde(rename = "source")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
+
+    #[serde(rename = "target")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub target: Option<String>,
+}
+
+impl UnmetServiceError {
+    #[allow(clippy::new_without_default, clippy::too_many_arguments)]
+    pub fn new() -> UnmetServiceError {
+        UnmetServiceError {
+            source: None,
+            target: None,
+        }
+    }
+}
+
+/// Converts the UnmetServiceError value to the Query Parameters representation (style=form, explode=false)
+/// specified in https://swagger.io/docs/specification/serialization/
+/// Should be implemented in a serde serializer
+impl std::fmt::Display for UnmetServiceError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let params: Vec<Option<String>> = vec![
+            self.source
+                .as_ref()
+                .map(|source| ["source".to_string(), source.to_string()].join(",")),
+            self.target
+                .as_ref()
+                .map(|target| ["target".to_string(), target.to_string()].join(",")),
+        ];
+
+        write!(
+            f,
+            "{}",
+            params.into_iter().flatten().collect::<Vec<_>>().join(",")
+        )
+    }
+}
+
+/// Converts Query Parameters representation (style=form, explode=false) to a UnmetServiceError value
+/// as specified in https://swagger.io/docs/specification/serialization/
+/// Should be implemented in a serde deserializer
+impl std::str::FromStr for UnmetServiceError {
+    type Err = String;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        /// An intermediate representation of the struct to use for parsing.
+        #[derive(Default)]
+        #[allow(dead_code)]
+        struct IntermediateRep {
+            pub source: Vec<String>,
+            pub target: Vec<String>,
+        }
+
+        let mut intermediate_rep = IntermediateRep::default();
+
+        // Parse into intermediate representation
+        let mut string_iter = s.split(',');
+        let mut key_result = string_iter.next();
+
+        while key_result.is_some() {
+            let val = match string_iter.next() {
+                Some(x) => x,
+                None => {
+                    return std::result::Result::Err(
+                        "Missing value while parsing UnmetServiceError".to_string(),
+                    )
+                }
+            };
+
+            if let Some(key) = key_result {
+                #[allow(clippy::match_single_binding)]
+                match key {
+                    #[allow(clippy::redundant_clone)]
+                    "source" => intermediate_rep.source.push(
+                        <String as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?,
+                    ),
+                    #[allow(clippy::redundant_clone)]
+                    "target" => intermediate_rep.target.push(
+                        <String as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?,
+                    ),
+                    _ => {
+                        return std::result::Result::Err(
+                            "Unexpected key while parsing UnmetServiceError".to_string(),
+                        )
+                    }
+                }
+            }
+
+            // Get the next key
+            key_result = string_iter.next();
+        }
+
+        // Use the intermediate representation to return the struct
+        std::result::Result::Ok(UnmetServiceError {
+            source: intermediate_rep.source.into_iter().next(),
+            target: intermediate_rep.target.into_iter().next(),
+        })
+    }
+}
+
+// Methods for converting between header::IntoHeaderValue<UnmetServiceError> and HeaderValue
+
+#[cfg(feature = "server")]
+impl std::convert::TryFrom<header::IntoHeaderValue<UnmetServiceError>> for HeaderValue {
+    type Error = String;
+
+    fn try_from(
+        hdr_value: header::IntoHeaderValue<UnmetServiceError>,
+    ) -> std::result::Result<Self, Self::Error> {
+        let hdr_value = hdr_value.to_string();
+        match HeaderValue::from_str(&hdr_value) {
+            std::result::Result::Ok(value) => std::result::Result::Ok(value),
+            std::result::Result::Err(e) => std::result::Result::Err(format!(
+                "Invalid header value for UnmetServiceError - value: {} is invalid {}",
+                hdr_value, e
+            )),
+        }
+    }
+}
+
+#[cfg(feature = "server")]
+impl std::convert::TryFrom<HeaderValue> for header::IntoHeaderValue<UnmetServiceError> {
+    type Error = String;
+
+    fn try_from(hdr_value: HeaderValue) -> std::result::Result<Self, Self::Error> {
+        match hdr_value.to_str() {
+            std::result::Result::Ok(value) => {
+                match <UnmetServiceError as std::str::FromStr>::from_str(value) {
+                    std::result::Result::Ok(value) => {
+                        std::result::Result::Ok(header::IntoHeaderValue(value))
+                    }
+                    std::result::Result::Err(err) => std::result::Result::Err(format!(
+                        "Unable to convert header value '{}' into UnmetServiceError - {}",
+                        value, err
+                    )),
+                }
+            }
+            std::result::Result::Err(e) => std::result::Result::Err(format!(
+                "Unable to convert header: {:?} to string: {}",
+                hdr_value, e
+            )),
+        }
+    }
+}
+
+/// UnmetStreamError
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize, validator::Validate)]
+#[cfg_attr(feature = "conversion", derive(frunk::LabelledGeneric))]
+pub struct UnmetStreamError {
+    #[serde(rename = "source")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
+
+    #[serde(rename = "target")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub target: Option<String>,
+
+    #[serde(rename = "stream")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stream: Option<String>,
+}
+
+impl UnmetStreamError {
+    #[allow(clippy::new_without_default, clippy::too_many_arguments)]
+    pub fn new() -> UnmetStreamError {
+        UnmetStreamError {
+            source: None,
+            target: None,
+            stream: None,
+        }
+    }
+}
+
+/// Converts the UnmetStreamError value to the Query Parameters representation (style=form, explode=false)
+/// specified in https://swagger.io/docs/specification/serialization/
+/// Should be implemented in a serde serializer
+impl std::fmt::Display for UnmetStreamError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let params: Vec<Option<String>> = vec![
+            self.source
+                .as_ref()
+                .map(|source| ["source".to_string(), source.to_string()].join(",")),
+            self.target
+                .as_ref()
+                .map(|target| ["target".to_string(), target.to_string()].join(",")),
+            self.stream
+                .as_ref()
+                .map(|stream| ["stream".to_string(), stream.to_string()].join(",")),
+        ];
+
+        write!(
+            f,
+            "{}",
+            params.into_iter().flatten().collect::<Vec<_>>().join(",")
+        )
+    }
+}
+
+/// Converts Query Parameters representation (style=form, explode=false) to a UnmetStreamError value
+/// as specified in https://swagger.io/docs/specification/serialization/
+/// Should be implemented in a serde deserializer
+impl std::str::FromStr for UnmetStreamError {
+    type Err = String;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        /// An intermediate representation of the struct to use for parsing.
+        #[derive(Default)]
+        #[allow(dead_code)]
+        struct IntermediateRep {
+            pub source: Vec<String>,
+            pub target: Vec<String>,
+            pub stream: Vec<String>,
+        }
+
+        let mut intermediate_rep = IntermediateRep::default();
+
+        // Parse into intermediate representation
+        let mut string_iter = s.split(',');
+        let mut key_result = string_iter.next();
+
+        while key_result.is_some() {
+            let val = match string_iter.next() {
+                Some(x) => x,
+                None => {
+                    return std::result::Result::Err(
+                        "Missing value while parsing UnmetStreamError".to_string(),
+                    )
+                }
+            };
+
+            if let Some(key) = key_result {
+                #[allow(clippy::match_single_binding)]
+                match key {
+                    #[allow(clippy::redundant_clone)]
+                    "source" => intermediate_rep.source.push(
+                        <String as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?,
+                    ),
+                    #[allow(clippy::redundant_clone)]
+                    "target" => intermediate_rep.target.push(
+                        <String as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?,
+                    ),
+                    #[allow(clippy::redundant_clone)]
+                    "stream" => intermediate_rep.stream.push(
+                        <String as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?,
+                    ),
+                    _ => {
+                        return std::result::Result::Err(
+                            "Unexpected key while parsing UnmetStreamError".to_string(),
+                        )
+                    }
+                }
+            }
+
+            // Get the next key
+            key_result = string_iter.next();
+        }
+
+        // Use the intermediate representation to return the struct
+        std::result::Result::Ok(UnmetStreamError {
+            source: intermediate_rep.source.into_iter().next(),
+            target: intermediate_rep.target.into_iter().next(),
+            stream: intermediate_rep.stream.into_iter().next(),
+        })
+    }
+}
+
+// Methods for converting between header::IntoHeaderValue<UnmetStreamError> and HeaderValue
+
+#[cfg(feature = "server")]
+impl std::convert::TryFrom<header::IntoHeaderValue<UnmetStreamError>> for HeaderValue {
+    type Error = String;
+
+    fn try_from(
+        hdr_value: header::IntoHeaderValue<UnmetStreamError>,
+    ) -> std::result::Result<Self, Self::Error> {
+        let hdr_value = hdr_value.to_string();
+        match HeaderValue::from_str(&hdr_value) {
+            std::result::Result::Ok(value) => std::result::Result::Ok(value),
+            std::result::Result::Err(e) => std::result::Result::Err(format!(
+                "Invalid header value for UnmetStreamError - value: {} is invalid {}",
+                hdr_value, e
+            )),
+        }
+    }
+}
+
+#[cfg(feature = "server")]
+impl std::convert::TryFrom<HeaderValue> for header::IntoHeaderValue<UnmetStreamError> {
+    type Error = String;
+
+    fn try_from(hdr_value: HeaderValue) -> std::result::Result<Self, Self::Error> {
+        match hdr_value.to_str() {
+            std::result::Result::Ok(value) => {
+                match <UnmetStreamError as std::str::FromStr>::from_str(value) {
+                    std::result::Result::Ok(value) => {
+                        std::result::Result::Ok(header::IntoHeaderValue(value))
+                    }
+                    std::result::Result::Err(err) => std::result::Result::Err(format!(
+                        "Unable to convert header value '{}' into UnmetStreamError - {}",
                         value, err
                     )),
                 }

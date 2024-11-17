@@ -91,7 +91,7 @@ pub enum ServicesPostResponse {
 #[async_trait]
 #[allow(clippy::ptr_arg)]
 pub trait Services {
-    /// Retrieve all services and their status.
+    /// Retrieve all parsable services and their status from disk..
     ///
     /// ServicesGet - GET /services
     async fn services_get(

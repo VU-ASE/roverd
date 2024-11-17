@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use axum::async_trait;
 
 use openapi::apis::pipeline::*;
@@ -7,6 +9,7 @@ use openapi::models;
 use axum::extract::Host;
 use axum::http::Method;
 use axum_extra::extract::CookieJar;
+use rovervalidate::error::{UnmetDependencyError, UnmetStreamError};
 
 use crate::state::Roverd;
 
@@ -21,6 +24,30 @@ impl Pipeline for Roverd {
         _host: Host,
         _cookies: CookieJar,
     ) -> Result<PipelineGetResponse, String> {
+        // let a = rovervalidate::error::PipelineValidationError::UnmetDependencyError(
+        //     UnmetDependencyError::UnmetStream(UnmetStreamError {
+        //         source: "asdf".to_string(),
+        //         target: "targ".to_string(),
+        //         stream: "stream".to_string(),
+        //     }),
+        // );
+
+        // let a = UnmetStreamError {
+        //     source: "asdf".to_string(),
+        //     target: "targ".to_string(),
+        //     stream: "stream".to_string(),
+        // };
+
+        // let y = models::UnmetStreamError {
+        //     source: Some(a.source),
+        //     target: Some(a.target),
+        //     stream: Some(a.stream),
+        // };
+
+        // let x = models::UnmetDependencyError();
+
+        // let a = models::PipelineValidationError::from();
+
         Ok(
             PipelineGetResponse::Status200_PipelineStatusAndAnArrayOfProcesses(
                 models::PipelineGet200Response::new(),

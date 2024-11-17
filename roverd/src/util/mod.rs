@@ -1,7 +1,5 @@
 use std::{io::Write, path::Path, path::PathBuf};
 
-
-
 use tracing::info;
 
 use crate::error::Error;
@@ -12,14 +10,11 @@ const AUTHOR: &str = "vu-ase";
 const DOWNLOAD_URL: &str = "https://downloads.ase.vu.nl";
 const DOWNLOAD_DESTINATION: &str = "/tmp";
 
-
-
-
-/// Extracts the contents of the zip file into the directory at 
+/// Extracts the contents of the zip file into the directory at
 /// destination_dir.
 fn extract_zip(zip_file: &str, destination_dir: &str) -> Result<(), Error> {
     info!("going to extract {} into {}", zip_file, destination_dir);
-    
+
     // Ensure the output directory exists
     std::fs::create_dir_all(destination_dir)?;
 
@@ -28,25 +23,23 @@ fn extract_zip(zip_file: &str, destination_dir: &str) -> Result<(), Error> {
 
     // for entry in archive.entries().map(|e| e.map(|e| e.unwrap())) {
     //     let mut entry = entry?;
-        
+
     //     if entry.file_name() == "" || entry.name().ends_with('/') {
     //         continue; // Skip directories and empty entries
     //     }
-        
+
     //     let out_path = Path::new(destination_dir).join(entry.name());
-        
+
     //     // Create parent directories if they don't exist
     //     let parent = out_path.parent().unwrap_or(Path::new(destination_dir));
     //     fs::create_dir_all(parent)?;
-        
+
     //     let mut file = fs::File::create(out_path)?;
     //     archive.extract(entry, &mut file)?;
     // }
-    
+
     Ok(())
 }
-
-
 
 fn delete_directory_contents(full_path: &Path) -> Result<(), Error> {
     // Iterate over all entries in the directory
@@ -57,7 +50,7 @@ fn delete_directory_contents(full_path: &Path) -> Result<(), Error> {
         if path.is_dir() {
             delete_directory_contents(&path)?;
         }
-        
+
         // Delete regular files
         if path.is_file() {
             std::fs::remove_file(&path)?;
@@ -100,7 +93,7 @@ pub async fn download_service(name: &str, version: &str) -> Result<String, Error
 
     info!("downloading...");
     let bytes = response.bytes().await?;
-    
+
     info!("writing...");
     file.write_all(&bytes)?;
 
