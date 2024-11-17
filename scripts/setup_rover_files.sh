@@ -12,8 +12,8 @@ cp $TEST_FILES/roverd-yaml/valid/common.yaml /etc/roverd/rover.yaml
 # cp $TEST_FILES/roverd-yaml/invalid/invalid-name.yaml /etc/roverd/rover.yaml
 
 # --- /home/debix/rover/ ---
-mkdir -p /home/debix/rover
-chown debix:debix /home/debix/rover
+mkdir -p /home/debix/.rover
+chown debix:debix /home/debix/.rover
 
 # --- /etc/rover ---
 echo "14" > /etc/rover

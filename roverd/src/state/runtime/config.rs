@@ -1,14 +1,9 @@
-// use std::path::PathBuf;
-
-use std::path::PathBuf;
-
 use crate::error::Error;
 
 use openapi::models::SourcesPostRequest;
 use rovervalidate::config::{Configuration, Downloaded, Validate, ValidatedConfiguration};
-use tracing::{info, warn};
 
-use crate::util::download_service;
+use crate::util::download_and_install_service;
 
 const ROVER_CONFIG_PATH: &str = "/etc/roverd/rover.yaml";
 
@@ -34,7 +29,6 @@ impl Config {
         let config = self.get()?.0;
         let existing_sources = config.downloaded;
 
-        // The unwraps are safe, since we check them all previously
         let incoming_source = Downloaded {
             sha: None,
             name: source.name.to_lowercase(),
@@ -42,30 +36,35 @@ impl Config {
             version: source.version.to_lowercase(),
         };
 
+        if incoming_source.source.contains("http") {
+            return Err(Error::Source(
+                "source url should not contain schema, remove 'http...'".to_string(),
+            ));
+        }
+
         for existing_source in &existing_sources {
             if existing_source.name.to_lowercase() == incoming_source.name
                 && existing_source.source.to_lowercase() == incoming_source.source
                 && existing_source.version.to_lowercase() == incoming_source.version
             {
-                let error_msg = " already exists".to_string();
-                warn!(error_msg);
+                let error_msg = "already exists".to_string();
                 return Err(Error::Source(error_msg));
             }
         }
 
-        // Source doesn't exist, download it to /tmp and move it correct place on disk
+        // Extract the repository name from the url.
+        let mut url_slice = incoming_source.source.as_str();
+        let slash_index = url_slice.rfind('/').ok_or(Error::Url)?;
+        let url_len = url_slice.len();
 
-        let path = download_service(
-            incoming_source.name.as_str(),
-            incoming_source.version.as_str(),
-        )
-        .await?;
+        if slash_index == url_len - 1 {
+            url_slice = &url_slice[..url_len - 1]
+        }
 
-        let path = PathBuf::from(path);
+        let slash_index = url_slice.rfind('/').ok_or(Error::Url)?;
+        let repo_name = &url_slice[(slash_index + 1)..];
 
-        info!("download success! {path:#?}");
-
-        // Now that Source is downloaded, insert it into config and write back to rover.yaml
+        download_and_install_service(repo_name, &incoming_source.version).await?;
 
         Ok(())
     }

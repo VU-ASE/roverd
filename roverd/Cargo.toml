@@ -21,4 +21,5 @@ rovervalidate = { version = "0.1.0", path = "../rovervalidate" }
 serde_yaml = "0.9.34"
 reqwest = "0.12.9"
 zip = "0.6.6"
+derive_more = "0.99.18"
 

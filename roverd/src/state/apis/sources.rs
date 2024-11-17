@@ -1,4 +1,4 @@
-use tracing::warn;
+use tracing::{info, warn};
 
 use axum::async_trait;
 
@@ -17,10 +17,11 @@ impl Sources for Roverd {
     /// Retrieves all sources in the rover.yaml
     async fn sources_get(
         &self,
-        _method: Method,
+        method: Method,
         _host: Host,
         _cookies: CookieJar,
     ) -> Result<SourcesGetResponse, String> {
+        info!("{:?} /sources", method);
         let config = match self.config.get() {
             Ok(data) => data,
             Err(e) => {
@@ -54,11 +55,12 @@ impl Sources for Roverd {
     /// SourcesDelete - DELETE /sources
     async fn sources_delete(
         &self,
-        _method: Method,
+        method: Method,
         _host: Host,
         _cookies: CookieJar,
         _body: SourcesPostRequest,
     ) -> Result<SourcesDeleteResponse, String> {
+        info!("{:?} /sources", method);
         Ok(SourcesDeleteResponse::Status404_EntityNotFound)
     }
 
@@ -67,13 +69,14 @@ impl Sources for Roverd {
     /// SourcesPost - POST /sources
     async fn sources_post(
         &self,
-        _method: Method,
+        method: Method,
         _host: Host,
         _cookies: CookieJar,
         body: SourcesPostRequest,
     ) -> Result<SourcesPostResponse, String> {
+        info!("{:?} /sources", method);
         if let Err(e) = self.config.add_source(body).await {
-            warn!("{:#?}", e);
+            warn!("{:?}", e);
             return Ok(SourcesPostResponse::Status400_AnErrorOccurred(
                 GenericError {
                     message: Some(format!("{:#?}", e)),
