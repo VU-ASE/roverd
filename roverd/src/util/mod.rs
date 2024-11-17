@@ -64,9 +64,6 @@ fn delete_directory_contents(full_path: &Path) -> Result<(), Error> {
 /// existing service at a given path it will delete it and prepare it such
 /// that the new service can be safely moved in place.
 fn prepare_dirs(author: &str, name: &str, version: &str) -> Result<String, Error> {
-    // Define the base directory
-    let base_dir = ROVER_DIR.to_string();
-
     // Construct the full path
     let full_path_string = format!("{ROVER_DIR}/{author}/{name}/{version}");
     let full_path = PathBuf::from(full_path_string.clone());
@@ -97,9 +94,9 @@ pub async fn download_service(name: &str, version: &str) -> Result<String, Error
     info!("writing...");
     file.write_all(&bytes)?;
 
-    let full_path = prepare_dirs(&AUTHOR, &name, &version)?;
+    let full_path = prepare_dirs(AUTHOR, name, version)?;
 
-    extract_zip(&zip_file, &full_path.as_str())?;
+    extract_zip(&zip_file, &full_path)?;
 
     Ok(full_path)
 }

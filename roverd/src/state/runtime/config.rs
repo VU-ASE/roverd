@@ -8,8 +8,6 @@ use openapi::models::SourcesPostRequest;
 use rovervalidate::config::{Configuration, Downloaded, Validate, ValidatedConfiguration};
 use tracing::{info, warn};
 
-use axum::http::StatusCode;
-
 use crate::util::download_service;
 
 const ROVER_CONFIG_PATH: &str = "/etc/roverd/rover.yaml";
@@ -36,16 +34,12 @@ impl Config {
         let config = self.get()?.0;
         let existing_sources = config.downloaded;
 
-        if source.name.is_none() || source.url.is_none() || source.version.is_none() {
-            return Err(Error::Http(StatusCode::BAD_REQUEST));
-        }
-
         // The unwraps are safe, since we check them all previously
         let incoming_source = Downloaded {
             sha: None,
-            name: source.name.unwrap().to_lowercase(),
-            source: source.url.unwrap().to_lowercase(),
-            version: source.version.unwrap().to_lowercase(),
+            name: source.name.to_lowercase(),
+            source: source.url.to_lowercase(),
+            version: source.version.to_lowercase(),
         };
 
         for existing_source in &existing_sources {

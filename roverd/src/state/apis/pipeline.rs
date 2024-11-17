@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use axum::async_trait;
 
 use openapi::apis::pipeline::*;
@@ -9,7 +7,6 @@ use openapi::models;
 use axum::extract::Host;
 use axum::http::Method;
 use axum_extra::extract::CookieJar;
-use rovervalidate::error::{UnmetDependencyError, UnmetStreamError};
 
 use crate::state::Roverd;
 
@@ -66,9 +63,7 @@ impl Pipeline for Roverd {
         _path_params: models::PipelineNameGetPathParams,
         _query_params: models::PipelineNameGetQueryParams,
     ) -> Result<PipelineNameGetResponse, String> {
-        Ok(PipelineNameGetResponse::Status200_TheStatusOfTheProcess(
-            models::PipelineNameGet200Response::new(),
-        ))
+        Ok(PipelineNameGetResponse::Status401_UnauthorizedAccess)
     }
 
     /// Start or stop the pipeline of all enabled services.

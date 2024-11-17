@@ -44,14 +44,14 @@ impl Health for Roverd {
         Ok(
             StatusGetResponse::Status200_TheHealthAndVersioningInformation(
                 models::StatusGet200Response {
-                    status: Some(self.info.status),
+                    status: self.info.status,
                     error_message,
-                    os: Some(self.info.os.clone()),
+                    os: self.info.os.clone(),
                     rover_id: self.info.rover_id,
                     rover_name: self.info.rover_name.clone(),
-                    uptime: Some(uptime),
-                    version: Some(self.info.version.clone()),
-                    systime: Some(time_now),
+                    uptime,
+                    version: self.info.version.clone(),
+                    systime: time_now,
                 },
             ),
         )

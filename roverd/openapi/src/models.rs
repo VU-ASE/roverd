@@ -476,8 +476,7 @@ pub struct PipelineGet200ResponsePipeline {
 
     /// Milliseconds since epoch when the pipeline was automatically restarted (on process faults)
     #[serde(rename = "last_restart")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub last_restart: Option<i64>,
+    pub last_restart: i64,
 
     #[serde(rename = "validation_errors")]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -490,12 +489,13 @@ impl PipelineGet200ResponsePipeline {
         status: models::PipelineStatus,
         last_start: i64,
         last_stop: i64,
+        last_restart: i64,
     ) -> PipelineGet200ResponsePipeline {
         PipelineGet200ResponsePipeline {
             status,
             last_start,
             last_stop,
-            last_restart: None,
+            last_restart,
             validation_errors: None,
         }
     }
@@ -512,9 +512,8 @@ impl std::fmt::Display for PipelineGet200ResponsePipeline {
             Some(self.last_start.to_string()),
             Some("last_stop".to_string()),
             Some(self.last_stop.to_string()),
-            self.last_restart.as_ref().map(|last_restart| {
-                ["last_restart".to_string(), last_restart.to_string()].join(",")
-            }),
+            Some("last_restart".to_string()),
+            Some(self.last_restart.to_string()),
             // Skipping validation_errors in query parameter serialization
         ];
 
@@ -600,7 +599,13 @@ impl std::str::FromStr for PipelineGet200ResponsePipeline {
                 .into_iter()
                 .next()
                 .ok_or_else(|| "last_stop missing in PipelineGet200ResponsePipeline".to_string())?,
-            last_restart: intermediate_rep.last_restart.into_iter().next(),
+            last_restart: intermediate_rep
+                .last_restart
+                .into_iter()
+                .next()
+                .ok_or_else(|| {
+                    "last_restart missing in PipelineGet200ResponsePipeline".to_string()
+                })?,
             validation_errors: intermediate_rep.validation_errors.into_iter().next(),
         })
     }
@@ -813,50 +818,51 @@ impl std::convert::TryFrom<HeaderValue>
 pub struct PipelineGet200ResponseProcessesInner {
     /// The name of the service running as a process
     #[serde(rename = "name")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
+    pub name: String,
 
     #[serde(rename = "status")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub status: Option<models::ProcessStatus>,
+    pub status: models::ProcessStatus,
 
     /// The process ID
     #[serde(rename = "pid")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub pid: Option<i32>,
+    pub pid: i32,
 
     /// The number of milliseconds the process has been running
     #[serde(rename = "uptime")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub uptime: Option<i64>,
+    pub uptime: i64,
 
     /// The amount of memory used by the process in megabytes
     #[serde(rename = "memory")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub memory: Option<i32>,
+    pub memory: i32,
 
     /// The percentage of CPU used by the process
     #[serde(rename = "cpu")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cpu: Option<i32>,
+    pub cpu: i32,
 
     /// The number of faults that have occurred (causing the pipeline to restart) since last_start
     #[serde(rename = "faults")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub faults: Option<i32>,
+    pub faults: i32,
 }
 
 impl PipelineGet200ResponseProcessesInner {
     #[allow(clippy::new_without_default, clippy::too_many_arguments)]
-    pub fn new() -> PipelineGet200ResponseProcessesInner {
+    pub fn new(
+        name: String,
+        status: models::ProcessStatus,
+        pid: i32,
+        uptime: i64,
+        memory: i32,
+        cpu: i32,
+        faults: i32,
+    ) -> PipelineGet200ResponseProcessesInner {
         PipelineGet200ResponseProcessesInner {
-            name: None,
-            status: None,
-            pid: None,
-            uptime: None,
-            memory: None,
-            cpu: None,
-            faults: None,
+            name,
+            status,
+            pid,
+            uptime,
+            memory,
+            cpu,
+            faults,
         }
     }
 }
@@ -867,25 +873,19 @@ impl PipelineGet200ResponseProcessesInner {
 impl std::fmt::Display for PipelineGet200ResponseProcessesInner {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let params: Vec<Option<String>> = vec![
-            self.name
-                .as_ref()
-                .map(|name| ["name".to_string(), name.to_string()].join(",")),
+            Some("name".to_string()),
+            Some(self.name.to_string()),
             // Skipping status in query parameter serialization
-            self.pid
-                .as_ref()
-                .map(|pid| ["pid".to_string(), pid.to_string()].join(",")),
-            self.uptime
-                .as_ref()
-                .map(|uptime| ["uptime".to_string(), uptime.to_string()].join(",")),
-            self.memory
-                .as_ref()
-                .map(|memory| ["memory".to_string(), memory.to_string()].join(",")),
-            self.cpu
-                .as_ref()
-                .map(|cpu| ["cpu".to_string(), cpu.to_string()].join(",")),
-            self.faults
-                .as_ref()
-                .map(|faults| ["faults".to_string(), faults.to_string()].join(",")),
+            Some("pid".to_string()),
+            Some(self.pid.to_string()),
+            Some("uptime".to_string()),
+            Some(self.uptime.to_string()),
+            Some("memory".to_string()),
+            Some(self.memory.to_string()),
+            Some("cpu".to_string()),
+            Some(self.cpu.to_string()),
+            Some("faults".to_string()),
+            Some(self.faults.to_string()),
         ];
 
         write!(
@@ -980,13 +980,31 @@ impl std::str::FromStr for PipelineGet200ResponseProcessesInner {
 
         // Use the intermediate representation to return the struct
         std::result::Result::Ok(PipelineGet200ResponseProcessesInner {
-            name: intermediate_rep.name.into_iter().next(),
-            status: intermediate_rep.status.into_iter().next(),
-            pid: intermediate_rep.pid.into_iter().next(),
-            uptime: intermediate_rep.uptime.into_iter().next(),
-            memory: intermediate_rep.memory.into_iter().next(),
-            cpu: intermediate_rep.cpu.into_iter().next(),
-            faults: intermediate_rep.faults.into_iter().next(),
+            name: intermediate_rep.name.into_iter().next().ok_or_else(|| {
+                "name missing in PipelineGet200ResponseProcessesInner".to_string()
+            })?,
+            status: intermediate_rep.status.into_iter().next().ok_or_else(|| {
+                "status missing in PipelineGet200ResponseProcessesInner".to_string()
+            })?,
+            pid: intermediate_rep
+                .pid
+                .into_iter()
+                .next()
+                .ok_or_else(|| "pid missing in PipelineGet200ResponseProcessesInner".to_string())?,
+            uptime: intermediate_rep.uptime.into_iter().next().ok_or_else(|| {
+                "uptime missing in PipelineGet200ResponseProcessesInner".to_string()
+            })?,
+            memory: intermediate_rep.memory.into_iter().next().ok_or_else(|| {
+                "memory missing in PipelineGet200ResponseProcessesInner".to_string()
+            })?,
+            cpu: intermediate_rep
+                .cpu
+                .into_iter()
+                .next()
+                .ok_or_else(|| "cpu missing in PipelineGet200ResponseProcessesInner".to_string())?,
+            faults: intermediate_rep.faults.into_iter().next().ok_or_else(|| {
+                "faults missing in PipelineGet200ResponseProcessesInner".to_string()
+            })?,
         })
     }
 }
@@ -1040,47 +1058,38 @@ impl std::convert::TryFrom<HeaderValue>
 pub struct PipelineNameGet200Response {
     /// The name of the service running as a process
     #[serde(rename = "name")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
+    pub name: String,
 
     #[serde(rename = "status")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub status: Option<models::ProcessStatus>,
+    pub status: models::ProcessStatus,
 
     /// The process ID
     #[serde(rename = "pid")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub pid: Option<i32>,
+    pub pid: i32,
 
     /// The number of milliseconds the process has been running
     #[serde(rename = "uptime")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub uptime: Option<i64>,
+    pub uptime: i64,
 
     /// The amount of memory used by the process in megabytes
     #[serde(rename = "memory")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub memory: Option<i32>,
+    pub memory: i32,
 
     /// The percentage of CPU used by the process
     #[serde(rename = "cpu")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cpu: Option<i32>,
+    pub cpu: i32,
 
     /// The number of faults that have occurred (causing the pipeline to restart) since last_start
     #[serde(rename = "faults")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub faults: Option<i32>,
+    pub faults: i32,
 
     /// The name of the service that this process is running
     #[serde(rename = "service_name")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub service_name: Option<String>,
+    pub service_name: String,
 
     /// The version of the service that this process is running
     #[serde(rename = "service_version")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub service_version: Option<String>,
+    pub service_version: String,
 
     /// The latest <log_lines> log lines of the process
     #[serde(rename = "logs")]
@@ -1090,17 +1099,27 @@ pub struct PipelineNameGet200Response {
 
 impl PipelineNameGet200Response {
     #[allow(clippy::new_without_default, clippy::too_many_arguments)]
-    pub fn new() -> PipelineNameGet200Response {
+    pub fn new(
+        name: String,
+        status: models::ProcessStatus,
+        pid: i32,
+        uptime: i64,
+        memory: i32,
+        cpu: i32,
+        faults: i32,
+        service_name: String,
+        service_version: String,
+    ) -> PipelineNameGet200Response {
         PipelineNameGet200Response {
-            name: None,
-            status: None,
-            pid: None,
-            uptime: None,
-            memory: None,
-            cpu: None,
-            faults: None,
-            service_name: None,
-            service_version: None,
+            name,
+            status,
+            pid,
+            uptime,
+            memory,
+            cpu,
+            faults,
+            service_name,
+            service_version,
             logs: None,
         }
     }
@@ -1112,31 +1131,23 @@ impl PipelineNameGet200Response {
 impl std::fmt::Display for PipelineNameGet200Response {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let params: Vec<Option<String>> = vec![
-            self.name
-                .as_ref()
-                .map(|name| ["name".to_string(), name.to_string()].join(",")),
+            Some("name".to_string()),
+            Some(self.name.to_string()),
             // Skipping status in query parameter serialization
-            self.pid
-                .as_ref()
-                .map(|pid| ["pid".to_string(), pid.to_string()].join(",")),
-            self.uptime
-                .as_ref()
-                .map(|uptime| ["uptime".to_string(), uptime.to_string()].join(",")),
-            self.memory
-                .as_ref()
-                .map(|memory| ["memory".to_string(), memory.to_string()].join(",")),
-            self.cpu
-                .as_ref()
-                .map(|cpu| ["cpu".to_string(), cpu.to_string()].join(",")),
-            self.faults
-                .as_ref()
-                .map(|faults| ["faults".to_string(), faults.to_string()].join(",")),
-            self.service_name.as_ref().map(|service_name| {
-                ["service_name".to_string(), service_name.to_string()].join(",")
-            }),
-            self.service_version.as_ref().map(|service_version| {
-                ["service_version".to_string(), service_version.to_string()].join(",")
-            }),
+            Some("pid".to_string()),
+            Some(self.pid.to_string()),
+            Some("uptime".to_string()),
+            Some(self.uptime.to_string()),
+            Some("memory".to_string()),
+            Some(self.memory.to_string()),
+            Some("cpu".to_string()),
+            Some(self.cpu.to_string()),
+            Some("faults".to_string()),
+            Some(self.faults.to_string()),
+            Some("service_name".to_string()),
+            Some(self.service_name.to_string()),
+            Some("service_version".to_string()),
+            Some(self.service_version.to_string()),
             self.logs.as_ref().map(|logs| {
                 [
                     "logs".to_string(),
@@ -1228,15 +1239,53 @@ impl std::str::FromStr for PipelineNameGet200Response {
 
         // Use the intermediate representation to return the struct
         std::result::Result::Ok(PipelineNameGet200Response {
-            name: intermediate_rep.name.into_iter().next(),
-            status: intermediate_rep.status.into_iter().next(),
-            pid: intermediate_rep.pid.into_iter().next(),
-            uptime: intermediate_rep.uptime.into_iter().next(),
-            memory: intermediate_rep.memory.into_iter().next(),
-            cpu: intermediate_rep.cpu.into_iter().next(),
-            faults: intermediate_rep.faults.into_iter().next(),
-            service_name: intermediate_rep.service_name.into_iter().next(),
-            service_version: intermediate_rep.service_version.into_iter().next(),
+            name: intermediate_rep
+                .name
+                .into_iter()
+                .next()
+                .ok_or_else(|| "name missing in PipelineNameGet200Response".to_string())?,
+            status: intermediate_rep
+                .status
+                .into_iter()
+                .next()
+                .ok_or_else(|| "status missing in PipelineNameGet200Response".to_string())?,
+            pid: intermediate_rep
+                .pid
+                .into_iter()
+                .next()
+                .ok_or_else(|| "pid missing in PipelineNameGet200Response".to_string())?,
+            uptime: intermediate_rep
+                .uptime
+                .into_iter()
+                .next()
+                .ok_or_else(|| "uptime missing in PipelineNameGet200Response".to_string())?,
+            memory: intermediate_rep
+                .memory
+                .into_iter()
+                .next()
+                .ok_or_else(|| "memory missing in PipelineNameGet200Response".to_string())?,
+            cpu: intermediate_rep
+                .cpu
+                .into_iter()
+                .next()
+                .ok_or_else(|| "cpu missing in PipelineNameGet200Response".to_string())?,
+            faults: intermediate_rep
+                .faults
+                .into_iter()
+                .next()
+                .ok_or_else(|| "faults missing in PipelineNameGet200Response".to_string())?,
+            service_name: intermediate_rep
+                .service_name
+                .into_iter()
+                .next()
+                .ok_or_else(|| "service_name missing in PipelineNameGet200Response".to_string())?,
+            service_version: intermediate_rep
+                .service_version
+                .into_iter()
+                .next()
+                .ok_or_else(|| {
+                    "service_version missing in PipelineNameGet200Response".to_string()
+                })?,
             logs: intermediate_rep.logs.into_iter().next(),
         })
     }
@@ -1422,26 +1471,27 @@ impl std::str::FromStr for ServiceStatus {
 pub struct ServicesGet200ResponseInner {
     /// The name of the service
     #[serde(rename = "name")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
+    pub name: String,
 
     #[serde(rename = "status")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub status: Option<models::ServiceStatus>,
+    pub status: models::ServiceStatus,
 
     /// The version that is enabled for this service (if any)
     #[serde(rename = "enabled_version")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub enabled_version: Option<String>,
+    pub enabled_version: String,
 }
 
 impl ServicesGet200ResponseInner {
     #[allow(clippy::new_without_default, clippy::too_many_arguments)]
-    pub fn new() -> ServicesGet200ResponseInner {
+    pub fn new(
+        name: String,
+        status: models::ServiceStatus,
+        enabled_version: String,
+    ) -> ServicesGet200ResponseInner {
         ServicesGet200ResponseInner {
-            name: None,
-            status: None,
-            enabled_version: None,
+            name,
+            status,
+            enabled_version,
         }
     }
 }
@@ -1452,13 +1502,11 @@ impl ServicesGet200ResponseInner {
 impl std::fmt::Display for ServicesGet200ResponseInner {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let params: Vec<Option<String>> = vec![
-            self.name
-                .as_ref()
-                .map(|name| ["name".to_string(), name.to_string()].join(",")),
+            Some("name".to_string()),
+            Some(self.name.to_string()),
             // Skipping status in query parameter serialization
-            self.enabled_version.as_ref().map(|enabled_version| {
-                ["enabled_version".to_string(), enabled_version.to_string()].join(",")
-            }),
+            Some("enabled_version".to_string()),
+            Some(self.enabled_version.to_string()),
         ];
 
         write!(
@@ -1531,9 +1579,23 @@ impl std::str::FromStr for ServicesGet200ResponseInner {
 
         // Use the intermediate representation to return the struct
         std::result::Result::Ok(ServicesGet200ResponseInner {
-            name: intermediate_rep.name.into_iter().next(),
-            status: intermediate_rep.status.into_iter().next(),
-            enabled_version: intermediate_rep.enabled_version.into_iter().next(),
+            name: intermediate_rep
+                .name
+                .into_iter()
+                .next()
+                .ok_or_else(|| "name missing in ServicesGet200ResponseInner".to_string())?,
+            status: intermediate_rep
+                .status
+                .into_iter()
+                .next()
+                .ok_or_else(|| "status missing in ServicesGet200ResponseInner".to_string())?,
+            enabled_version: intermediate_rep
+                .enabled_version
+                .into_iter()
+                .next()
+                .ok_or_else(|| {
+                    "enabled_version missing in ServicesGet200ResponseInner".to_string()
+                })?,
         })
     }
 }
@@ -1588,16 +1650,13 @@ impl std::convert::TryFrom<HeaderValue> for header::IntoHeaderValue<ServicesGet2
 pub struct ServicesNameGet200Response {
     /// The name of the service
     #[serde(rename = "name")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
+    pub name: String,
 
     #[serde(rename = "status")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub status: Option<models::ServiceStatus>,
+    pub status: models::ServiceStatus,
 
     #[serde(rename = "versions")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub versions: Option<Vec<String>>,
+    pub versions: Vec<String>,
 
     /// The version that is enabled for this service (if any)
     #[serde(rename = "enabled_version")]
@@ -1607,11 +1666,15 @@ pub struct ServicesNameGet200Response {
 
 impl ServicesNameGet200Response {
     #[allow(clippy::new_without_default, clippy::too_many_arguments)]
-    pub fn new() -> ServicesNameGet200Response {
+    pub fn new(
+        name: String,
+        status: models::ServiceStatus,
+        versions: Vec<String>,
+    ) -> ServicesNameGet200Response {
         ServicesNameGet200Response {
-            name: None,
-            status: None,
-            versions: None,
+            name,
+            status,
+            versions,
             enabled_version: None,
         }
     }
@@ -1623,21 +1686,17 @@ impl ServicesNameGet200Response {
 impl std::fmt::Display for ServicesNameGet200Response {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let params: Vec<Option<String>> = vec![
-            self.name
-                .as_ref()
-                .map(|name| ["name".to_string(), name.to_string()].join(",")),
+            Some("name".to_string()),
+            Some(self.name.to_string()),
             // Skipping status in query parameter serialization
-            self.versions.as_ref().map(|versions| {
-                [
-                    "versions".to_string(),
-                    versions
-                        .iter()
-                        .map(|x| x.to_string())
-                        .collect::<Vec<_>>()
-                        .join(","),
-                ]
-                .join(",")
-            }),
+            Some("versions".to_string()),
+            Some(
+                self.versions
+                    .iter()
+                    .map(|x| x.to_string())
+                    .collect::<Vec<_>>()
+                    .join(","),
+            ),
             self.enabled_version.as_ref().map(|enabled_version| {
                 ["enabled_version".to_string(), enabled_version.to_string()].join(",")
             }),
@@ -1704,9 +1763,21 @@ impl std::str::FromStr for ServicesNameGet200Response {
 
         // Use the intermediate representation to return the struct
         std::result::Result::Ok(ServicesNameGet200Response {
-            name: intermediate_rep.name.into_iter().next(),
-            status: intermediate_rep.status.into_iter().next(),
-            versions: intermediate_rep.versions.into_iter().next(),
+            name: intermediate_rep
+                .name
+                .into_iter()
+                .next()
+                .ok_or_else(|| "name missing in ServicesNameGet200Response".to_string())?,
+            status: intermediate_rep
+                .status
+                .into_iter()
+                .next()
+                .ok_or_else(|| "status missing in ServicesNameGet200Response".to_string())?,
+            versions: intermediate_rep
+                .versions
+                .into_iter()
+                .next()
+                .ok_or_else(|| "versions missing in ServicesNameGet200Response".to_string())?,
             enabled_version: intermediate_rep.enabled_version.into_iter().next(),
         })
     }
@@ -1762,56 +1833,57 @@ impl std::convert::TryFrom<HeaderValue> for header::IntoHeaderValue<ServicesName
 pub struct ServicesNameVersionGet200Response {
     /// The name of the service
     #[serde(rename = "name")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
+    pub name: String,
 
     /// The version of the service
     #[serde(rename = "version")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub version: Option<String>,
+    pub version: String,
 
     #[serde(rename = "status")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub status: Option<models::ServiceStatus>,
+    pub status: models::ServiceStatus,
 
     /// The time this version was last built as milliseconds since epoch
     #[serde(rename = "built_at")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub built_at: Option<i64>,
+    pub built_at: i64,
 
     /// The author of the service
     #[serde(rename = "author")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub author: Option<String>,
+    pub author: String,
 
     /// The dependencies/inputs of this service version
     #[serde(rename = "inputs")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub inputs: Option<Vec<models::ServicesNameVersionGet200ResponseInputsInner>>,
+    pub inputs: Vec<models::ServicesNameVersionGet200ResponseInputsInner>,
 
     /// The output streams of this service version
     #[serde(rename = "outputs")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub outputs: Option<Vec<String>>,
+    pub outputs: Vec<String>,
 
     /// The validation errors of this service version (one error per line)
     #[serde(rename = "errors")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub errors: Option<Vec<String>>,
+    pub errors: Vec<String>,
 }
 
 impl ServicesNameVersionGet200Response {
     #[allow(clippy::new_without_default, clippy::too_many_arguments)]
-    pub fn new() -> ServicesNameVersionGet200Response {
+    pub fn new(
+        name: String,
+        version: String,
+        status: models::ServiceStatus,
+        built_at: i64,
+        author: String,
+        inputs: Vec<models::ServicesNameVersionGet200ResponseInputsInner>,
+        outputs: Vec<String>,
+        errors: Vec<String>,
+    ) -> ServicesNameVersionGet200Response {
         ServicesNameVersionGet200Response {
-            name: None,
-            version: None,
-            status: None,
-            built_at: None,
-            author: None,
-            inputs: None,
-            outputs: None,
-            errors: None,
+            name,
+            version,
+            status,
+            built_at,
+            author,
+            inputs,
+            outputs,
+            errors,
         }
     }
 }
@@ -1822,42 +1894,32 @@ impl ServicesNameVersionGet200Response {
 impl std::fmt::Display for ServicesNameVersionGet200Response {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let params: Vec<Option<String>> = vec![
-            self.name
-                .as_ref()
-                .map(|name| ["name".to_string(), name.to_string()].join(",")),
-            self.version
-                .as_ref()
-                .map(|version| ["version".to_string(), version.to_string()].join(",")),
+            Some("name".to_string()),
+            Some(self.name.to_string()),
+            Some("version".to_string()),
+            Some(self.version.to_string()),
             // Skipping status in query parameter serialization
-            self.built_at
-                .as_ref()
-                .map(|built_at| ["built_at".to_string(), built_at.to_string()].join(",")),
-            self.author
-                .as_ref()
-                .map(|author| ["author".to_string(), author.to_string()].join(",")),
+            Some("built_at".to_string()),
+            Some(self.built_at.to_string()),
+            Some("author".to_string()),
+            Some(self.author.to_string()),
             // Skipping inputs in query parameter serialization
-            self.outputs.as_ref().map(|outputs| {
-                [
-                    "outputs".to_string(),
-                    outputs
-                        .iter()
-                        .map(|x| x.to_string())
-                        .collect::<Vec<_>>()
-                        .join(","),
-                ]
-                .join(",")
-            }),
-            self.errors.as_ref().map(|errors| {
-                [
-                    "errors".to_string(),
-                    errors
-                        .iter()
-                        .map(|x| x.to_string())
-                        .collect::<Vec<_>>()
-                        .join(","),
-                ]
-                .join(",")
-            }),
+            Some("outputs".to_string()),
+            Some(
+                self.outputs
+                    .iter()
+                    .map(|x| x.to_string())
+                    .collect::<Vec<_>>()
+                    .join(","),
+            ),
+            Some("errors".to_string()),
+            Some(
+                self.errors
+                    .iter()
+                    .map(|x| x.to_string())
+                    .collect::<Vec<_>>()
+                    .join(","),
+            ),
         ];
 
         write!(
@@ -1931,14 +1993,44 @@ impl std::str::FromStr for ServicesNameVersionGet200Response {
 
         // Use the intermediate representation to return the struct
         std::result::Result::Ok(ServicesNameVersionGet200Response {
-            name: intermediate_rep.name.into_iter().next(),
-            version: intermediate_rep.version.into_iter().next(),
-            status: intermediate_rep.status.into_iter().next(),
-            built_at: intermediate_rep.built_at.into_iter().next(),
-            author: intermediate_rep.author.into_iter().next(),
-            inputs: intermediate_rep.inputs.into_iter().next(),
-            outputs: intermediate_rep.outputs.into_iter().next(),
-            errors: intermediate_rep.errors.into_iter().next(),
+            name: intermediate_rep
+                .name
+                .into_iter()
+                .next()
+                .ok_or_else(|| "name missing in ServicesNameVersionGet200Response".to_string())?,
+            version: intermediate_rep.version.into_iter().next().ok_or_else(|| {
+                "version missing in ServicesNameVersionGet200Response".to_string()
+            })?,
+            status: intermediate_rep
+                .status
+                .into_iter()
+                .next()
+                .ok_or_else(|| "status missing in ServicesNameVersionGet200Response".to_string())?,
+            built_at: intermediate_rep
+                .built_at
+                .into_iter()
+                .next()
+                .ok_or_else(|| {
+                    "built_at missing in ServicesNameVersionGet200Response".to_string()
+                })?,
+            author: intermediate_rep
+                .author
+                .into_iter()
+                .next()
+                .ok_or_else(|| "author missing in ServicesNameVersionGet200Response".to_string())?,
+            inputs: intermediate_rep
+                .inputs
+                .into_iter()
+                .next()
+                .ok_or_else(|| "inputs missing in ServicesNameVersionGet200Response".to_string())?,
+            outputs: intermediate_rep.outputs.into_iter().next().ok_or_else(|| {
+                "outputs missing in ServicesNameVersionGet200Response".to_string()
+            })?,
+            errors: intermediate_rep
+                .errors
+                .into_iter()
+                .next()
+                .ok_or_else(|| "errors missing in ServicesNameVersionGet200Response".to_string())?,
         })
     }
 }
@@ -2143,22 +2235,17 @@ impl std::convert::TryFrom<HeaderValue>
 pub struct ServicesPost200Response {
     /// The name of the service
     #[serde(rename = "name")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
+    pub name: String,
 
     /// The version of the service
     #[serde(rename = "version")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub version: Option<String>,
+    pub version: String,
 }
 
 impl ServicesPost200Response {
     #[allow(clippy::new_without_default, clippy::too_many_arguments)]
-    pub fn new() -> ServicesPost200Response {
-        ServicesPost200Response {
-            name: None,
-            version: None,
-        }
+    pub fn new(name: String, version: String) -> ServicesPost200Response {
+        ServicesPost200Response { name, version }
     }
 }
 
@@ -2168,12 +2255,10 @@ impl ServicesPost200Response {
 impl std::fmt::Display for ServicesPost200Response {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let params: Vec<Option<String>> = vec![
-            self.name
-                .as_ref()
-                .map(|name| ["name".to_string(), name.to_string()].join(",")),
-            self.version
-                .as_ref()
-                .map(|version| ["version".to_string(), version.to_string()].join(",")),
+            Some("name".to_string()),
+            Some(self.name.to_string()),
+            Some("version".to_string()),
+            Some(self.version.to_string()),
         ];
 
         write!(
@@ -2240,8 +2325,16 @@ impl std::str::FromStr for ServicesPost200Response {
 
         // Use the intermediate representation to return the struct
         std::result::Result::Ok(ServicesPost200Response {
-            name: intermediate_rep.name.into_iter().next(),
-            version: intermediate_rep.version.into_iter().next(),
+            name: intermediate_rep
+                .name
+                .into_iter()
+                .next()
+                .ok_or_else(|| "name missing in ServicesPost200Response".to_string())?,
+            version: intermediate_rep
+                .version
+                .into_iter()
+                .next()
+                .ok_or_else(|| "version missing in ServicesPost200Response".to_string())?,
         })
     }
 }
@@ -2296,17 +2389,14 @@ impl std::convert::TryFrom<HeaderValue> for header::IntoHeaderValue<ServicesPost
 pub struct SourcesGet200ResponseInner {
     /// The name of the source
     #[serde(rename = "name")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
+    pub name: String,
 
     /// The URL of the source (without scheme)
     #[serde(rename = "url")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub url: Option<String>,
+    pub url: String,
 
     #[serde(rename = "version")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub version: Option<String>,
+    pub version: String,
 
     /// The SHA256 hash of the source download, computed over the ZIP file downloaded
     #[serde(rename = "sha")]
@@ -2316,11 +2406,11 @@ pub struct SourcesGet200ResponseInner {
 
 impl SourcesGet200ResponseInner {
     #[allow(clippy::new_without_default, clippy::too_many_arguments)]
-    pub fn new() -> SourcesGet200ResponseInner {
+    pub fn new(name: String, url: String, version: String) -> SourcesGet200ResponseInner {
         SourcesGet200ResponseInner {
-            name: None,
-            url: None,
-            version: None,
+            name,
+            url,
+            version,
             sha: None,
         }
     }
@@ -2332,15 +2422,12 @@ impl SourcesGet200ResponseInner {
 impl std::fmt::Display for SourcesGet200ResponseInner {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let params: Vec<Option<String>> = vec![
-            self.name
-                .as_ref()
-                .map(|name| ["name".to_string(), name.to_string()].join(",")),
-            self.url
-                .as_ref()
-                .map(|url| ["url".to_string(), url.to_string()].join(",")),
-            self.version
-                .as_ref()
-                .map(|version| ["version".to_string(), version.to_string()].join(",")),
+            Some("name".to_string()),
+            Some(self.name.to_string()),
+            Some("url".to_string()),
+            Some(self.url.to_string()),
+            Some("version".to_string()),
+            Some(self.version.to_string()),
             self.sha
                 .as_ref()
                 .map(|sha| ["sha".to_string(), sha.to_string()].join(",")),
@@ -2420,9 +2507,21 @@ impl std::str::FromStr for SourcesGet200ResponseInner {
 
         // Use the intermediate representation to return the struct
         std::result::Result::Ok(SourcesGet200ResponseInner {
-            name: intermediate_rep.name.into_iter().next(),
-            url: intermediate_rep.url.into_iter().next(),
-            version: intermediate_rep.version.into_iter().next(),
+            name: intermediate_rep
+                .name
+                .into_iter()
+                .next()
+                .ok_or_else(|| "name missing in SourcesGet200ResponseInner".to_string())?,
+            url: intermediate_rep
+                .url
+                .into_iter()
+                .next()
+                .ok_or_else(|| "url missing in SourcesGet200ResponseInner".to_string())?,
+            version: intermediate_rep
+                .version
+                .into_iter()
+                .next()
+                .ok_or_else(|| "version missing in SourcesGet200ResponseInner".to_string())?,
             sha: intermediate_rep.sha.into_iter().next(),
         })
     }
@@ -2478,28 +2577,21 @@ impl std::convert::TryFrom<HeaderValue> for header::IntoHeaderValue<SourcesGet20
 pub struct SourcesPostRequest {
     /// The name of the source
     #[serde(rename = "name")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
+    pub name: String,
 
     /// The URL of the source (without scheme)
     #[serde(rename = "url")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub url: Option<String>,
+    pub url: String,
 
     /// The version of the source
     #[serde(rename = "version")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub version: Option<String>,
+    pub version: String,
 }
 
 impl SourcesPostRequest {
     #[allow(clippy::new_without_default, clippy::too_many_arguments)]
-    pub fn new() -> SourcesPostRequest {
-        SourcesPostRequest {
-            name: None,
-            url: None,
-            version: None,
-        }
+    pub fn new(name: String, url: String, version: String) -> SourcesPostRequest {
+        SourcesPostRequest { name, url, version }
     }
 }
 
@@ -2509,15 +2601,12 @@ impl SourcesPostRequest {
 impl std::fmt::Display for SourcesPostRequest {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let params: Vec<Option<String>> = vec![
-            self.name
-                .as_ref()
-                .map(|name| ["name".to_string(), name.to_string()].join(",")),
-            self.url
-                .as_ref()
-                .map(|url| ["url".to_string(), url.to_string()].join(",")),
-            self.version
-                .as_ref()
-                .map(|version| ["version".to_string(), version.to_string()].join(",")),
+            Some("name".to_string()),
+            Some(self.name.to_string()),
+            Some("url".to_string()),
+            Some(self.url.to_string()),
+            Some("version".to_string()),
+            Some(self.version.to_string()),
         ];
 
         write!(
@@ -2589,9 +2678,21 @@ impl std::str::FromStr for SourcesPostRequest {
 
         // Use the intermediate representation to return the struct
         std::result::Result::Ok(SourcesPostRequest {
-            name: intermediate_rep.name.into_iter().next(),
-            url: intermediate_rep.url.into_iter().next(),
-            version: intermediate_rep.version.into_iter().next(),
+            name: intermediate_rep
+                .name
+                .into_iter()
+                .next()
+                .ok_or_else(|| "name missing in SourcesPostRequest".to_string())?,
+            url: intermediate_rep
+                .url
+                .into_iter()
+                .next()
+                .ok_or_else(|| "url missing in SourcesPostRequest".to_string())?,
+            version: intermediate_rep
+                .version
+                .into_iter()
+                .next()
+                .ok_or_else(|| "version missing in SourcesPostRequest".to_string())?,
         })
     }
 }
@@ -2645,8 +2746,7 @@ impl std::convert::TryFrom<HeaderValue> for header::IntoHeaderValue<SourcesPostR
 #[cfg_attr(feature = "conversion", derive(frunk::LabelledGeneric))]
 pub struct StatusGet200Response {
     #[serde(rename = "status")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub status: Option<models::DaemonStatus>,
+    pub status: models::DaemonStatus,
 
     /// Error message of the daemon status
     #[serde(rename = "error_message")]
@@ -2655,23 +2755,19 @@ pub struct StatusGet200Response {
 
     /// The version of the roverd daemon
     #[serde(rename = "version")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub version: Option<String>,
+    pub version: String,
 
     /// The number of milliseconds the roverd daemon process has been running
     #[serde(rename = "uptime")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub uptime: Option<i64>,
+    pub uptime: i64,
 
     /// The operating system of the rover
     #[serde(rename = "os")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub os: Option<String>,
+    pub os: String,
 
     /// The system time of the rover as milliseconds since epoch
     #[serde(rename = "systime")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub systime: Option<i64>,
+    pub systime: i64,
 
     /// The unique identifier of the rover
     #[serde(rename = "rover_id")]
@@ -2686,14 +2782,20 @@ pub struct StatusGet200Response {
 
 impl StatusGet200Response {
     #[allow(clippy::new_without_default, clippy::too_many_arguments)]
-    pub fn new() -> StatusGet200Response {
+    pub fn new(
+        status: models::DaemonStatus,
+        version: String,
+        uptime: i64,
+        os: String,
+        systime: i64,
+    ) -> StatusGet200Response {
         StatusGet200Response {
-            status: None,
+            status,
             error_message: None,
-            version: None,
-            uptime: None,
-            os: None,
-            systime: None,
+            version,
+            uptime,
+            os,
+            systime,
             rover_id: None,
             rover_name: None,
         }
@@ -2710,18 +2812,14 @@ impl std::fmt::Display for StatusGet200Response {
             self.error_message.as_ref().map(|error_message| {
                 ["error_message".to_string(), error_message.to_string()].join(",")
             }),
-            self.version
-                .as_ref()
-                .map(|version| ["version".to_string(), version.to_string()].join(",")),
-            self.uptime
-                .as_ref()
-                .map(|uptime| ["uptime".to_string(), uptime.to_string()].join(",")),
-            self.os
-                .as_ref()
-                .map(|os| ["os".to_string(), os.to_string()].join(",")),
-            self.systime
-                .as_ref()
-                .map(|systime| ["systime".to_string(), systime.to_string()].join(",")),
+            Some("version".to_string()),
+            Some(self.version.to_string()),
+            Some("uptime".to_string()),
+            Some(self.uptime.to_string()),
+            Some("os".to_string()),
+            Some(self.os.to_string()),
+            Some("systime".to_string()),
+            Some(self.systime.to_string()),
             self.rover_id
                 .as_ref()
                 .map(|rover_id| ["rover_id".to_string(), rover_id.to_string()].join(",")),
@@ -2825,12 +2923,32 @@ impl std::str::FromStr for StatusGet200Response {
 
         // Use the intermediate representation to return the struct
         std::result::Result::Ok(StatusGet200Response {
-            status: intermediate_rep.status.into_iter().next(),
+            status: intermediate_rep
+                .status
+                .into_iter()
+                .next()
+                .ok_or_else(|| "status missing in StatusGet200Response".to_string())?,
             error_message: intermediate_rep.error_message.into_iter().next(),
-            version: intermediate_rep.version.into_iter().next(),
-            uptime: intermediate_rep.uptime.into_iter().next(),
-            os: intermediate_rep.os.into_iter().next(),
-            systime: intermediate_rep.systime.into_iter().next(),
+            version: intermediate_rep
+                .version
+                .into_iter()
+                .next()
+                .ok_or_else(|| "version missing in StatusGet200Response".to_string())?,
+            uptime: intermediate_rep
+                .uptime
+                .into_iter()
+                .next()
+                .ok_or_else(|| "uptime missing in StatusGet200Response".to_string())?,
+            os: intermediate_rep
+                .os
+                .into_iter()
+                .next()
+                .ok_or_else(|| "os missing in StatusGet200Response".to_string())?,
+            systime: intermediate_rep
+                .systime
+                .into_iter()
+                .next()
+                .ok_or_else(|| "systime missing in StatusGet200Response".to_string())?,
             rover_id: intermediate_rep.rover_id.into_iter().next(),
             rover_name: intermediate_rep.rover_name.into_iter().next(),
         })
@@ -3207,14 +3325,13 @@ impl std::convert::TryFrom<HeaderValue> for header::IntoHeaderValue<UnmetStreamE
 pub struct UpdatePost200Response {
     /// The version of the roverd daemon updated to
     #[serde(rename = "version")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub version: Option<String>,
+    pub version: String,
 }
 
 impl UpdatePost200Response {
     #[allow(clippy::new_without_default, clippy::too_many_arguments)]
-    pub fn new() -> UpdatePost200Response {
-        UpdatePost200Response { version: None }
+    pub fn new(version: String) -> UpdatePost200Response {
+        UpdatePost200Response { version }
     }
 }
 
@@ -3223,10 +3340,8 @@ impl UpdatePost200Response {
 /// Should be implemented in a serde serializer
 impl std::fmt::Display for UpdatePost200Response {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let params: Vec<Option<String>> = vec![self
-            .version
-            .as_ref()
-            .map(|version| ["version".to_string(), version.to_string()].join(","))];
+        let params: Vec<Option<String>> =
+            vec![Some("version".to_string()), Some(self.version.to_string())];
 
         write!(
             f,
@@ -3287,7 +3402,11 @@ impl std::str::FromStr for UpdatePost200Response {
 
         // Use the intermediate representation to return the struct
         std::result::Result::Ok(UpdatePost200Response {
-            version: intermediate_rep.version.into_iter().next(),
+            version: intermediate_rep
+                .version
+                .into_iter()
+                .next()
+                .ok_or_else(|| "version missing in UpdatePost200Response".to_string())?,
         })
     }
 }

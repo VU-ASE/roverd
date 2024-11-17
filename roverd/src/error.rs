@@ -59,6 +59,6 @@ impl From<Vec<rovervalidate::error::Error>> for Error {
     #[allow(clippy::format_collect)]
     fn from(error_vec: Vec<rovervalidate::error::Error>) -> Self {
         let error_string: String = error_vec.iter().map(|s| format!("{s}\n")).collect();
-        Error::ConfigValidation(format!("{}", error_string))
+        Error::ConfigValidation(error_string)
     }
 }

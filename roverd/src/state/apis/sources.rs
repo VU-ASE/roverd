@@ -39,9 +39,9 @@ impl Sources for Roverd {
             .downloaded
             .iter()
             .map(|downloaded| SourcesGet200ResponseInner {
-                name: Some(downloaded.name.clone()),
-                url: Some(downloaded.source.clone()),
-                version: Some(downloaded.version.clone()),
+                name: downloaded.name.clone(),
+                url: downloaded.source.clone(),
+                version: downloaded.version.clone(),
                 sha: downloaded.sha.clone(),
             })
             .collect();

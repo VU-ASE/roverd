@@ -41,6 +41,7 @@ paths:
                       - "status"
                       - "last_start"
                       - "last_stop"
+                      - "last_restart"
                     properties:
                       status:
                         $ref: "#/components/schemas/PipelineStatus"
@@ -78,27 +79,18 @@ paths:
                             type: array
                             items:
                               $ref: "#/components/schemas/DuplicateServiceError"
-                        
-                        
-                      #   items:
-                      #     $ref: "#/components/schemas/Un"
-                      # validation_errors:
-                      #   type: array
-                      #   description: "If status is invalid, this array shows the validation errors"
-                      #   items:
-                      #     $ref: "#/components/schemas/PipelineValidationError"
-                      # validation_errors:
-                      #   type: array
-                      #   description: "If status is invalid, this array shows the validation errors"
-                      #   items:
-                      #     $ref: "#/components/schemas/PipelineValidationError"
-                          
-                      
-                      
                   processes:
                     type: array
                     items:
                       type: object
+                      required:
+                        - "name"
+                        - "status"
+                        - "pid"
+                        - "uptime"
+                        - "memory"
+                        - "cpu"
+                        - "faults"
                       properties:
                         name:
                           type: string
@@ -187,6 +179,16 @@ paths:
             application/json:
               schema:
                 type: object
+                required:
+                  - "name"
+                  - "status"
+                  - "pid"
+                  - "uptime"
+                  - "memory"
+                  - "cpu"
+                  - "faults"
+                  - "service_name"
+                  - "service_version"
                 properties:
                   name:
                     type: string
@@ -259,6 +261,10 @@ paths:
                 type: array
                 items:
                   type: object
+                  required:
+                    - "name"
+                    - "status"
+                    - "enabled_version"
                   properties:
                     name:
                       type: string
@@ -299,6 +305,9 @@ paths:
             application/json:
               schema:
                 type: object
+                required:
+                  - "name"
+                  - "version"
                 properties:
                   name:
                     type: string
@@ -333,6 +342,10 @@ paths:
             application/json:
               schema:
                 type: object
+                required:
+                  - "name"
+                  - "status"
+                  - "versions"
                 properties:
                   name:
                     type: string
@@ -386,6 +399,15 @@ paths:
             application/json:
               schema:
                 type: object
+                required:
+                  - "name"
+                  - "version"
+                  - "status"
+                  - "built_at"
+                  - "author"
+                  - "inputs"
+                  - "outputs"
+                  - "errors"
                 properties:
                   name:
                     type: string
@@ -534,6 +556,10 @@ paths:
                 type: array
                 items:
                   type: object
+                  required:
+                    - "name"
+                    - "url"
+                    - "version"
                   properties:
                     name:
                       type: string
@@ -565,6 +591,10 @@ paths:
           application/json:
             schema:
               type: object
+              required:
+                - "name"
+                - "url"
+                - "version"
               properties:
                 name:
                   type: string
@@ -596,6 +626,10 @@ paths:
           application/json:
             schema:
               type: object
+              required:
+                - "name"
+                - "url"
+                - "version"
               properties:
                 name:
                   type: string
@@ -635,6 +669,12 @@ paths:
             application/json:
               schema:
                 type: object
+                required:
+                  - "status"
+                  - "version"
+                  - "uptime"
+                  - "os"
+                  - "systime"
                 properties:
                   status:
                     $ref: "#/components/schemas/DaemonStatus"
@@ -685,6 +725,8 @@ paths:
             application/json:
               schema:
                 type: object
+                required:
+                  - "version"
                 properties:
                   version:
                     type: string
