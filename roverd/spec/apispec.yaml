@@ -450,6 +450,9 @@ paths:
                     description: "The dependencies/inputs of this service version"
                     items:
                       type: object
+                      required:
+                        - "service"
+                        - "streams"
                       properties:
                         service:
                           type: string
