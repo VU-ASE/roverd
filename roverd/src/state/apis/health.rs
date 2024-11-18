@@ -7,6 +7,7 @@ use openapi::models;
 use axum::extract::Host;
 use axum::http::Method;
 use axum_extra::extract::CookieJar;
+use tracing::info;
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -19,10 +20,11 @@ impl Health for Roverd {
     /// StatusGet - GET /status
     async fn status_get(
         &self,
-        _method: Method,
+        method: Method,
         _host: Host,
         _cookies: CookieJar,
     ) -> Result<StatusGetResponse, String> {
+        info!("{:?} /status", method);
         let uptime = SystemTime::now()
             .duration_since(self.info.start_time)
             .unwrap()
@@ -32,14 +34,14 @@ impl Health for Roverd {
             .unwrap()
             .as_millis() as i64;
 
-        let error_message = Some(match self.info.status {
-            DaemonStatus::Unrecoverable => "❌ check logs and restart roverd".to_string(),
-            DaemonStatus::Recoverable => match &self.info.error_msg {
+        let error_message = match self.info.status {
+            DaemonStatus::Unrecoverable => Some("❌ check logs and restart roverd".to_string()),
+            DaemonStatus::Recoverable => Some(match &self.info.error_msg {
                 Some(msg) => format!("⚠️ {}", msg),
                 None => "⚠️ recoverable error, check logs".to_string(),
-            },
-            DaemonStatus::Operational => "✅ operational".to_string(),
-        });
+            }),
+            DaemonStatus::Operational => None,
+        };
 
         Ok(
             StatusGetResponse::Status200_TheHealthAndVersioningInformation(
@@ -62,10 +64,11 @@ impl Health for Roverd {
     /// UpdatePost - POST /update
     async fn update_post(
         &self,
-        _method: Method,
+        method: Method,
         _host: Host,
         _cookies: CookieJar,
     ) -> Result<UpdatePostResponse, String> {
+        info!("{:?} /update", method);
         Ok(UpdatePostResponse::Status400_AnErrorOccurred(
             models::GenericError {
                 message: Some("todo: /update is not yet fully implemented".to_string()),

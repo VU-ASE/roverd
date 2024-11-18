@@ -1,4 +1,11 @@
-use std::{io::Write, path::Path, path::PathBuf};
+use std::{
+    fs,
+    io::{self, Read, Write},
+    path::{Path, PathBuf},
+};
+
+// use reqwest::StatusCode;
+use axum::http::StatusCode;
 
 use tracing::info;
 
@@ -10,37 +17,41 @@ const AUTHOR: &str = "vu-ase";
 const DOWNLOAD_URL: &str = "https://downloads.ase.vu.nl";
 const DOWNLOAD_DESTINATION: &str = "/tmp";
 
+/// Copy files from source to destination recursively.
+pub fn copy_recursively(source: impl AsRef<Path>, destination: impl AsRef<Path>) -> io::Result<()> {
+    fs::create_dir_all(&destination)?;
+    for entry in fs::read_dir(source)? {
+        let entry = entry?;
+        let filetype = entry.file_type()?;
+        if filetype.is_dir() {
+            copy_recursively(entry.path(), destination.as_ref().join(entry.file_name()))?;
+        } else {
+            fs::copy(entry.path(), destination.as_ref().join(entry.file_name()))?;
+        }
+    }
+    Ok(())
+}
+
 /// Extracts the contents of the zip file into the directory at
 /// destination_dir.
-fn extract_zip(zip_file: &str, destination_dir: &str) -> Result<(), Error> {
-    info!("going to extract {} into {}", zip_file, destination_dir);
-
-    // Ensure the output directory exists
+pub fn extract_zip(zip_file: &str, destination_dir: &str) -> Result<(), Error> {
     std::fs::create_dir_all(destination_dir)?;
 
-    // let zip_path = Path::new(zip_file);
-    // let archive = zip::ZipArchive::new(zip_path)?;
+    let mut file = fs::File::open(zip_file)?;
+    let mut bytes: Vec<u8> = Vec::new();
+    file.read_to_end(&mut bytes)?;
 
-    // for entry in archive.entries().map(|e| e.map(|e| e.unwrap())) {
-    //     let mut entry = entry?;
+    let target = PathBuf::from(destination_dir);
 
-    //     if entry.file_name() == "" || entry.name().ends_with('/') {
-    //         continue; // Skip directories and empty entries
-    //     }
+    let a = io::Cursor::new(bytes);
+    let mut z = zip::ZipArchive::new(a)?;
 
-    //     let out_path = Path::new(destination_dir).join(entry.name());
-
-    //     // Create parent directories if they don't exist
-    //     let parent = out_path.parent().unwrap_or(Path::new(destination_dir));
-    //     fs::create_dir_all(parent)?;
-
-    //     let mut file = fs::File::create(out_path)?;
-    //     archive.extract(entry, &mut file)?;
-    // }
+    z.extract(target)?;
 
     Ok(())
 }
 
+/// Deletes the contents of a given directory
 fn delete_directory_contents(full_path: &Path) -> Result<(), Error> {
     // Iterate over all entries in the directory
     for entry in std::fs::read_dir(full_path)? {
@@ -76,8 +87,12 @@ fn prepare_dirs(author: &str, name: &str, version: &str) -> Result<String, Error
     Ok(full_path_string)
 }
 
+/// Downloads the vu-ase service from the downloads page and creates a zip file
+/// /tmp/name-version.zip.
 pub async fn download_service(name: &str, version: &str) -> Result<String, Error> {
-    let url = format!("{}/api/{}/{}", DOWNLOAD_URL, name, version);
+    let url = format!("{}/api/{}/v{}", DOWNLOAD_URL, name, version);
+
+    info!("Downloading: {}", url);
 
     if name.contains(char::is_whitespace) || version.contains(char::is_whitespace) {
         return Err(Error::Download);
@@ -86,17 +101,39 @@ pub async fn download_service(name: &str, version: &str) -> Result<String, Error
     let zip_file = format!("{DOWNLOAD_DESTINATION}/{name}-{version}.zip");
 
     let response = reqwest::get(url).await?;
+
+    if response.status() != StatusCode::OK {
+        let resp: axum::http::StatusCode = response.status();
+        return Err(Error::Http(resp));
+    }
+
     let mut file = std::fs::File::create(zip_file.clone())?;
 
-    info!("downloading...");
     let bytes = response.bytes().await?;
 
-    info!("writing...");
     file.write_all(&bytes)?;
 
+    Ok(zip_file)
+}
+
+/// Source doesn't exist yet, so download it to /tmp and move it correct place on disk.
+/// There shouldn't be any directories or files in the unique path of the service,
+/// however if there are, they will get deleted to make space.
+pub async fn download_and_install_service(name: &str, version: &str) -> Result<(), Error> {
+    let contents_dir = format!("{DOWNLOAD_DESTINATION}/{name}-{version}");
+    let zip_file = download_service(name, version).await?;
+
+    // Deletes any existing files/dirs that are on the /author/name/version path
+    // Makes sure the directories exist.
     let full_path = prepare_dirs(AUTHOR, name, version)?;
 
-    extract_zip(&zip_file, &full_path)?;
+    // Unpack the downloaded service and validate it.
+    extract_zip(&zip_file, &contents_dir)?;
 
-    Ok(full_path)
+    // Copy contents into place
+    // copy_dir_contents(&contents_dir, &full_path)?;
+
+    copy_recursively(contents_dir, full_path)?;
+
+    Ok(())
 }
