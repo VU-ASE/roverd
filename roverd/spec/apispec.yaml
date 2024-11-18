@@ -121,25 +121,37 @@ paths:
         "400":
           $ref: "#/components/responses/Error"
         "401":
-          $ref:
-            "#/components/responses/UnauthorizedError"
-
-            # parameters:
-      #   - name: action
-      #     in: query
-      #     required: true
-      #     schema:
-      #       type: string
-      #       enum:
-      #         - start
-      #         - stop
-      #     description: "The action to perform on the pipeline"
-      #     example: "start"
+          $ref: "#/components/responses/UnauthorizedError"
 
     post:
       tags:
         - "Pipeline"
-      summary: "Set the services that are enabled in this pipeline"
+      summary: "Set the services that are enabled in this pipeline, by specifying the fully qualified services"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                required:
+                  - "name"
+                  - "version"
+                  - "author"
+                properties:
+                  name:
+                    type: string
+                    description: "The name of the service"
+                    example: "imaging"
+                  version:
+                    type: string
+                    description: "The version of the service"
+                    example: "1.0.0"
+                  author:
+                    type: string
+                    description: "The author of the service"
+                    example: "vu-ase"
       responses:
         "200":
           description: "The pipeline was updated successfully"
