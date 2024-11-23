@@ -12,6 +12,20 @@ use crate::state::Roverd;
 
 #[async_trait]
 impl Pipeline for Roverd {
+    /// Retrieve logs for a pipeline service (this can be logs from multiple processes, if the service was restarted). These logs are still queryable if a process has been terminated or if the pipeline was stopped..
+    ///
+    /// LogsNameGet - GET /logs/{name}
+    async fn logs_name_get(
+        &self,
+        _method: Method,
+        _host: Host,
+        _cookies: CookieJar,
+        _path_params: models::LogsNameGetPathParams,
+        _query_params: models::LogsNameGetQueryParams,
+    ) -> Result<LogsNameGetResponse, String> {
+        Ok(LogsNameGetResponse::Status401_UnauthorizedAccess)
+    }
+
     /// Retrieve pipeline status and process execution information.
     ///
     /// PipelineGet - GET /pipeline
@@ -21,52 +35,10 @@ impl Pipeline for Roverd {
         _host: Host,
         _cookies: CookieJar,
     ) -> Result<PipelineGetResponse, String> {
-        // let a = rovervalidate::error::PipelineValidationError::UnmetDependencyError(
-        //     UnmetDependencyError::UnmetStream(UnmetStreamError {
-        //         source: "asdf".to_string(),
-        //         target: "targ".to_string(),
-        //         stream: "stream".to_string(),
-        //     }),
-        // );
-
-        // let a = UnmetStreamError {
-        //     source: "asdf".to_string(),
-        //     target: "targ".to_string(),
-        //     stream: "stream".to_string(),
-        // };
-
-        // let y = models::UnmetStreamError {
-        //     source: Some(a.source),
-        //     target: Some(a.target),
-        //     stream: Some(a.stream),
-        // };
-
-        // let x = models::UnmetDependencyError();
-
-        // let a = models::PipelineValidationError::from();
-
-        Ok(
-            PipelineGetResponse::Status200_PipelineStatusAndAnArrayOfProcesses(
-                models::PipelineGet200Response::new(),
-            ),
-        )
+        Ok(PipelineGetResponse::Status401_UnauthorizedAccess)
     }
 
-    /// Retrieve the status of a service running as a process in the pipeline.
-    ///
-    /// PipelineNameGet - GET /pipeline/{name}
-    async fn pipeline_name_get(
-        &self,
-        _method: Method,
-        _host: Host,
-        _cookies: CookieJar,
-        _path_params: models::PipelineNameGetPathParams,
-        _query_params: models::PipelineNameGetQueryParams,
-    ) -> Result<PipelineNameGetResponse, String> {
-        Ok(PipelineNameGetResponse::Status401_UnauthorizedAccess)
-    }
-
-    /// Start or stop the pipeline of all enabled services.
+    /// Set the services that are enabled in this pipeline, by specifying the fully qualified services.
     ///
     /// PipelinePost - POST /pipeline
     async fn pipeline_post(
@@ -74,8 +46,32 @@ impl Pipeline for Roverd {
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
-        _query_params: models::PipelinePostQueryParams,
+        _body: Vec<models::PipelinePostRequestInner>,
     ) -> Result<PipelinePostResponse, String> {
-        Ok(PipelinePostResponse::Status200_ThePipelineActionWasPerformedSuccessfully)
+        Ok(PipelinePostResponse::Status401_UnauthorizedAccess)
+    }
+
+    /// Start the pipeline.
+    ///
+    /// PipelineStartPost - POST /pipeline/start
+    async fn pipeline_start_post(
+        &self,
+        _method: Method,
+        _host: Host,
+        _cookies: CookieJar,
+    ) -> Result<PipelineStartPostResponse, String> {
+        Ok(PipelineStartPostResponse::Status401_UnauthorizedAccess)
+    }
+
+    /// Stop the pipeline.
+    ///
+    /// PipelineStopPost - POST /pipeline/stop
+    async fn pipeline_stop_post(
+        &self,
+        _method: Method,
+        _host: Host,
+        _cookies: CookieJar,
+    ) -> Result<PipelineStopPostResponse, String> {
+        Ok(PipelineStopPostResponse::Status401_UnauthorizedAccess)
     }
 }

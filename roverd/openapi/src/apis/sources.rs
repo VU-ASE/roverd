@@ -70,7 +70,7 @@ pub trait Sources {
         cookies: CookieJar,
     ) -> Result<SourcesGetResponse, String>;
 
-    /// Downloads and installs a new source, adds it the 'downloaded' in rover.yaml.
+    /// Downloads and installs a new source, overwriting the prior version (if any) and adding it to the 'downloaded' section in rover.yaml (checks for duplicate source names).
     ///
     /// SourcesPost - POST /sources
     async fn sources_post(

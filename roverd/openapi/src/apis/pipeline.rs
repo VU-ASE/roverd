@@ -10,6 +10,20 @@ use crate::{models, types::*};
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[must_use]
 #[allow(clippy::large_enum_variant)]
+pub enum LogsNameGetResponse {
+    /// The collection of logs
+    Status200_TheCollectionOfLogs(Vec<String>),
+    /// An error occurred
+    Status400_AnErrorOccurred(models::GenericError),
+    /// Entity not found
+    Status404_EntityNotFound,
+    /// Unauthorized access (you need to set the Authorization header with a valid username and password)
+    Status401_UnauthorizedAccess,
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[must_use]
+#[allow(clippy::large_enum_variant)]
 pub enum PipelineGetResponse {
     /// Pipeline status and an array of processes
     Status200_PipelineStatusAndAnArrayOfProcesses(models::PipelineGet200Response),
@@ -22,13 +36,11 @@ pub enum PipelineGetResponse {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[must_use]
 #[allow(clippy::large_enum_variant)]
-pub enum PipelineNameGetResponse {
-    /// The status of the process
-    Status200_TheStatusOfTheProcess(models::PipelineNameGet200Response),
-    /// An error occurred
-    Status400_AnErrorOccurred(models::GenericError),
-    /// Entity not found
-    Status404_EntityNotFound,
+pub enum PipelinePostResponse {
+    /// The pipeline was updated successfully
+    Status200_ThePipelineWasUpdatedSuccessfully,
+    /// The pipeline was not valid and could not be set
+    Status400_ThePipelineWasNotValidAndCouldNotBeSet(models::PipelinePost400Response),
     /// Unauthorized access (you need to set the Authorization header with a valid username and password)
     Status401_UnauthorizedAccess,
 }
@@ -36,9 +48,21 @@ pub enum PipelineNameGetResponse {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[must_use]
 #[allow(clippy::large_enum_variant)]
-pub enum PipelinePostResponse {
-    /// The pipeline action was performed successfully
-    Status200_ThePipelineActionWasPerformedSuccessfully,
+pub enum PipelineStartPostResponse {
+    /// The pipeline was started successfully. You can view its information with GET /pipeline
+    Status200_ThePipelineWasStartedSuccessfully,
+    /// An error occurred
+    Status400_AnErrorOccurred(models::GenericError),
+    /// Unauthorized access (you need to set the Authorization header with a valid username and password)
+    Status401_UnauthorizedAccess,
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[must_use]
+#[allow(clippy::large_enum_variant)]
+pub enum PipelineStopPostResponse {
+    /// The pipeline was stopped successfully. You can view its information with GET /pipeline
+    Status200_ThePipelineWasStoppedSuccessfully,
     /// An error occurred
     Status400_AnErrorOccurred(models::GenericError),
     /// Unauthorized access (you need to set the Authorization header with a valid username and password)
@@ -49,6 +73,18 @@ pub enum PipelinePostResponse {
 #[async_trait]
 #[allow(clippy::ptr_arg)]
 pub trait Pipeline {
+    /// Retrieve logs for a pipeline service (this can be logs from multiple processes, if the service was restarted). These logs are still queryable if a process has been terminated or if the pipeline was stopped..
+    ///
+    /// LogsNameGet - GET /logs/{name}
+    async fn logs_name_get(
+        &self,
+        method: Method,
+        host: Host,
+        cookies: CookieJar,
+        path_params: models::LogsNameGetPathParams,
+        query_params: models::LogsNameGetQueryParams,
+    ) -> Result<LogsNameGetResponse, String>;
+
     /// Retrieve pipeline status and process execution information.
     ///
     /// PipelineGet - GET /pipeline
@@ -59,19 +95,7 @@ pub trait Pipeline {
         cookies: CookieJar,
     ) -> Result<PipelineGetResponse, String>;
 
-    /// Retrieve the status of a service running as a process in the pipeline.
-    ///
-    /// PipelineNameGet - GET /pipeline/{name}
-    async fn pipeline_name_get(
-        &self,
-        method: Method,
-        host: Host,
-        cookies: CookieJar,
-        path_params: models::PipelineNameGetPathParams,
-        query_params: models::PipelineNameGetQueryParams,
-    ) -> Result<PipelineNameGetResponse, String>;
-
-    /// Start or stop the pipeline of all enabled services.
+    /// Set the services that are enabled in this pipeline, by specifying the fully qualified services.
     ///
     /// PipelinePost - POST /pipeline
     async fn pipeline_post(
@@ -79,6 +103,26 @@ pub trait Pipeline {
         method: Method,
         host: Host,
         cookies: CookieJar,
-        query_params: models::PipelinePostQueryParams,
+        body: Vec<models::PipelinePostRequestInner>,
     ) -> Result<PipelinePostResponse, String>;
+
+    /// Start the pipeline.
+    ///
+    /// PipelineStartPost - POST /pipeline/start
+    async fn pipeline_start_post(
+        &self,
+        method: Method,
+        host: Host,
+        cookies: CookieJar,
+    ) -> Result<PipelineStartPostResponse, String>;
+
+    /// Stop the pipeline.
+    ///
+    /// PipelineStopPost - POST /pipeline/stop
+    async fn pipeline_stop_post(
+        &self,
+        method: Method,
+        host: Host,
+        cookies: CookieJar,
+    ) -> Result<PipelineStopPostResponse, String>;
 }

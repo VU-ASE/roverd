@@ -10,21 +10,9 @@ use crate::{models, types::*};
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[must_use]
 #[allow(clippy::large_enum_variant)]
-pub enum ServicesGetResponse {
-    /// An array of services
-    Status200_AnArrayOfServices(Vec<models::ServicesGet200ResponseInner>),
-    /// An error occurred
-    Status400_AnErrorOccurred(models::GenericError),
-    /// Unauthorized access (you need to set the Authorization header with a valid username and password)
-    Status401_UnauthorizedAccess,
-}
-
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-#[must_use]
-#[allow(clippy::large_enum_variant)]
-pub enum ServicesNameGetResponse {
-    /// The status of the service
-    Status200_TheStatusOfTheService(models::ServicesNameGet200Response),
+pub enum ServicesAuthorGetResponse {
+    /// The list of services for the author
+    Status200_TheListOfServicesForTheAuthor(Vec<String>),
     /// An error occurred
     Status400_AnErrorOccurred(models::GenericError),
     /// Entity not found
@@ -36,9 +24,25 @@ pub enum ServicesNameGetResponse {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[must_use]
 #[allow(clippy::large_enum_variant)]
-pub enum ServicesNameVersionDeleteResponse {
+pub enum ServicesAuthorServiceGetResponse {
+    /// The list of versions for this author and service name
+    Status200_TheListOfVersionsForThisAuthorAndServiceName(Vec<String>),
+    /// An error occurred
+    Status400_AnErrorOccurred(models::GenericError),
+    /// Entity not found
+    Status404_EntityNotFound,
+    /// Unauthorized access (you need to set the Authorization header with a valid username and password)
+    Status401_UnauthorizedAccess,
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[must_use]
+#[allow(clippy::large_enum_variant)]
+pub enum ServicesAuthorServiceVersionDeleteResponse {
     /// The service version was deleted successfully
-    Status200_TheServiceVersionWasDeletedSuccessfully,
+    Status200_TheServiceVersionWasDeletedSuccessfully(
+        models::ServicesAuthorServiceVersionDelete200Response,
+    ),
     /// An error occurred
     Status400_AnErrorOccurred(models::GenericError),
     /// Entity not found
@@ -50,9 +54,9 @@ pub enum ServicesNameVersionDeleteResponse {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[must_use]
 #[allow(clippy::large_enum_variant)]
-pub enum ServicesNameVersionGetResponse {
-    /// The status of the service
-    Status200_TheStatusOfTheService(models::ServicesNameVersionGet200Response),
+pub enum ServicesAuthorServiceVersionGetResponse {
+    /// The service configuration
+    Status200_TheServiceConfiguration(models::ServicesAuthorServiceVersionGet200Response),
     /// An error occurred
     Status400_AnErrorOccurred(models::GenericError),
     /// Entity not found
@@ -64,13 +68,25 @@ pub enum ServicesNameVersionGetResponse {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[must_use]
 #[allow(clippy::large_enum_variant)]
-pub enum ServicesNameVersionPostResponse {
-    /// The service action was performed successfully
-    Status200_TheServiceActionWasPerformedSuccessfully,
-    /// An error occurred
-    Status400_AnErrorOccurred(models::GenericError),
+pub enum ServicesAuthorServiceVersionPostResponse {
+    /// The service was built successfully
+    Status200_TheServiceWasBuiltSuccessfully,
+    /// The build failed
+    Status400_TheBuildFailed(models::ServicesAuthorServiceVersionPost400Response),
     /// Entity not found
     Status404_EntityNotFound,
+    /// Unauthorized access (you need to set the Authorization header with a valid username and password)
+    Status401_UnauthorizedAccess,
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[must_use]
+#[allow(clippy::large_enum_variant)]
+pub enum ServicesGetResponse {
+    /// The list of authors
+    Status200_TheListOfAuthors(Vec<String>),
+    /// An error occurred
+    Status400_AnErrorOccurred(models::GenericError),
     /// Unauthorized access (you need to set the Authorization header with a valid username and password)
     Status401_UnauthorizedAccess,
 }
@@ -79,8 +95,8 @@ pub enum ServicesNameVersionPostResponse {
 #[must_use]
 #[allow(clippy::large_enum_variant)]
 pub enum ServicesPostResponse {
-    /// The service action was performed successfully
-    Status200_TheServiceActionWasPerformedSuccessfully(models::ServicesPost200Response),
+    /// The service was uploaded successfully
+    Status200_TheServiceWasUploadedSuccessfully(models::ServicesPost200Response),
     /// An error occurred
     Status400_AnErrorOccurred(models::GenericError),
     /// Unauthorized access (you need to set the Authorization header with a valid username and password)
@@ -91,7 +107,62 @@ pub enum ServicesPostResponse {
 #[async_trait]
 #[allow(clippy::ptr_arg)]
 pub trait Services {
-    /// Retrieve all parsable services and their status from disk..
+    /// Retrieve the list of parsable services for a specific author.
+    ///
+    /// ServicesAuthorGet - GET /services/{author}
+    async fn services_author_get(
+        &self,
+        method: Method,
+        host: Host,
+        cookies: CookieJar,
+        path_params: models::ServicesAuthorGetPathParams,
+    ) -> Result<ServicesAuthorGetResponse, String>;
+
+    /// Retrieve the list of parsable service versions for a specific author and service.
+    ///
+    /// ServicesAuthorServiceGet - GET /services/{author}/{service}
+    async fn services_author_service_get(
+        &self,
+        method: Method,
+        host: Host,
+        cookies: CookieJar,
+        path_params: models::ServicesAuthorServiceGetPathParams,
+    ) -> Result<ServicesAuthorServiceGetResponse, String>;
+
+    /// Delete a specific version of a service.
+    ///
+    /// ServicesAuthorServiceVersionDelete - DELETE /services/{author}/{service}/{version}
+    async fn services_author_service_version_delete(
+        &self,
+        method: Method,
+        host: Host,
+        cookies: CookieJar,
+        path_params: models::ServicesAuthorServiceVersionDeletePathParams,
+    ) -> Result<ServicesAuthorServiceVersionDeleteResponse, String>;
+
+    /// Retrieve the status of a specific version of a service.
+    ///
+    /// ServicesAuthorServiceVersionGet - GET /services/{author}/{service}/{version}
+    async fn services_author_service_version_get(
+        &self,
+        method: Method,
+        host: Host,
+        cookies: CookieJar,
+        path_params: models::ServicesAuthorServiceVersionGetPathParams,
+    ) -> Result<ServicesAuthorServiceVersionGetResponse, String>;
+
+    /// Build a fully qualified service version.
+    ///
+    /// ServicesAuthorServiceVersionPost - POST /services/{author}/{service}/{version}
+    async fn services_author_service_version_post(
+        &self,
+        method: Method,
+        host: Host,
+        cookies: CookieJar,
+        path_params: models::ServicesAuthorServiceVersionPostPathParams,
+    ) -> Result<ServicesAuthorServiceVersionPostResponse, String>;
+
+    /// Retrieve the list of all authors that have parsable services. With these authors you can query further for services.
     ///
     /// ServicesGet - GET /services
     async fn services_get(
@@ -100,51 +171,6 @@ pub trait Services {
         host: Host,
         cookies: CookieJar,
     ) -> Result<ServicesGetResponse, String>;
-
-    /// Retrieve the status and versions of a service.
-    ///
-    /// ServicesNameGet - GET /services/{name}
-    async fn services_name_get(
-        &self,
-        method: Method,
-        host: Host,
-        cookies: CookieJar,
-        path_params: models::ServicesNameGetPathParams,
-    ) -> Result<ServicesNameGetResponse, String>;
-
-    /// Delete a specific version of a service.
-    ///
-    /// ServicesNameVersionDelete - DELETE /services/{name}/{version}
-    async fn services_name_version_delete(
-        &self,
-        method: Method,
-        host: Host,
-        cookies: CookieJar,
-        path_params: models::ServicesNameVersionDeletePathParams,
-    ) -> Result<ServicesNameVersionDeleteResponse, String>;
-
-    /// Retrieve the status of a specific version of a service.
-    ///
-    /// ServicesNameVersionGet - GET /services/{name}/{version}
-    async fn services_name_version_get(
-        &self,
-        method: Method,
-        host: Host,
-        cookies: CookieJar,
-        path_params: models::ServicesNameVersionGetPathParams,
-    ) -> Result<ServicesNameVersionGetResponse, String>;
-
-    /// Enable, disable or build a specific version of a service in the pipeline.
-    ///
-    /// ServicesNameVersionPost - POST /services/{name}/{version}
-    async fn services_name_version_post(
-        &self,
-        method: Method,
-        host: Host,
-        cookies: CookieJar,
-        path_params: models::ServicesNameVersionPostPathParams,
-        query_params: models::ServicesNameVersionPostQueryParams,
-    ) -> Result<ServicesNameVersionPostResponse, String>;
 
     /// Upload a new service or new version to the rover by uploading a ZIP file.
     ///

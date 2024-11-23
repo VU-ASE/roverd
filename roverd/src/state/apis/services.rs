@@ -14,7 +14,72 @@ use crate::state::Roverd;
 
 #[async_trait]
 impl Services for Roverd {
-    /// Retrieve all services and their status.
+    /// Retrieve the list of parsable services for a specific author.
+    ///
+    /// ServicesAuthorGet - GET /services/{author}
+    async fn services_author_get(
+        &self,
+        _method: Method,
+        _host: Host,
+        _cookies: CookieJar,
+        _path_params: models::ServicesAuthorGetPathParams,
+    ) -> Result<ServicesAuthorGetResponse, String> {
+        Ok(ServicesAuthorGetResponse::Status404_EntityNotFound)
+    }
+
+    /// Retrieve the list of parsable service versions for a specific author and service.
+    ///
+    /// ServicesAuthorServiceGet - GET /services/{author}/{service}
+    async fn services_author_service_get(
+        &self,
+        _method: Method,
+        _host: Host,
+        _cookies: CookieJar,
+        _path_params: models::ServicesAuthorServiceGetPathParams,
+    ) -> Result<ServicesAuthorServiceGetResponse, String> {
+        Ok(ServicesAuthorServiceGetResponse::Status404_EntityNotFound)
+    }
+
+    /// Delete a specific version of a service.
+    ///
+    /// ServicesAuthorServiceVersionDelete - DELETE /services/{author}/{service}/{version}
+    async fn services_author_service_version_delete(
+        &self,
+        _method: Method,
+        _host: Host,
+        _cookies: CookieJar,
+        _path_params: models::ServicesAuthorServiceVersionDeletePathParams,
+    ) -> Result<ServicesAuthorServiceVersionDeleteResponse, String> {
+        Ok(ServicesAuthorServiceVersionDeleteResponse::Status404_EntityNotFound)
+    }
+
+    /// Retrieve the status of a specific version of a service.
+    ///
+    /// ServicesAuthorServiceVersionGet - GET /services/{author}/{service}/{version}
+    async fn services_author_service_version_get(
+        &self,
+        _method: Method,
+        _host: Host,
+        _cookies: CookieJar,
+        _path_params: models::ServicesAuthorServiceVersionGetPathParams,
+    ) -> Result<ServicesAuthorServiceVersionGetResponse, String> {
+        Ok(ServicesAuthorServiceVersionGetResponse::Status404_EntityNotFound)
+    }
+
+    /// Build a fully qualified service version.
+    ///
+    /// ServicesAuthorServiceVersionPost - POST /services/{author}/{service}/{version}
+    async fn services_author_service_version_post(
+        &self,
+        _method: Method,
+        _host: Host,
+        _cookies: CookieJar,
+        _path_params: models::ServicesAuthorServiceVersionPostPathParams,
+    ) -> Result<ServicesAuthorServiceVersionPostResponse, String> {
+        Ok(ServicesAuthorServiceVersionPostResponse::Status404_EntityNotFound)
+    }
+
+    /// Retrieve the list of all authors that have parsable services. With these authors you can query further for services.
     ///
     /// ServicesGet - GET /services
     async fn services_get(
@@ -24,59 +89,6 @@ impl Services for Roverd {
         _cookies: CookieJar,
     ) -> Result<ServicesGetResponse, String> {
         Ok(ServicesGetResponse::Status401_UnauthorizedAccess)
-    }
-
-    /// Retrieve the status and versions of a service.
-    ///
-    /// ServicesNameGet - GET /services/{name}
-    async fn services_name_get(
-        &self,
-        _method: Method,
-        _host: Host,
-        _cookies: CookieJar,
-        _path_params: models::ServicesNameGetPathParams,
-    ) -> Result<ServicesNameGetResponse, String> {
-        Ok(ServicesNameGetResponse::Status401_UnauthorizedAccess)
-    }
-
-    /// Delete a specific version of a service.
-    ///
-    /// ServicesNameVersionDelete - DELETE /services/{name}/{version}
-    async fn services_name_version_delete(
-        &self,
-        _method: Method,
-        _host: Host,
-        _cookies: CookieJar,
-        _path_params: models::ServicesNameVersionDeletePathParams,
-    ) -> Result<ServicesNameVersionDeleteResponse, String> {
-        Ok(ServicesNameVersionDeleteResponse::Status401_UnauthorizedAccess)
-    }
-
-    /// Retrieve the status of a specific version of a service.
-    ///
-    /// ServicesNameVersionGet - GET /services/{name}/{version}
-    async fn services_name_version_get(
-        &self,
-        _method: Method,
-        _host: Host,
-        _cookies: CookieJar,
-        _path_params: models::ServicesNameVersionGetPathParams,
-    ) -> Result<ServicesNameVersionGetResponse, String> {
-        Ok(ServicesNameVersionGetResponse::Status401_UnauthorizedAccess)
-    }
-
-    /// Enable, disable or build a specific version of a service in the pipeline.
-    ///
-    /// ServicesNameVersionPost - POST /services/{name}/{version}
-    async fn services_name_version_post(
-        &self,
-        _method: Method,
-        _host: Host,
-        _cookies: CookieJar,
-        _path_params: models::ServicesNameVersionPostPathParams,
-        _query_params: models::ServicesNameVersionPostQueryParams,
-    ) -> Result<ServicesNameVersionPostResponse, String> {
-        Ok(ServicesNameVersionPostResponse::Status401_UnauthorizedAccess)
     }
 
     /// Upload a new service or new version to the rover by uploading a ZIP file.

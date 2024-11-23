@@ -2,7 +2,7 @@ use axum::async_trait;
 
 use openapi::{apis::health::*, models::DaemonStatus};
 
-use openapi::models;
+use openapi::models::{self, StatusGet200ResponseCpuInner, StatusGet200ResponseMemory};
 
 use axum::extract::Host;
 use axum::http::Method;
@@ -54,6 +54,12 @@ impl Health for Roverd {
                     uptime,
                     version: self.info.version.clone(),
                     systime: time_now,
+                    cpu: vec![StatusGet200ResponseCpuInner {
+                        core: 0,
+                        total: 0,
+                        used: 0,
+                    }],
+                    memory: StatusGet200ResponseMemory { total: 0, used: 0 },
                 },
             ),
         )
