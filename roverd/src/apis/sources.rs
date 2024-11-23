@@ -22,7 +22,7 @@ impl Sources for Roverd {
         _cookies: CookieJar,
     ) -> Result<SourcesGetResponse, String> {
         info!("{:?} /sources", method);
-        let config = match self.config.get() {
+        let config = match self.sources.get() {
             Ok(data) => data,
             Err(e) => {
                 warn!("{:#?}", e);
@@ -75,7 +75,7 @@ impl Sources for Roverd {
         body: SourcesPostRequest,
     ) -> Result<SourcesPostResponse, String> {
         info!("{:?} /sources", method);
-        if let Err(e) = self.config.add_source(body).await {
+        if let Err(e) = self.sources.add(body).await {
             warn!("{:?}", e);
             return Ok(SourcesPostResponse::Status400_AnErrorOccurred(
                 GenericError {

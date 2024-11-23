@@ -17,6 +17,8 @@ use error::*;
 
 mod log;
 
+mod apis;
+
 mod state;
 use state::*;
 

@@ -9,7 +9,6 @@
       "extensions": [
         "streetsidesoftware.code-spell-checker",
         "rust-lang.rust-analyzer", // Rust language server
-        "serayuzgur.crates", // Crates.io dependencies helper
         "tamasfe.even-better-toml", // TOML syntax support
         "ms-vscode.makefile-tools", // Makefile Tools extension
         "usernamehw.errorlens", // Error Lens for inline error highlighting

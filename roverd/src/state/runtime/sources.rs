@@ -10,9 +10,9 @@ const ROVER_CONFIG_PATH: &str = "/etc/roverd/rover.yaml";
 /// Data structure that holds the run-time mutable configuration of the rover.
 /// Reflective of a valid /etc/roverd/rover.yaml configurtaion file.
 #[derive(Debug, Clone)]
-pub struct Config;
+pub struct Sources;
 
-impl Config {
+impl Sources {
     /// Retrieves rover.yaml file from disk, performs validation and returns object.
     pub fn get(&self) -> Result<rovervalidate::config::ValidatedConfiguration, Error> {
         let file_content =
@@ -24,7 +24,7 @@ impl Config {
         Ok(config)
     }
 
-    pub async fn add_source(&self, source: SourcesPostRequest) -> Result<(), Error> {
+    pub async fn add(&self, source: SourcesPostRequest) -> Result<(), Error> {
         // First, check if the source to add already exists.
         let config = self.get()?.0;
         let existing_sources = config.downloaded;
