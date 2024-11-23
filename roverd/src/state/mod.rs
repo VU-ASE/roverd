@@ -1,9 +1,9 @@
 use openapi::models::DaemonStatus;
 use tracing::{info, warn};
 
-/// Run-time api handler functions and mutable state
-mod runtime;
-use runtime::*;
+mod pipeline;
+mod services;
+mod sources;
 
 /// Start-up information and system clock
 mod info;
