@@ -17,11 +17,10 @@ impl Sources for Roverd {
     /// Retrieves all sources in the rover.yaml
     async fn sources_get(
         &self,
-        method: Method,
+        _method: Method,
         _host: Host,
         _cookies: CookieJar,
     ) -> Result<SourcesGetResponse, String> {
-        info!("{:?} /sources", method);
         let config = match self.sources.get() {
             Ok(data) => data,
             Err(e) => {
@@ -55,13 +54,21 @@ impl Sources for Roverd {
     /// SourcesDelete - DELETE /sources
     async fn sources_delete(
         &self,
-        method: Method,
+        _method: Method,
         _host: Host,
         _cookies: CookieJar,
-        _body: SourcesPostRequest,
+        body: SourcesPostRequest,
     ) -> Result<SourcesDeleteResponse, String> {
-        info!("{:?} /sources", method);
-        Ok(SourcesDeleteResponse::Status404_EntityNotFound)
+        if let Err(e) = self.sources.delete(body).await {
+            warn!("{:?}", e);
+            return Ok(SourcesDeleteResponse::Status400_AnErrorOccurred(
+                GenericError {
+                    message: Some(format!("{:#?}", e)),
+                    code: Some(1),
+                },
+            ));
+        }
+        Ok(SourcesDeleteResponse::Status200_TheSourceWasDeletedSuccessfully)
     }
 
     /// Add a new source.
@@ -69,12 +76,11 @@ impl Sources for Roverd {
     /// SourcesPost - POST /sources
     async fn sources_post(
         &self,
-        method: Method,
+        _method: Method,
         _host: Host,
         _cookies: CookieJar,
         body: SourcesPostRequest,
     ) -> Result<SourcesPostResponse, String> {
-        info!("{:?} /sources", method);
         if let Err(e) = self.sources.add(body).await {
             warn!("{:?}", e);
             return Ok(SourcesPostResponse::Status400_AnErrorOccurred(

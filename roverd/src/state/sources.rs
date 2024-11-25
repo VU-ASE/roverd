@@ -5,6 +5,8 @@ use rovervalidate::config::{Configuration, Downloaded, Validate, ValidatedConfig
 
 use crate::util::download_and_install_service;
 
+use tracing::error;
+
 const ROVER_CONFIG_PATH: &str = "/etc/roverd/rover.yaml";
 
 /// Data structure that holds the run-time mutable configuration of the rover.
@@ -68,4 +70,11 @@ impl Sources {
 
         Ok(())
     }
+
+
+    pub async fn delete(&self, _source: SourcesPostRequest) -> Result<(), Error> {
+        error!("TODO: unimplemented");
+        Ok(())
+    }
+
 }

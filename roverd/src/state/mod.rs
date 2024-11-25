@@ -39,11 +39,12 @@ impl Roverd {
     pub fn new() -> Self {
         let roverd = Self {
             info: info::Info::new(),
+            pipeline: pipeline::Pipeline::new(),
             state: State::InvalidRunnable,
             sources: sources::Sources,
-            pipeline: pipeline::Pipeline::new(),
-            services: services::Services::new(),
+            services: services::Services,
         };
+
 
         if roverd.info.status == DaemonStatus::Operational {
             info!("initialized successfully");

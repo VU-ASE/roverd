@@ -34,6 +34,7 @@ async fn auth_wrapper(
     req: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
+    
     match auth(state, req, next).await {
         Ok(response) => Ok(response),
         Err(e) => match e {

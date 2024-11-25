@@ -2,13 +2,15 @@
 
 use axum::async_trait;
 
-use openapi::apis::services::*;
+use openapi::{apis::services::*, models};
 
-use openapi::models;
+use openapi::models::*;
 
 use axum::extract::Host;
 use axum::http::Method;
 use axum_extra::extract::{CookieJar, Multipart};
+
+use tracing::warn;
 
 use crate::state::Roverd;
 
@@ -22,9 +24,22 @@ impl Services for Roverd {
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
-        _path_params: models::ServicesAuthorGetPathParams,
+        _path_params: ServicesAuthorGetPathParams,
     ) -> Result<ServicesAuthorGetResponse, String> {
-        Ok(ServicesAuthorGetResponse::Status404_EntityNotFound)
+        let authors = match self.services.get_authors().await {
+            Ok(data) => data,
+            Err(e) => {
+                warn!("{:#?}", e);
+                return Ok(ServicesAuthorGetResponse::Status400_AnErrorOccurred(
+                    GenericError {
+                        message: Some(format!("{:#?}", e)),
+                        code: Some(1),
+                    },
+                ));
+            }
+        };
+
+        Ok(ServicesAuthorGetResponse::Status200_TheListOfServicesForTheAuthor(authors))
     }
 
     /// Retrieve the list of parsable service versions for a specific author and service.
@@ -35,9 +50,24 @@ impl Services for Roverd {
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
-        _path_params: models::ServicesAuthorServiceGetPathParams,
+        path_params: ServicesAuthorServiceGetPathParams,
     ) -> Result<ServicesAuthorServiceGetResponse, String> {
-        Ok(ServicesAuthorServiceGetResponse::Status404_EntityNotFound)
+        let service = match self.services.get_version(path_params).await {
+            Ok(data) => data,
+            Err(e) => {
+                warn!("{:#?}", e);
+                return Ok(
+                    ServicesAuthorServiceGetResponse::Status400_AnErrorOccurred(
+                        GenericError {
+                            message: Some(format!("{:#?}", e)),
+                            code: Some(1),
+                        },
+                    ),
+                );
+            }
+        };
+
+        Err("todo".to_string())
     }
 
     /// Delete a specific version of a service.
@@ -48,7 +78,7 @@ impl Services for Roverd {
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
-        _path_params: models::ServicesAuthorServiceVersionDeletePathParams,
+        _path_params: ServicesAuthorServiceVersionDeletePathParams,
     ) -> Result<ServicesAuthorServiceVersionDeleteResponse, String> {
         Ok(ServicesAuthorServiceVersionDeleteResponse::Status404_EntityNotFound)
     }
@@ -61,9 +91,40 @@ impl Services for Roverd {
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
-        _path_params: models::ServicesAuthorServiceVersionGetPathParams,
+        path_params: ServicesAuthorServiceVersionGetPathParams,
     ) -> Result<ServicesAuthorServiceVersionGetResponse, String> {
-        Ok(ServicesAuthorServiceVersionGetResponse::Status404_EntityNotFound)
+        let service = match self.services.get_service(path_params).await {
+            Ok(data) => data,
+            Err(e) => {
+                warn!("{:#?}", e);
+                return Ok(
+                    ServicesAuthorServiceVersionGetResponse::Status400_AnErrorOccurred(
+                        GenericError {
+                            message: Some(format!("{:#?}", e)),
+                            code: Some(1),
+                        },
+                    ),
+                );
+            }
+        };
+
+        Ok(
+            ServicesAuthorServiceVersionGetResponse::Status200_TheServiceConfiguration(
+                models::ServicesAuthorServiceVersionGet200Response {
+                    inputs: service
+                        .0
+                        .inputs
+                        .iter()
+                        .map(|i| ServicesAuthorServiceVersionGet200ResponseInputsInner {
+                            service: i.service.clone(),
+                            streams: i.streams.clone(),
+                        })
+                        .collect::<Vec<_>>(),
+                    built_at: None, // Todo this needs to be kept track of by state
+                    outputs: service.0.outputs,
+                },
+            ),
+        )
     }
 
     /// Build a fully qualified service version.
@@ -74,7 +135,7 @@ impl Services for Roverd {
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
-        _path_params: models::ServicesAuthorServiceVersionPostPathParams,
+        _path_params: ServicesAuthorServiceVersionPostPathParams,
     ) -> Result<ServicesAuthorServiceVersionPostResponse, String> {
         Ok(ServicesAuthorServiceVersionPostResponse::Status404_EntityNotFound)
     }
@@ -88,7 +149,20 @@ impl Services for Roverd {
         _host: Host,
         _cookies: CookieJar,
     ) -> Result<ServicesGetResponse, String> {
-        Ok(ServicesGetResponse::Status401_UnauthorizedAccess)
+        let authors = match self.services.get_authors().await {
+            Ok(data) => data,
+            Err(e) => {
+                warn!("{:#?}", e);
+                return Ok(ServicesGetResponse::Status400_AnErrorOccurred(
+                    GenericError {
+                        message: Some(format!("{:#?}", e)),
+                        code: Some(1),
+                    },
+                ));
+            }
+        };
+
+        Ok(ServicesGetResponse::Status200_TheListOfAuthors(authors))
     }
 
     /// Upload a new service or new version to the rover by uploading a ZIP file.
