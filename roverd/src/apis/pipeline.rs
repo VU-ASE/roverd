@@ -1,12 +1,13 @@
 use axum::async_trait;
-
-use openapi::apis::pipeline::*;
-
-use openapi::models;
-
 use axum::extract::Host;
 use axum::http::Method;
 use axum_extra::extract::CookieJar;
+
+use openapi::apis::pipeline::*;
+use openapi::models;
+
+use tracing::warn;
+
 
 use crate::state::Roverd;
 
@@ -60,7 +61,19 @@ impl Pipeline for Roverd {
         _host: Host,
         _cookies: CookieJar,
     ) -> Result<PipelineStartPostResponse, String> {
-        Ok(PipelineStartPostResponse::Status401_UnauthorizedAccess)
+        let _ = match self.pipeline.start().await {
+            Ok(data) => data,
+            Err(e) => {
+                warn!("{:#?}", e);
+                return Ok(PipelineStartPostResponse::Status400_AnErrorOccurred(
+                    models::GenericError {
+                        message: Some(format!("{:#?}", e)),
+                        code: Some(1),
+                    },
+                ));
+            }
+        };
+        Ok(PipelineStartPostResponse::Status200_ThePipelineWasStartedSuccessfully)
     }
 
     /// Stop the pipeline.
@@ -72,6 +85,18 @@ impl Pipeline for Roverd {
         _host: Host,
         _cookies: CookieJar,
     ) -> Result<PipelineStopPostResponse, String> {
-        Ok(PipelineStopPostResponse::Status401_UnauthorizedAccess)
+        let _ = match self.pipeline.stop().await {
+            Ok(data) => data,
+            Err(e) => {
+                warn!("{:#?}", e);
+                return Ok(PipelineStopPostResponse::Status400_AnErrorOccurred(
+                    models::GenericError {
+                        message: Some(format!("{:#?}", e)),
+                        code: Some(1),
+                    },
+                ));
+            }
+        };
+        Ok(PipelineStopPostResponse::Status200_ThePipelineWasStoppedSuccessfully)
     }
 }

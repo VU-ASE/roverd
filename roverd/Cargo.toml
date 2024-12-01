@@ -22,4 +22,6 @@ serde_yaml = "0.9.34"
 reqwest = "0.12.9"
 zip = "0.6.6"
 derive_more = "0.99.18"
+libc = "0.2.167"
+futures = "0.3.31"
 

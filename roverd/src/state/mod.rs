@@ -1,7 +1,9 @@
 use openapi::models::DaemonStatus;
+
+use std::sync::{Arc, Mutex};
 use tracing::{info, warn};
 
-mod pipeline;
+pub mod pipeline;
 mod services;
 mod sources;
 
@@ -44,7 +46,6 @@ impl Roverd {
             sources: sources::Sources,
             services: services::Services,
         };
-
 
         if roverd.info.status == DaemonStatus::Operational {
             info!("initialized successfully");

@@ -4,6 +4,12 @@ use tracing::warn;
 
 use derive_more::From;
 
+// mod state;
+// use state::*;
+use crate::state::pipeline::process::ProcessManager;
+
+
+
 #[derive(Debug, From)]
 pub enum Error {
     RoverInfoFileIo(String, std::io::Error),
@@ -40,8 +46,21 @@ pub enum Error {
     #[from]
     Reqwest(reqwest::Error),
 
+    #[from]
+    Broadcast(tokio::sync::broadcast::error::SendError<()>),
+
+    Synchronization,
+
+    // #[from]
+    // Arc(std::sync::PoisonError<std::sync::MutexGuard<'a, ProcessManager>>),
+
+
     Url,
 }
+
+
+
+
 
 // impl std::fmt::Display for Error {
 //     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
