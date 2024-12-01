@@ -2,7 +2,7 @@ use futures::future::join_all;
 
 use std::path::PathBuf;
 use std::process::Stdio;
-use std::{fs::File, time::Duration};
+use std::{fs::File, fs::OpenOptions, time::Duration};
 
 use tokio::{
     process::{Child, Command},
@@ -53,20 +53,23 @@ pub struct Process {
     pub state: ProcessState,
 }
 
-
 #[derive(Debug, Clone)]
 pub struct ProcessManager {
     pub processes: Vec<Process>,
 }
 
 impl ProcessManager {
-    pub async fn start(&self) -> Result<(), Error> {
+    pub async fn start(&mut self) -> Result<(), Error> {
         let (shutdown_tx, _) = broadcast::channel::<()>(1);
         let mut spawned: Vec<SpawnedProcess> = vec![];
 
-        // Spawn all processes
-        for p in &self.processes {
-            let file = File::create(p.log_file.clone())?;
+        for p in &mut self.processes {
+            let file = OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(p.log_file.clone())?;
+
+
             let stdout = Stdio::from(file.try_clone()?);
             let stderr = Stdio::from(file);
 
@@ -78,6 +81,7 @@ impl ProcessManager {
                 .stderr(stderr);
             match command.spawn() {
                 Ok(child) => {
+                    p.pid = 0;
                     spawned.push(SpawnedProcess {
                         name: p.name.clone(),
                         child,
@@ -91,11 +95,8 @@ impl ProcessManager {
             }
         }
 
-        let mut handles = Vec::new();
+        // let mut handles = Vec::new();
 
-
-        // tokio::spawn(tokio::task::spawn_blocking(move || {
-        //     // Monitor each process
         for mut proc in spawned {
             let mut shutdown_rx = shutdown_tx.subscribe();
             let process_shutdown_tx = shutdown_tx.clone();
@@ -149,20 +150,8 @@ impl ProcessManager {
                     }
                 }
             });
-            handles.push(handle);
         }
-            // Wait for all processes to complete
-            // let done_processes = join_all(handles).await;
 
-            // for result in done_processes {
-            //     match result {
-            //         Ok(_) => info!("Process completed successfully"),
-            //         Err(e) => error!("Process failed: {}", e),
-            //     }
-            // }
-        // }));
-
-        
         Ok(())
     }
 
