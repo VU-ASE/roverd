@@ -12,5 +12,5 @@ downloaded:
     version: 1.0.0
 enabled:
   - /home/debix/.rover/services/imaging
-  - /home/debix/.rover/services/controller
-  - /home/debix/.rover/services/actuator/service2.yaml
+  - /home/debix/.rover/services/controller/
+  - /home/debix/.rover/services/actuator/service.yaml

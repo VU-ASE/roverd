@@ -15,11 +15,13 @@ use std::sync::Arc;
 use tokio::{
     process::{Child, Command},
     select,
-    sync::{Mutex, broadcast, broadcast::Sender},
+    sync::{broadcast, broadcast::Sender, Mutex},
     time,
 };
 
 use crate::error::Error;
+
+const ENV_KEY: &str = "ASE_SERVICE";
 
 #[derive(Debug, Clone)]
 pub struct SpawnedProcess {
@@ -43,6 +45,7 @@ pub struct Process {
     pub command: String,
     pub log_file: PathBuf,
     pub state: ProcessState,
+    pub injected_env: String,
 }
 
 #[derive(Debug, Clone)]
@@ -76,12 +79,11 @@ impl ProcessManager {
             let stdout = Stdio::from(file.try_clone()?);
             let stderr = Stdio::from(file);
 
-
-
             let mut command = Command::new("sh");
             command
                 .arg("-c")
                 .arg(p.command.clone())
+                .env(ENV_KEY, p.injected_env.clone())
                 .stdout(stdout)
                 .stderr(stderr);
             match command.spawn() {

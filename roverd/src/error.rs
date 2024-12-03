@@ -6,9 +6,7 @@ use derive_more::From;
 
 // mod state;
 // use state::*;
-use crate::state::pipeline::process::ProcessManager;
-
-
+use crate::state::rover::process::ProcessManager;
 
 #[derive(Debug, From)]
 pub enum Error {
@@ -53,14 +51,8 @@ pub enum Error {
 
     // #[from]
     // Arc(std::sync::PoisonError<std::sync::MutexGuard<'a, ProcessManager>>),
-
-
     Url,
 }
-
-
-
-
 
 // impl std::fmt::Display for Error {
 //     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

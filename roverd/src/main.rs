@@ -2,7 +2,7 @@ use axum::extract::{Request, State};
 use axum::http::{self, StatusCode};
 use axum::response::Response;
 use base64::Engine;
-use core::str;
+
 use tracing::info;
 
 use sha256::digest;
@@ -34,7 +34,6 @@ async fn auth_wrapper(
     req: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
-    
     match auth(state, req, next).await {
         Ok(response) => Ok(response),
         Err(e) => match e {
@@ -80,7 +79,8 @@ async fn auth(State(state): State<Roverd>, req: Request, next: Next) -> Result<R
             .decode(base64_data)
             .map_err(|_| Http(StatusCode::BAD_REQUEST))?;
 
-        let auth_str = str::from_utf8(&raw_bytes).map_err(|_| Http(StatusCode::BAD_REQUEST))?;
+        let auth_str =
+            core::str::from_utf8(&raw_bytes).map_err(|_| Http(StatusCode::BAD_REQUEST))?;
 
         check_auth(&state, auth_str)?;
     }

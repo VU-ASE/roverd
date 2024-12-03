@@ -33,7 +33,7 @@ impl Services for Roverd {
                 warn!("{:#?}", e);
                 return Ok(ServicesAuthorGetResponse::Status400_AnErrorOccurred(
                     GenericError {
-                        message: Some(format!("{:#?}", e)),
+                        message: Some(format!("{:?}", e)),
                         code: Some(1),
                     },
                 ));
@@ -58,14 +58,12 @@ impl Services for Roverd {
             Ok(data) => data,
             Err(e) => {
                 warn!("{:#?}", e);
-                return Ok(
-                    ServicesAuthorServiceGetResponse::Status400_AnErrorOccurred(
-                        GenericError {
-                            message: Some(format!("{:#?}", e)),
-                            code: Some(1),
-                        },
-                    ),
-                );
+                return Ok(ServicesAuthorServiceGetResponse::Status400_AnErrorOccurred(
+                    GenericError {
+                        message: Some(format!("{:?}", e)),
+                        code: Some(1),
+                    },
+                ));
             }
         };
 
@@ -103,7 +101,7 @@ impl Services for Roverd {
                 return Ok(
                     ServicesAuthorServiceVersionGetResponse::Status400_AnErrorOccurred(
                         GenericError {
-                            message: Some(format!("{:#?}", e)),
+                            message: Some(format!("{:?}", e)),
                             code: Some(1),
                         },
                     ),
@@ -159,7 +157,7 @@ impl Services for Roverd {
                 warn!("{:#?}", e);
                 return Ok(ServicesGetResponse::Status400_AnErrorOccurred(
                     GenericError {
-                        message: Some(format!("{:#?}", e)),
+                        message: Some(format!("{:?}", e)),
                         code: Some(1),
                     },
                 ));

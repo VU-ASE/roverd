@@ -1,10 +1,9 @@
-
 use openapi::models::DaemonStatus;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{info, warn};
 
-pub mod pipeline;
+pub mod rover;
 mod services;
 mod sources;
 
@@ -14,7 +13,7 @@ mod info;
 #[derive(Debug, Clone)]
 pub struct State {
     /// Run-time encapsulation of pipeline data (running processes)
-    pub pipeline: pipeline::Pipeline,
+    pub core: rover::Core,
 
     /// Handle for querying and modifying services
     pub services: services::Services,
@@ -40,7 +39,7 @@ impl Roverd {
         let roverd = Self {
             info: info::Info::new(),
             state: Arc::from(RwLock::from(State {
-                pipeline: pipeline::Pipeline::new(),
+                core: rover::Core::new(),
                 sources: sources::Sources,
                 services: services::Services,
             })),

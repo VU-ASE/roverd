@@ -28,7 +28,7 @@ impl Sources for Roverd {
                 warn!("{:#?}", e);
                 return Ok(SourcesGetResponse::Status400_AnErrorOccurred(
                     GenericError {
-                        message: Some(format!("{:#?}", e)),
+                        message: Some(format!("{:?}", e)),
                         code: Some(1),
                     },
                 ));
@@ -65,7 +65,7 @@ impl Sources for Roverd {
             warn!("{:?}", e);
             return Ok(SourcesDeleteResponse::Status400_AnErrorOccurred(
                 GenericError {
-                    message: Some(format!("{:#?}", e)),
+                    message: Some(format!("{:?}", e)),
                     code: Some(1),
                 },
             ));
@@ -88,7 +88,7 @@ impl Sources for Roverd {
             warn!("{:?}", e);
             return Ok(SourcesPostResponse::Status400_AnErrorOccurred(
                 GenericError {
-                    message: Some(format!("{:#?}", e)),
+                    message: Some(format!("{:?}", e)),
                     code: Some(1),
                 },
             ));

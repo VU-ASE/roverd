@@ -71,10 +71,8 @@ impl Sources {
         Ok(())
     }
 
-
     pub async fn delete(&self, _source: SourcesPostRequest) -> Result<(), Error> {
         error!("TODO: unimplemented");
         Ok(())
     }
-
 }

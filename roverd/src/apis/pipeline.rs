@@ -8,7 +8,6 @@ use openapi::models;
 
 use tracing::{info, warn};
 
-
 use crate::state::Roverd;
 
 #[async_trait]
@@ -61,16 +60,15 @@ impl Pipeline for Roverd {
         _host: Host,
         _cookies: CookieJar,
     ) -> Result<PipelineStartPostResponse, String> {
-
         let mut state = self.state.write().await;
 
-        let _ = match state.pipeline.start().await {
+        let _ = match state.core.start().await {
             Ok(data) => data,
             Err(e) => {
                 warn!("{:#?}", e);
                 return Ok(PipelineStartPostResponse::Status400_AnErrorOccurred(
                     models::GenericError {
-                        message: Some(format!("{:#?}", e)),
+                        message: Some(format!("{:?}", e)),
                         code: Some(1),
                     },
                 ));
@@ -92,15 +90,15 @@ impl Pipeline for Roverd {
     ) -> Result<PipelineStopPostResponse, String> {
         info!(">> before lock");
         let mut state = self.state.write().await;
-        
+
         info!(">> calling stop");
-        let _ = match state.pipeline.stop().await {
+        let _ = match state.core.stop().await {
             Ok(data) => data,
             Err(e) => {
                 warn!("{:#?}", e);
                 return Ok(PipelineStopPostResponse::Status400_AnErrorOccurred(
                     models::GenericError {
-                        message: Some(format!("{:#?}", e)),
+                        message: Some(format!("{:?}", e)),
                         code: Some(1),
                     },
                 ));
