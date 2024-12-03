@@ -26,7 +26,8 @@ impl Services for Roverd {
         _cookies: CookieJar,
         _path_params: ServicesAuthorGetPathParams,
     ) -> Result<ServicesAuthorGetResponse, String> {
-        let authors = match self.services.get_authors().await {
+        let state = self.state.read().await;
+        let authors = match state.services.get_authors().await {
             Ok(data) => data,
             Err(e) => {
                 warn!("{:#?}", e);
@@ -52,7 +53,8 @@ impl Services for Roverd {
         _cookies: CookieJar,
         path_params: ServicesAuthorServiceGetPathParams,
     ) -> Result<ServicesAuthorServiceGetResponse, String> {
-        let service = match self.services.get_version(path_params).await {
+        let state = self.state.read().await;
+        let _service = match state.services.get_version(path_params).await {
             Ok(data) => data,
             Err(e) => {
                 warn!("{:#?}", e);
@@ -93,7 +95,8 @@ impl Services for Roverd {
         _cookies: CookieJar,
         path_params: ServicesAuthorServiceVersionGetPathParams,
     ) -> Result<ServicesAuthorServiceVersionGetResponse, String> {
-        let service = match self.services.get_service(path_params).await {
+        let state = self.state.read().await;
+        let service = match state.services.get_service(path_params).await {
             Ok(data) => data,
             Err(e) => {
                 warn!("{:#?}", e);
@@ -149,7 +152,8 @@ impl Services for Roverd {
         _host: Host,
         _cookies: CookieJar,
     ) -> Result<ServicesGetResponse, String> {
-        let authors = match self.services.get_authors().await {
+        let state = self.state.read().await;
+        let authors = match state.services.get_authors().await {
             Ok(data) => data,
             Err(e) => {
                 warn!("{:#?}", e);

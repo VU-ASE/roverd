@@ -1,51 +1,54 @@
 use openapi::models::{PipelineGet200Response, PipelineStatus};
 use std::path::PathBuf;
-use std::sync::{Arc};
-
-use tokio::sync::Mutex;
 
 pub mod process;
 use process::{Process, ProcessManager};
+
+use tracing::info;
+
+use tokio::sync::broadcast;
 
 use crate::error::Error;
 
 #[derive(Debug, Clone)]
 pub struct Pipeline {
-    response: PipelineGet200Response,
-    process_manager: Arc<Mutex<ProcessManager>>,
+    pub response: PipelineGet200Response,
+    pub process_manager: ProcessManager,
 }
 
 impl Pipeline {
     pub fn new() -> Self {
         Pipeline {
-            process_manager: Arc::from(Mutex::new(ProcessManager {
+            process_manager: ProcessManager {
                 processes: vec![
-                Process {
-                    last_exit_code: None,
-                    pid: 0,
-                    command: "sleep 2".to_string(),
-                    name: "sleeper".to_string(),
-                    log_file: PathBuf::from("/var/log/AAA.txt"),
-                    state: process::ProcessState::Stopped,
-                },
-                Process {
-                    last_exit_code: None,
-                    pid: 0,
-                    command: "echo 'Hello yooyyoyoyoyoyoy'".to_string(),
-                    name: "echo".to_string(),
-                    log_file: PathBuf::from("/var/log/AAAB.txt"),
-                    state: process::ProcessState::Stopped,
-                },
-                Process {
-                    last_exit_code: None,
-                    pid: 0,
-                    command: "echo yooooo".to_string(),
-                    name: "killer".to_string(),
-                    log_file: PathBuf::from("/var/log/AAAC.txt"),
-                    state: process::ProcessState::Stopped,
-                }
+                    Process {
+                        last_exit_code: None,
+                        pid: 0,
+                        command: "while true; do echo 'proc A'; sleep 1; done;".to_string(),
+                        name: "procA".to_string(),
+                        log_file: PathBuf::from("/var/log/AAAA.txt"),
+                        state: process::ProcessState::Stopped,
+                    },
+                    Process {
+                        last_exit_code: None,
+                        pid: 0,
+                        command: "while true; do echo 'proc B'; sleep 1; done;".to_string(),
+                        name: "procB".to_string(),
+                        log_file: PathBuf::from("/var/log/AAAB.txt"),
+                        state: process::ProcessState::Stopped,
+                    },
+                    Process {
+                        last_exit_code: None,
+                        pid: 0,
+                        command: "while true; do echo 'procC'; sleep 1; done;".to_string(),
+                        name: "procC".to_string(),
+                        log_file: PathBuf::from("/var/log/AAAC.txt"),
+                        state: process::ProcessState::Stopped,
+                    }
                 ],
-            })),
+                spawned: vec![],
+                shutdown_tx: broadcast::channel::<()>(1).0,
+            },
             response: PipelineGet200Response {
                 status: PipelineStatus::Startable,
                 last_start: None,
@@ -56,26 +59,19 @@ impl Pipeline {
         }
     }
 
-    pub async fn start(&self) -> Result<(), Error> {
+    pub async fn start(&mut self) -> Result<(), Error> {
 
+        info!(">> start called");
         
         // TODO run verification, check
-
         
-
-    
-        // TODO panics on error, avoid unwrap here, by implementing proper Error type
-        self.process_manager.lock().await.start().await?;
-
-        
+        self.process_manager.start().await?;
     
         Ok(())
     }
 
-    pub async fn stop(&self) -> Result<(), Error> {
-        // TODO panics on error, avoid unwrap here, by implementing proper Error type
-        self.process_manager.lock().await.stop().await?;
-
+    pub async fn stop(&mut self) -> Result<(), Error> {
+        self.process_manager.stop().await?;
         Ok(())
     }
 }

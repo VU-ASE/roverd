@@ -4,36 +4,23 @@ use std::path::PathBuf;
 use std::process::Stdio;
 use std::{fs::File, fs::OpenOptions, time::Duration};
 
+use tracing::{error, info};
+
+use std::sync::Arc;
+
 use tokio::{
     process::{Child, Command},
     select,
-    sync::broadcast,
+    sync::{Mutex, broadcast, broadcast::Sender},
     time,
 };
 
 use crate::error::Error;
 
-struct SpawnedProcess {
-    name: String,
-    child: Child,
-}
-
-impl SpawnedProcess {
-    async fn terminate(&mut self) -> Result<(), Error> {
-        if let Some(id) = self.child.id() {
-            unsafe {
-                println!("Sending terminate to {}", self.name);
-                libc::kill(id as i32, libc::SIGTERM);
-            }
-        }
-        Ok(())
-    }
-
-    async fn kill(&mut self) -> Result<(), Error> {
-        println!("Sending kill to {}", self.name);
-        self.child.kill().await?;
-        Ok(())
-    }
+#[derive(Debug, Clone)]
+pub struct SpawnedProcess {
+    pub name: String,
+    pub child: Arc<Mutex<Child>>,
 }
 
 #[derive(Debug, Clone)]
@@ -43,6 +30,7 @@ pub enum ProcessState {
     Killed,
 }
 
+/// A Process
 #[derive(Debug, Clone)]
 pub struct Process {
     pub pid: i32,
@@ -56,19 +44,20 @@ pub struct Process {
 #[derive(Debug, Clone)]
 pub struct ProcessManager {
     pub processes: Vec<Process>,
+    pub spawned: Vec<SpawnedProcess>,
+    pub shutdown_tx: Sender<()>,
 }
 
 impl ProcessManager {
     pub async fn start(&mut self) -> Result<(), Error> {
-        let (shutdown_tx, _) = broadcast::channel::<()>(1);
-        let mut spawned: Vec<SpawnedProcess> = vec![];
+        // let (shutdown_tx, _) = ;
+        self.spawned.clear();
 
         for p in &mut self.processes {
             let file = OpenOptions::new()
                 .create(true)
                 .append(true)
                 .open(p.log_file.clone())?;
-
 
             let stdout = Stdio::from(file.try_clone()?);
             let stderr = Stdio::from(file);
@@ -82,39 +71,39 @@ impl ProcessManager {
             match command.spawn() {
                 Ok(child) => {
                     p.pid = 0;
-                    spawned.push(SpawnedProcess {
+                    self.spawned.push(SpawnedProcess {
                         name: p.name.clone(),
-                        child,
+                        child: Arc::from(Mutex::from(child)),
                     });
                 }
                 Err(e) => {
                     println!("Failed to spawn process {}: {}", p.name, e);
-                    shutdown_tx.send(())?;
+                    self.shutdown_tx.send(())?;
                     break;
                 }
             }
         }
 
-        // let mut handles = Vec::new();
+        for proc in self.spawned.clone() {
+            let mut shutdown_rx = self.shutdown_tx.subscribe();
+            let process_shutdown_tx = self.shutdown_tx.clone();
 
-        for mut proc in spawned {
-            let mut shutdown_rx = shutdown_tx.subscribe();
-            let process_shutdown_tx = shutdown_tx.clone();
-
-            let handle = tokio::spawn(async move {
+            tokio::spawn(async move {
                 loop {
+                    info!(">> start: before child lock of {:?}", proc.name);
+                    let mut child = proc.child.lock().await;
                     select! {
                         // Wait for process completion
-                        status = proc.child.wait() => {
+                        status = child.wait() => {
                             match status {
                                 Ok(status) => {
                                     if !status.success() {
-                                        println!("Process {} exited with error: {}", proc.name, status);
+                                        info!("Process {} exited with error: {}", proc.name, status);
                                         process_shutdown_tx.send(()).ok();
                                     }
                                 }
                                 Err(e) => {
-                                    println!("Error waiting for process {}: {}", proc.name, e);
+                                    error!("Error waiting for process {}: {}", proc.name, e);
                                     process_shutdown_tx.send(()).ok();
                                 }
                             }
@@ -122,28 +111,35 @@ impl ProcessManager {
                         }
                         // Wait for shutdown signal
                         _ = shutdown_rx.recv() => {
-                            println!("Terminating process: {}", proc.name);
-                            if let Err(e) = proc.terminate().await {
-                                println!("Error terminating process {:?}: {:?}", proc.name, e);
+                            info!("Terminating process: {}", proc.name);
+                            if let Some(id) = child.id() {
+                                unsafe {
+                                    info!("Sending terminate to {}", proc.name);
+                                    libc::kill(id as i32, libc::SIGTERM);
+                                }
                             }
 
                             // Wait for 1 second before sending KILL signal
                             time::sleep(Duration::from_secs(1)).await;
 
-                            match proc.child.try_wait() {
+                            
+
+                            match child.try_wait() {
                                 Ok(None) => {
-                                    println!("Force killing process: {}", proc.name);
-                                    if let Err(e) = proc.kill().await {
-                                        println!("Error killing process {:?}: {:?}", proc.name, e);
+                                    info!("Force killing process: {}", proc.name);
+                                    if let Err(e) = child.kill().await {
+                                        error!("Error killing process {:?}: {:?}", proc.name, e);
                                     }
                                 },
                                 Ok(Some(status)) => {
-                                    println!("Successfully terminated child: {:?} with {:?}", proc.child, status)
+                                    info!("Successfully terminated child: {:?} with {:?}", child, status)
                                 },
                                 Err(e) => {
                                     panic!("Error: {:?}", e);
                                 }
                             }
+
+
 
                             break;
                         }
@@ -155,7 +151,10 @@ impl ProcessManager {
         Ok(())
     }
 
-    pub async fn stop(&self) -> Result<(), Error> {
+    pub async fn stop(&mut self) -> Result<(), Error> {
+        info!(">> Sending shutdown_tx");
+        self.shutdown_tx.send(()).ok();
+        self.spawned.clear();
         Ok(())
     }
 }

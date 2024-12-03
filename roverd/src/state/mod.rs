@@ -1,6 +1,7 @@
-use openapi::models::DaemonStatus;
 
-use std::sync::{Arc, Mutex};
+use openapi::models::DaemonStatus;
+use std::sync::Arc;
+use tokio::sync::RwLock;
 use tracing::{info, warn};
 
 pub mod pipeline;
@@ -11,22 +12,7 @@ mod sources;
 mod info;
 
 #[derive(Debug, Clone)]
-enum State {
-    InvalidRunnable,
-    // ValidRunnable,
-    // ValidRunning,
-}
-
-/// The main struct that implements functions called from the api and holds all objects
-/// in memory necessary for operation.
-#[derive(Debug, Clone)]
-pub struct Roverd {
-    /// Information related to the roverd daemon, contains status.
-    pub info: info::Info,
-
-    /// Run-time state machine of the rover
-    state: State,
-
+pub struct State {
     /// Run-time encapsulation of pipeline data (running processes)
     pub pipeline: pipeline::Pipeline,
 
@@ -37,14 +23,27 @@ pub struct Roverd {
     pub sources: sources::Sources,
 }
 
+/// The main struct that implements functions called from the api and holds all objects
+/// in memory necessary for operation.
+#[derive(Debug, Clone)]
+pub struct Roverd {
+    /// Information related to the roverd daemon, contains status.
+    pub info: info::Info,
+
+    /// Run-time data structures of the Rover, interacts with the file system
+    /// and spawns processes, so must be read/write locked.
+    pub state: Arc<RwLock<State>>,
+}
+
 impl Roverd {
     pub fn new() -> Self {
         let roverd = Self {
             info: info::Info::new(),
-            pipeline: pipeline::Pipeline::new(),
-            state: State::InvalidRunnable,
-            sources: sources::Sources,
-            services: services::Services,
+            state: Arc::from(RwLock::from(State {
+                pipeline: pipeline::Pipeline::new(),
+                sources: sources::Sources,
+                services: services::Services,
+            })),
         };
 
         if roverd.info.status == DaemonStatus::Operational {

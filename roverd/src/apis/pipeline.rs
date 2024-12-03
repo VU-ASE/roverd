@@ -6,7 +6,7 @@ use axum_extra::extract::CookieJar;
 use openapi::apis::pipeline::*;
 use openapi::models;
 
-use tracing::warn;
+use tracing::{info, warn};
 
 
 use crate::state::Roverd;
@@ -61,7 +61,10 @@ impl Pipeline for Roverd {
         _host: Host,
         _cookies: CookieJar,
     ) -> Result<PipelineStartPostResponse, String> {
-        let _ = match self.pipeline.start().await {
+
+        let mut state = self.state.write().await;
+
+        let _ = match state.pipeline.start().await {
             Ok(data) => data,
             Err(e) => {
                 warn!("{:#?}", e);
@@ -73,6 +76,8 @@ impl Pipeline for Roverd {
                 ));
             }
         };
+
+        info!(">> start returning");
         Ok(PipelineStartPostResponse::Status200_ThePipelineWasStartedSuccessfully)
     }
 
@@ -85,7 +90,11 @@ impl Pipeline for Roverd {
         _host: Host,
         _cookies: CookieJar,
     ) -> Result<PipelineStopPostResponse, String> {
-        let _ = match self.pipeline.stop().await {
+        info!(">> before lock");
+        let mut state = self.state.write().await;
+        
+        info!(">> calling stop");
+        let _ = match state.pipeline.stop().await {
             Ok(data) => data,
             Err(e) => {
                 warn!("{:#?}", e);
