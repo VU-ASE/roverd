@@ -4,7 +4,11 @@ use std::path::PathBuf;
 use std::process::Stdio;
 use std::{fs::File, fs::OpenOptions, time::Duration};
 
-use tracing::{error, info};
+use std::io::Write;
+
+use tracing::{error, info, warn};
+
+use chrono;
 
 use std::sync::Arc;
 
@@ -43,24 +47,36 @@ pub struct Process {
 
 #[derive(Debug, Clone)]
 pub struct ProcessManager {
+    /// Contains the "application view" of process after validation. In-between start / stop
+    /// runs this vec remains unchanged.
     pub processes: Vec<Process>,
+
+    /// The strictly "running" processes, can be thought of as spawned children.
     pub spawned: Vec<SpawnedProcess>,
+
+    /// Broadcast channel to send shutdown command for termination.
     pub shutdown_tx: Sender<()>,
 }
 
 impl ProcessManager {
     pub async fn start(&mut self) -> Result<(), Error> {
-        // let (shutdown_tx, _) = ;
         self.spawned.clear();
 
         for p in &mut self.processes {
-            let file = OpenOptions::new()
+            let mut file = OpenOptions::new()
                 .create(true)
                 .append(true)
                 .open(p.log_file.clone())?;
 
+            let cur_time = chrono::Local::now().format("%H:%M:%S");
+            if writeln!(file, "[{}] roverd spawned {}", cur_time, p.name).is_err() {
+                warn!("Could not write log_line to file: {:?}", p.log_file)
+            };
+
             let stdout = Stdio::from(file.try_clone()?);
             let stderr = Stdio::from(file);
+
+
 
             let mut command = Command::new("sh");
             command
@@ -98,7 +114,6 @@ impl ProcessManager {
                             match status {
                                 Ok(status) => {
                                     if !status.success() {
-                                        info!("Process {} exited with error: {}", proc.name, status);
                                         process_shutdown_tx.send(()).ok();
                                     }
                                 }
@@ -111,7 +126,6 @@ impl ProcessManager {
                         }
                         // Wait for shutdown signal
                         _ = shutdown_rx.recv() => {
-                            info!("Terminating process: {}", proc.name);
                             if let Some(id) = child.id() {
                                 unsafe {
                                     info!("Sending terminate to {}", proc.name);
@@ -122,7 +136,6 @@ impl ProcessManager {
                             // Wait for 1 second before sending KILL signal
                             time::sleep(Duration::from_secs(1)).await;
 
-                            
 
                             match child.try_wait() {
                                 Ok(None) => {
@@ -135,12 +148,9 @@ impl ProcessManager {
                                     info!("Successfully terminated child: {:?} with {:?}", child, status)
                                 },
                                 Err(e) => {
-                                    panic!("Error: {:?}", e);
+                                    error!("Error: {:?}", e);
                                 }
                             }
-
-
-
                             break;
                         }
                     }
@@ -152,7 +162,6 @@ impl ProcessManager {
     }
 
     pub async fn stop(&mut self) -> Result<(), Error> {
-        info!(">> Sending shutdown_tx");
         self.shutdown_tx.send(()).ok();
         self.spawned.clear();
         Ok(())

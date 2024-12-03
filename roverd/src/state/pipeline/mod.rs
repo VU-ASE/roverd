@@ -61,8 +61,6 @@ impl Pipeline {
 
     pub async fn start(&mut self) -> Result<(), Error> {
 
-        info!(">> start called");
-        
         // TODO run verification, check
         
         self.process_manager.start().await?;
