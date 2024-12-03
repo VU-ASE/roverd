@@ -60,7 +60,7 @@ impl Sources for Roverd {
         _cookies: CookieJar,
         body: SourcesPostRequest,
     ) -> Result<SourcesDeleteResponse, String> {
-        let state = self.state.read().await;
+        let state = self.state.write().await;
         if let Err(e) = state.sources.delete(body).await {
             warn!("{:?}", e);
             return Ok(SourcesDeleteResponse::Status400_AnErrorOccurred(
@@ -83,7 +83,7 @@ impl Sources for Roverd {
         _cookies: CookieJar,
         body: SourcesPostRequest,
     ) -> Result<SourcesPostResponse, String> {
-        let state = self.state.read().await;
+        let state = self.state.write().await;
         if let Err(e) = state.sources.add(body).await {
             warn!("{:?}", e);
             return Ok(SourcesPostResponse::Status400_AnErrorOccurred(

@@ -7,10 +7,7 @@ use tracing::error;
 // The script in src/build.rs populates a const containing the version
 include!(concat!(env!("OUT_DIR"), "/version.rs"));
 
-const ROVER_INFO_PATH: &str = "/etc/rover";
-
-/// The rover will never be used with a different user.
-const ROVER_USER: &str = "debix";
+use crate::constants::*;
 
 #[derive(Debug, Clone)]
 pub struct Info {

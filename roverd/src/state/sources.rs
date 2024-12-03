@@ -1,3 +1,5 @@
+use std::fs::write;
+
 use crate::error::Error;
 
 use openapi::models::SourcesPostRequest;
@@ -7,7 +9,7 @@ use crate::util::download_and_install_service;
 
 use tracing::error;
 
-const ROVER_CONFIG_PATH: &str = "/etc/roverd/rover.yaml";
+use crate::constants::*;
 
 /// Data structure that holds the run-time mutable configuration of the rover.
 /// Reflective of a valid /etc/roverd/rover.yaml configurtaion file.
@@ -18,7 +20,7 @@ impl Sources {
     /// Retrieves rover.yaml file from disk, performs validation and returns object.
     pub fn get(&self) -> Result<rovervalidate::config::ValidatedConfiguration, Error> {
         let file_content =
-            std::fs::read_to_string(ROVER_CONFIG_PATH).map_err(|_| Error::ConfigFileNotFound)?;
+            std::fs::read_to_string(ROVER_CONFIG_FILE).map_err(|_| Error::ConfigFileNotFound)?;
 
         let config: ValidatedConfiguration =
             serde_yaml::from_str::<Configuration>(&file_content)?.validate()?;
@@ -28,8 +30,7 @@ impl Sources {
 
     pub async fn add(&self, source: SourcesPostRequest) -> Result<(), Error> {
         // First, check if the source to add already exists.
-        let config = self.get()?.0;
-        let existing_sources = config.downloaded;
+        let mut config = self.get()?.0;
 
         let incoming_source = Downloaded {
             sha: None,
@@ -44,7 +45,7 @@ impl Sources {
             ));
         }
 
-        for existing_source in &existing_sources {
+        for existing_source in &config.downloaded {
             if existing_source.name.to_lowercase() == incoming_source.name
                 && existing_source.source.to_lowercase() == incoming_source.source
                 && existing_source.version.to_lowercase() == incoming_source.version
@@ -54,19 +55,39 @@ impl Sources {
             }
         }
 
-        // Extract the repository name from the url.
-        let mut url_slice = incoming_source.source.as_str();
-        let slash_index = url_slice.rfind('/').ok_or(Error::Url)?;
-        let url_len = url_slice.len();
+        // Update the config file with the newly added source
+        config.downloaded.push(incoming_source);
+        let contents = serde_yaml::to_string(&config)?;
+        write(ROVER_CONFIG_FILE, contents)?;
 
-        if slash_index == url_len - 1 {
-            url_slice = &url_slice[..url_len - 1]
-        }
+        // Based on the updated config file, install the sources
+        self.install_missing_sources().await?;
 
-        let slash_index = url_slice.rfind('/').ok_or(Error::Url)?;
-        let repo_name = &url_slice[(slash_index + 1)..];
+        Ok(())
+    }
 
-        download_and_install_service(repo_name, &incoming_source.version).await?;
+    /// Idempotently installs any missing sources based on roverd config file.
+    async fn install_missing_sources(&self) -> Result<(), Error> {
+
+        let missing_sources: Vec<Downloaded> = vec![];
+
+        // todo: install missing downloads
+        // todo: error on missing services
+
+
+        // // Extract the repository name from the url.
+        // let mut url_slice = incoming_source.source.as_str();
+        // let slash_index = url_slice.rfind('/').ok_or(Error::Url)?;
+        // let url_len = url_slice.len();
+
+        // if slash_index == url_len - 1 {
+        //     url_slice = &url_slice[..url_len - 1]
+        // }
+
+        // let slash_index = url_slice.rfind('/').ok_or(Error::Url)?;
+        // let repo_name = &url_slice[(slash_index + 1)..];
+
+        // download_and_install_service(repo_name, &incoming_source.version).await?;
 
         Ok(())
     }

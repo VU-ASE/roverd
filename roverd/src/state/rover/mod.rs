@@ -8,17 +8,14 @@ use process::{Process, ProcessManager};
 use tracing::info;
 
 use rovervalidate::config::{Configuration, Validate};
-use rovervalidate::service::{Service, ValidatedService};
 use rovervalidate::pipeline::interface::{Pipeline, RunnablePipeline};
+use rovervalidate::service::{Service, ValidatedService};
 
 use tokio::sync::broadcast;
 
 use crate::error::Error;
 
-const CONFIG_PATH: &str = "/etc/roverd/rover.yaml";
-
-
-
+use crate::constants::*;
 
 #[derive(Debug, Clone)]
 pub struct Core {
@@ -74,7 +71,7 @@ impl Core {
     }
 
     fn get_config(&self) -> Result<Configuration, Error> {
-        let config_file = std::fs::read_to_string(CONFIG_PATH)?;
+        let config_file = std::fs::read_to_string(ROVER_CONFIG_FILE)?;
         let mut config: Configuration = serde_yaml::from_str(&config_file)?;
 
         for e in &mut config.enabled {
