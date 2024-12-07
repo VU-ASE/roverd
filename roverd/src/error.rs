@@ -49,6 +49,9 @@ pub enum Error {
 
     Synchronization,
 
+    ServiceNotFound,
+    DownloadServiceError,
+
     // #[from]
     // Arc(std::sync::PoisonError<std::sync::MutexGuard<'a, ProcessManager>>),
     Url,

@@ -10,7 +10,9 @@ use axum::extract::Host;
 use axum::http::Method;
 use axum_extra::extract::CookieJar;
 
+
 use crate::state::Roverd;
+use crate::unwrap_generic;
 
 #[async_trait]
 impl Sources for Roverd {
@@ -22,18 +24,12 @@ impl Sources for Roverd {
         _cookies: CookieJar,
     ) -> Result<SourcesGetResponse, String> {
         let state = self.state.read().await;
-        let config = match state.sources.get() {
-            Ok(data) => data,
-            Err(e) => {
-                warn!("{:#?}", e);
-                return Ok(SourcesGetResponse::Status400_AnErrorOccurred(
-                    GenericError {
-                        message: Some(format!("{:?}", e)),
-                        code: Some(1),
-                    },
-                ));
-            }
-        };
+
+        let config = unwrap_generic!(state.sources.get().await, SourcesGetResponse);
+
+        // Make sure all sources are downloaded
+        // let _ = unwrap_generic!(state.sources.install_missing_sources().await, SourcesGetResponse);
+    
 
         let sources: Vec<SourcesGet200ResponseInner> = config
             .0
@@ -61,15 +57,9 @@ impl Sources for Roverd {
         body: SourcesPostRequest,
     ) -> Result<SourcesDeleteResponse, String> {
         let state = self.state.write().await;
-        if let Err(e) = state.sources.delete(body).await {
-            warn!("{:?}", e);
-            return Ok(SourcesDeleteResponse::Status400_AnErrorOccurred(
-                GenericError {
-                    message: Some(format!("{:?}", e)),
-                    code: Some(1),
-                },
-            ));
-        }
+
+        let _ = unwrap_generic!(state.sources.delete(body).await, SourcesDeleteResponse);
+
         Ok(SourcesDeleteResponse::Status200_TheSourceWasDeletedSuccessfully)
     }
 

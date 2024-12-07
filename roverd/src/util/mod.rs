@@ -7,15 +7,13 @@ use std::{
 // use reqwest::StatusCode;
 use axum::http::StatusCode;
 
-use tracing::info;
+use tracing::{info, warn};
 
 use crate::error::Error;
 
-const ROVER_DIR: &str = "/home/debix/.rover";
-const AUTHOR: &str = "vu-ase";
+use super::state::services::FqService;
 
-const DOWNLOAD_URL: &str = "https://downloads.ase.vu.nl";
-const DOWNLOAD_DESTINATION: &str = "/tmp";
+use crate::constants::*;
 
 /// Copy files from source to destination recursively.
 pub fn copy_recursively(source: impl AsRef<Path>, destination: impl AsRef<Path>) -> io::Result<()> {
@@ -104,8 +102,13 @@ pub async fn download_service(name: &str, version: &str) -> Result<String, Error
 
     if response.status() != StatusCode::OK {
         let resp: axum::http::StatusCode = response.status();
-        return Err(Error::Http(resp));
+        match response.status() {
+            StatusCode::NOT_FOUND => return Err(Error::ServiceNotFound),
+            StatusCode::BAD_REQUEST => return Err(Error::DownloadServiceError),
+            _ => return Err(Error::Http(resp)),
+        }
     }
+
 
     let mut file = std::fs::File::create(zip_file.clone())?;
 
@@ -119,21 +122,67 @@ pub async fn download_service(name: &str, version: &str) -> Result<String, Error
 /// Source doesn't exist yet, so download it to /tmp and move it correct place on disk.
 /// There shouldn't be any directories or files in the unique path of the service,
 /// however if there are, they will get deleted to make space.
-pub async fn download_and_install_service(name: &str, version: &str) -> Result<(), Error> {
-    let contents_dir = format!("{DOWNLOAD_DESTINATION}/{name}-{version}");
-    let zip_file = download_service(name, version).await?;
+pub async fn download_and_install_service<'a>(fq: &FqService<'a>) -> Result<(), Error> {
+    let contents_dir = format!(
+        "{DOWNLOAD_DESTINATION}/{}-{}-{}",
+        fq.author, fq.name, fq.version
+    );
+    let zip_file = download_service(fq.name, fq.version).await?;
 
     // Deletes any existing files/dirs that are on the /author/name/version path
     // Makes sure the directories exist.
-    let full_path = prepare_dirs(AUTHOR, name, version)?;
+    let full_path = prepare_dirs(fq.author, fq.name, fq.version)?;
 
     // Unpack the downloaded service and validate it.
     extract_zip(&zip_file, &contents_dir)?;
 
     // Copy contents into place
-    // copy_dir_contents(&contents_dir, &full_path)?;
-
     copy_recursively(contents_dir, full_path)?;
 
     Ok(())
+}
+
+/// Check Check wh
+pub fn service_exists<'a>(fq: &FqService<'a>) -> Result<bool, Error> {
+    let full_path_string = format!("{ROVER_DIR}/{}/{}/{}", fq.author, fq.name, fq.version);
+    match Path::new(full_path_string.as_str()).try_exists() {
+        Ok(a) => return Ok(a),
+        Err(e) => return Err(Error::Io(e)),
+    };
+}
+
+
+
+#[macro_export]
+macro_rules! unwrap_generic {
+    ($expr:expr, $error_type:ty) => {{
+        match $expr {
+            Ok(data) => data,
+            Err(e) => {
+                warn!("{:#?}", e);
+                return Ok(<$error_type>::Status400_AnErrorOccurred(
+                    GenericError {
+                        message: Some(format!("{:?}", e)),
+                        code: Some(1),
+                    }
+                ));
+            }
+        }
+    }};
+
+    // Optional: Add a variant that allows custom error code
+    // ($expr:expr, $error_response_type:path, $error_code:expr) => {{
+    //     match $expr {
+    //         Ok(data) => data,
+    //         Err(e) => {
+    //             warn!("{:#?}", e);
+    //             return Ok($error_response_type::Status400_AnErrorOccurred(
+    //                 GenericError {
+    //                     message: Some(format!("{:?}", e)),
+    //                     code: Some($error_code),
+    //                 }
+    //             ));
+    //         }
+    //     }
+    // }};
 }

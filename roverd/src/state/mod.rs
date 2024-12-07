@@ -4,11 +4,11 @@ use tokio::sync::RwLock;
 use tracing::{info, warn};
 
 pub mod rover;
-mod services;
-mod sources;
+pub mod services;
+pub mod sources;
 
 /// Start-up information and system clock
-mod info;
+pub mod info;
 
 #[derive(Debug, Clone)]
 pub struct State {

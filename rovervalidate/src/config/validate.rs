@@ -28,11 +28,11 @@ impl Validate<ValidatedConfiguration> for gen::Configuration {
                 }));
             }
 
-            let pattern = Regex::new(r"^(/[^/]+)+$").unwrap();
+            let pattern = Regex::new(r"^\/.*$").unwrap();
             if !pattern.is_match(enabled) {
                 errors.push(Error::FieldValidationError(crate::error::FieldError {
                     path: vec!["enabled".to_string(), index.to_string()],
-                    message: "must be a valid path, starting and ending with a slash".to_string(),
+                    message: "must be a valid path that starts with a slash".to_string(),
                 }));
             }
         }

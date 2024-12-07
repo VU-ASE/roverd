@@ -7,6 +7,13 @@ use openapi::models::*;
 #[derive(Debug, Clone)]
 pub struct Services;
 
+pub struct FqService<'a> {
+    pub author: &'a str,
+    pub name: &'a str,
+    pub version: &'a str,
+}
+
+
 impl Services {
     pub async fn get_authors(&self) -> Result<Vec<String>, Error> {
         Ok(vec!["asdf".to_string()])

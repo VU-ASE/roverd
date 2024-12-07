@@ -1,15 +1,17 @@
 use std::fs::write;
 
-use crate::error::Error;
+use crate::{error::Error, util};
 
 use openapi::models::SourcesPostRequest;
 use rovervalidate::config::{Configuration, Downloaded, Validate, ValidatedConfiguration};
 
 use crate::util::download_and_install_service;
 
-use tracing::error;
+use tracing::{info, error};
 
 use crate::constants::*;
+
+use super::services::FqService;
 
 /// Data structure that holds the run-time mutable configuration of the rover.
 /// Reflective of a valid /etc/roverd/rover.yaml configurtaion file.
@@ -18,7 +20,7 @@ pub struct Sources;
 
 impl Sources {
     /// Retrieves rover.yaml file from disk, performs validation and returns object.
-    pub fn get(&self) -> Result<rovervalidate::config::ValidatedConfiguration, Error> {
+    pub async fn get(&self) -> Result<rovervalidate::config::ValidatedConfiguration, Error> {
         let file_content =
             std::fs::read_to_string(ROVER_CONFIG_FILE).map_err(|_| Error::ConfigFileNotFound)?;
 
@@ -30,7 +32,7 @@ impl Sources {
 
     pub async fn add(&self, source: SourcesPostRequest) -> Result<(), Error> {
         // First, check if the source to add already exists.
-        let mut config = self.get()?.0;
+        let mut config = self.get().await?.0;
 
         let incoming_source = Downloaded {
             sha: None,
@@ -60,34 +62,30 @@ impl Sources {
         let contents = serde_yaml::to_string(&config)?;
         write(ROVER_CONFIG_FILE, contents)?;
 
-        // Based on the updated config file, install the sources
+        // Based on the updated config file, download & install all sources that may be missing
         self.install_missing_sources().await?;
 
         Ok(())
     }
 
     /// Idempotently installs any missing sources based on roverd config file.
-    async fn install_missing_sources(&self) -> Result<(), Error> {
+    pub async fn install_missing_sources(&self) -> Result<(), Error> {
+        let config = self.get().await?.0;
 
-        let missing_sources: Vec<Downloaded> = vec![];
+        for existing_source in &config.downloaded {
+            let fq_service = FqService {
+                name: &existing_source.name,
+                author: AUTHOR,
+                version: &existing_source.version,
+            };
 
-        // todo: install missing downloads
-        // todo: error on missing services
-
-
-        // // Extract the repository name from the url.
-        // let mut url_slice = incoming_source.source.as_str();
-        // let slash_index = url_slice.rfind('/').ok_or(Error::Url)?;
-        // let url_len = url_slice.len();
-
-        // if slash_index == url_len - 1 {
-        //     url_slice = &url_slice[..url_len - 1]
-        // }
-
-        // let slash_index = url_slice.rfind('/').ok_or(Error::Url)?;
-        // let repo_name = &url_slice[(slash_index + 1)..];
-
-        // download_and_install_service(repo_name, &incoming_source.version).await?;
+            if !util::service_exists(&fq_service)? {
+                info!("Service {} does not exist, downloading", &fq_service.name);
+                download_and_install_service(&fq_service).await?;
+            } else {
+                info!("Service {} already installed", &fq_service.name);
+            }
+        }
 
         Ok(())
     }
