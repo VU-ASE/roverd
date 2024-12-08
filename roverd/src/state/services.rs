@@ -64,10 +64,6 @@ impl<'a> PartialEq for FqService<'a> {
             && self.version.to_lowercase() == other.version.to_lowercase()
             && self.source_url.to_lowercase() == other.source_url.to_lowercase()
     }
-
-    fn ne(&self, other: &Self) -> bool {
-        !self.eq(other)
-    }
 }
 
 impl Services {

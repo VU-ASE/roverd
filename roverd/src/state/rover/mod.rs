@@ -1,4 +1,3 @@
-use base64::engine::Config;
 use openapi::models::{PipelineGet200Response, PipelineStatus};
 use std::path::PathBuf;
 
@@ -8,7 +7,7 @@ use process::{Process, ProcessManager};
 use tracing::info;
 
 use rovervalidate::config::{Configuration, Validate};
-use rovervalidate::pipeline::interface::{Pipeline, RunnablePipeline};
+use rovervalidate::pipeline::interface::Pipeline;
 use rovervalidate::service::{Service, ValidatedService};
 
 use tokio::sync::broadcast;

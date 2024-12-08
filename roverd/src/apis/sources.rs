@@ -1,4 +1,4 @@
-use tracing::{error, info, warn};
+use tracing::warn;
 
 use axum::async_trait;
 

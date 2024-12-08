@@ -18,7 +18,6 @@ pub enum Error {
     #[from]
     ConfigValidation(Vec<rovervalidate::error::Error>),
 
-
     // --- Roverd Generic ---
     Generic(String),
 
@@ -30,8 +29,8 @@ pub enum Error {
     ServiceValidation,
     ServiceNotFound,
     ServiceAlreadyExists,
-    ServiceParseError,
-    DownloadServiceError,
+    ServiceParseIncorrect,
+    ServiceDownloadFailed,
 
     PipielineValidation,
 
@@ -60,7 +59,5 @@ pub enum Error {
 
     Synchronization,
 
-
     Url,
 }
-

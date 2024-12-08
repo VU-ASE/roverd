@@ -94,7 +94,7 @@ pub async fn download_service(name: &str, version: &str) -> Result<String, Error
     info!("Downloading: {}", url);
 
     if name.contains(char::is_whitespace) || version.contains(char::is_whitespace) {
-        return Err(Error::ServiceParseError);
+        return Err(Error::ServiceParseIncorrect);
     }
 
     let zip_file = format!("{DOWNLOAD_DESTINATION}/{name}-{version}.zip");
@@ -105,7 +105,7 @@ pub async fn download_service(name: &str, version: &str) -> Result<String, Error
         let resp: axum::http::StatusCode = response.status();
         match response.status() {
             StatusCode::NOT_FOUND => return Err(Error::ServiceNotFound),
-            StatusCode::BAD_REQUEST => return Err(Error::DownloadServiceError),
+            StatusCode::BAD_REQUEST => return Err(Error::ServiceDownloadFailed),
             StatusCode::FORBIDDEN => return Err(Error::ServiceNotFound),
             _ => return Err(Error::Http(resp)),
         }
@@ -145,12 +145,12 @@ pub async fn download_and_install_service<'a>(fq: &FqService<'a>) -> Result<(), 
 }
 
 /// Check Check wh
-pub fn service_exists<'a>(fq: &FqService<'a>) -> Result<bool, Error> {
+pub fn service_exists(fq: &FqService<'_>) -> Result<bool, Error> {
     let full_path_string = format!("{ROVER_DIR}/{}/{}/{}", fq.author, fq.name, fq.version);
     match Path::new(full_path_string.as_str()).try_exists() {
-        Ok(a) => return Ok(a),
-        Err(e) => return Err(Error::Io(e)),
-    };
+        Ok(a) => Ok(a),
+        Err(e) => Err(Error::Io(e)),
+    }
 }
 
 /// Checks if the source exists as part of the Download section of the rover conf.
@@ -161,8 +161,6 @@ pub fn download_exists(config: &Configuration, rhs: &FqService) -> bool {
         .iter()
         .any(|downloaded| &FqService::from(downloaded) == rhs)
 }
-
-
 
 #[macro_export]
 macro_rules! warn_generic {

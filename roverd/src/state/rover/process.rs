@@ -1,8 +1,6 @@
-use futures::future::join_all;
-
 use std::path::PathBuf;
 use std::process::Stdio;
-use std::{fs::File, fs::OpenOptions, time::Duration};
+use std::{fs::OpenOptions, time::Duration};
 
 use std::io::Write;
 
@@ -15,7 +13,7 @@ use std::sync::Arc;
 use tokio::{
     process::{Child, Command},
     select,
-    sync::{broadcast, broadcast::Sender, Mutex},
+    sync::{broadcast::Sender, Mutex},
     time,
 };
 
