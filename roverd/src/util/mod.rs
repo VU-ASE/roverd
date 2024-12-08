@@ -7,7 +7,8 @@ use std::{
 // use reqwest::StatusCode;
 use axum::http::StatusCode;
 
-use tracing::{info, warn};
+use rovervalidate::config::{Configuration, Downloaded};
+use tracing::info;
 
 use crate::error::Error;
 
@@ -93,7 +94,7 @@ pub async fn download_service(name: &str, version: &str) -> Result<String, Error
     info!("Downloading: {}", url);
 
     if name.contains(char::is_whitespace) || version.contains(char::is_whitespace) {
-        return Err(Error::Download);
+        return Err(Error::ServiceParseError);
     }
 
     let zip_file = format!("{DOWNLOAD_DESTINATION}/{name}-{version}.zip");
@@ -109,7 +110,6 @@ pub async fn download_service(name: &str, version: &str) -> Result<String, Error
             _ => return Err(Error::Http(resp)),
         }
     }
-
 
     let mut file = std::fs::File::create(zip_file.clone())?;
 
@@ -128,17 +128,16 @@ pub async fn download_and_install_service<'a>(fq: &FqService<'a>) -> Result<(), 
         "{DOWNLOAD_DESTINATION}/{}-{}-{}",
         fq.author, fq.name, fq.version
     );
+
     let zip_file = download_service(fq.name, fq.version).await?;
 
     // Deletes any existing files/dirs that are on the /author/name/version path
     // Makes sure the directories exist.
     let full_path = prepare_dirs(fq.author, fq.name, fq.version)?;
 
-    info!("  Unpacking zip {}", &fq.name);
     // Unpack the downloaded service and validate it.
     extract_zip(&zip_file, &contents_dir)?;
 
-    info!("  copying contents {}", &fq.name);
     // Copy contents into place
     copy_recursively(contents_dir, full_path)?;
 
@@ -154,38 +153,45 @@ pub fn service_exists<'a>(fq: &FqService<'a>) -> Result<bool, Error> {
     };
 }
 
+/// Checks if the source exists as part of the Download section of the rover conf.
+/// Does not check whether service exists on disk.
+pub fn download_exists(config: &Configuration, rhs: &FqService) -> bool {
+    config
+        .downloaded
+        .iter()
+        .any(|downloaded| &FqService::from(downloaded) == rhs)
+}
+
 
 
 #[macro_export]
-macro_rules! unwrap_generic {
+macro_rules! warn_generic {
     ($expr:expr, $error_type:ty) => {{
         match $expr {
             Ok(data) => data,
             Err(e) => {
                 warn!("{:#?}", e);
-                return Ok(<$error_type>::Status400_AnErrorOccurred(
-                    GenericError {
-                        message: Some(format!("{:?}", e)),
-                        code: Some(1),
-                    }
-                ));
+                return Ok(<$error_type>::Status400_AnErrorOccurred(GenericError {
+                    message: Some(format!("{:?}", e)),
+                    code: Some(1),
+                }));
             }
         }
     }};
+}
 
-    // Optional: Add a variant that allows custom error code
-    // ($expr:expr, $error_response_type:path, $error_code:expr) => {{
-    //     match $expr {
-    //         Ok(data) => data,
-    //         Err(e) => {
-    //             warn!("{:#?}", e);
-    //             return Ok($error_response_type::Status400_AnErrorOccurred(
-    //                 GenericError {
-    //                     message: Some(format!("{:?}", e)),
-    //                     code: Some($error_code),
-    //                 }
-    //             ));
-    //         }
-    //     }
-    // }};
+#[macro_export]
+macro_rules! error_generic {
+    ($expr:expr, $error_type:ty) => {{
+        match $expr {
+            Ok(data) => data,
+            Err(e) => {
+                error!("{:#?}", e);
+                return Ok(<$error_type>::Status400_AnErrorOccurred(GenericError {
+                    message: Some(format!("{:?}", e)),
+                    code: Some(1),
+                }));
+            }
+        }
+    }};
 }

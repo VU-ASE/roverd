@@ -1,4 +1,4 @@
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 
 use axum::async_trait;
 
@@ -10,9 +10,8 @@ use axum::extract::Host;
 use axum::http::Method;
 use axum_extra::extract::CookieJar;
 
-
 use crate::state::Roverd;
-use crate::unwrap_generic;
+use crate::warn_generic;
 
 #[async_trait]
 impl Sources for Roverd {
@@ -24,9 +23,7 @@ impl Sources for Roverd {
         _cookies: CookieJar,
     ) -> Result<SourcesGetResponse, String> {
         let state = self.state.read().await;
-
-        let config = unwrap_generic!(state.sources.get().await, SourcesGetResponse);
-
+        let config = warn_generic!(state.sources.get().await, SourcesGetResponse);
 
         let sources: Vec<SourcesGet200ResponseInner> = config
             .0
@@ -54,9 +51,7 @@ impl Sources for Roverd {
         body: SourcesPostRequest,
     ) -> Result<SourcesDeleteResponse, String> {
         let state = self.state.write().await;
-
-        let _ = unwrap_generic!(state.sources.delete(body).await, SourcesDeleteResponse);
-
+        let _ = warn_generic!(state.sources.delete(body).await, SourcesDeleteResponse);
         Ok(SourcesDeleteResponse::Status200_TheSourceWasDeletedSuccessfully)
     }
 
@@ -71,16 +66,7 @@ impl Sources for Roverd {
         body: SourcesPostRequest,
     ) -> Result<SourcesPostResponse, String> {
         let state = self.state.write().await;
-        if let Err(e) = state.sources.add(body).await {
-            warn!("{:?}", e);
-            return Ok(SourcesPostResponse::Status400_AnErrorOccurred(
-                GenericError {
-                    message: Some(format!("{:?}", e)),
-                    code: Some(1),
-                },
-            ));
-        }
-
+        let _ = warn_generic!(state.sources.add(body).await, SourcesPostResponse);
         Ok(SourcesPostResponse::Status200_TheSourceWasAddedSuccessfully)
     }
 }

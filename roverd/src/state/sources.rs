@@ -1,13 +1,13 @@
 use std::fs::write;
 
-use crate::{error::Error, util};
+use crate::{error::Error, util::*};
 
 use openapi::models::SourcesPostRequest;
 use rovervalidate::config::{Configuration, Downloaded, Validate, ValidatedConfiguration};
 
 use crate::util::download_and_install_service;
 
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 use crate::constants::*;
 
@@ -31,46 +31,73 @@ impl Sources {
     }
 
     pub async fn add(&self, source: SourcesPostRequest) -> Result<(), Error> {
-        // First, check if the source to add already exists.
         let mut config = self.get().await?.0;
 
-        let incoming_source = Downloaded {
-            sha: None,
-            name: source.name.to_lowercase(),
-            source: source.url.to_lowercase(),
-            version: source.version.to_lowercase(),
-        };
+        let incoming_fq = FqService::from(&source);
 
-        if incoming_source.source.contains("http") {
+        if incoming_fq.source_url.contains("http") {
             return Err(Error::Generic(
                 "source url should not contain schema, remove 'http...'".to_string(),
             ));
         }
 
         for existing_source in &config.downloaded {
-            if existing_source.name.to_lowercase() == incoming_source.name
-                && existing_source.source.to_lowercase() == incoming_source.source
-                && existing_source.version.to_lowercase() == incoming_source.version
-            {
+            let rhs = FqService::from(existing_source);
+
+            if incoming_fq == rhs {
                 return Err(Error::SourceAlreadyExists);
             }
         }
 
-        let fq = FqService {
-            name: &incoming_source.name,
-            author: AUTHOR,
-            version: &incoming_source.version,
-        };
-
-        if !util::service_exists(&fq)? {
-            download_and_install_service(&fq).await?;
-            // If the download was successful, add it to the config file
-            config.downloaded.push(incoming_source);
-            let contents = serde_yaml::to_string(&config)?;
-            write(ROVER_CONFIG_FILE, contents)?;
-        } else {
-            return Err(Error::ServiceAlreadyExists);
+        // If it exists, delete it and re-add it
+        if service_exists(&incoming_fq)? {
+            std::fs::remove_dir_all(&incoming_fq.path)?;
         }
+
+        config.enabled.clear();
+
+        download_and_install_service(&incoming_fq).await?;
+        // If the download was successful, add it to the config file
+        config.downloaded.push(Downloaded {
+            name: incoming_fq.name.to_string(),
+            source: incoming_fq.source_url.to_string(),
+            version: incoming_fq.version.to_string(),
+            sha: None, // todo add sha
+        });
+        let contents = serde_yaml::to_string(&config)?;
+        write(ROVER_CONFIG_FILE, contents)?;
+
+        Ok(())
+    }
+
+    pub async fn delete(&self, source: SourcesPostRequest) -> Result<(), Error> {
+        let mut config = self.get().await?.0;
+        let fq_to_delete = FqService::from(&source);
+
+        if !download_exists(&config, &fq_to_delete) {
+            return Err(Error::SourceNotFound);
+        }
+
+        // Remove from config file
+        let delete_index = config
+            .downloaded
+            .iter()
+            .position(|x| FqService::from(x) == fq_to_delete)
+            .unwrap();
+        config.downloaded.remove(delete_index);
+
+        // Delete files on disk
+        if service_exists(&fq_to_delete)? {
+            std::fs::remove_dir_all(&fq_to_delete.path)?;
+        }
+
+        config.enabled.clear();
+
+        // If the directory has been removed, update the file on disk
+        let contents = serde_yaml::to_string(&config)?;
+        write(ROVER_CONFIG_FILE, contents)?;
+
+        info!("Deleted {}", fq_to_delete);
 
         Ok(())
     }
@@ -81,24 +108,15 @@ impl Sources {
         let config = self.get().await?.0;
 
         for existing_source in &config.downloaded {
-            let fq_service = FqService {
-                name: &existing_source.name,
-                author: AUTHOR,
-                version: &existing_source.version,
-            };
+            let fq = FqService::from(existing_source);
 
-            if !util::service_exists(&fq_service)? {
-                download_and_install_service(&fq_service).await?;
+            if !service_exists(&fq)? {
+                download_and_install_service(&fq).await?;
             } else {
-                info!("Service {} already installed", &fq_service.name);
+                info!("Service {} already installed", &fq.name);
             }
         }
 
-        Ok(())
-    }
-
-    pub async fn delete(&self, _source: SourcesPostRequest) -> Result<(), Error> {
-        error!("TODO: unimplemented");
         Ok(())
     }
 }

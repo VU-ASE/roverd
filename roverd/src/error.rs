@@ -24,11 +24,13 @@ pub enum Error {
 
     // --- Source Errors ---
     SourceAlreadyExists,
+    SourceNotFound,
 
     // --- Service Errors ---
     ServiceValidation,
     ServiceNotFound,
     ServiceAlreadyExists,
+    ServiceParseError,
     DownloadServiceError,
 
     PipielineValidation,
