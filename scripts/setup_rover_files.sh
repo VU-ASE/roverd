@@ -19,3 +19,8 @@ chown debix:debix /home/debix/.rover
 echo "14" > /etc/rover
 echo "bunny" >> /etc/rover
 echo -n "debix" | sha256sum | cut -d ' ' -f 1 >> /etc/rover
+
+
+cp roverd/examples/imaging-service.yaml /home/debix/.rover/vu-ase/imaging/1.0.0/service.yaml
+cp roverd/examples/controller-service.yaml /home/debix/.rover/vu-ase/controller/1.0.1/service.yaml
+cp roverd/examples/actuator-service.yaml /home/debix/.rover/vu-ase/actuator/1.0.5/service.yaml

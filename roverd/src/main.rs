@@ -96,7 +96,7 @@ async fn main() -> Result<(), Error> {
     log::init();
     info!("logging initialized");
 
-    let app = Roverd::new();
+    let app = Roverd::new().await?;
 
     let router = openapi::server::new(app.clone())
         .layer(middleware::from_fn_with_state(app.clone(), auth_wrapper))

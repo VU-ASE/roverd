@@ -10,6 +10,8 @@ pub mod sources;
 /// Start-up information and system clock
 pub mod info;
 
+use crate::error::Error;
+
 #[derive(Debug, Clone)]
 pub struct State {
     /// Run-time encapsulation of pipeline data (running processes)
@@ -35,7 +37,10 @@ pub struct Roverd {
 }
 
 impl Roverd {
-    pub fn new() -> Self {
+    pub async fn new() -> Result<Self, Error> {
+        // Initialize sources, download if necessary
+        sources::Sources.install_missing_sources().await?;
+
         let roverd = Self {
             info: info::Info::new(),
             state: Arc::from(RwLock::from(State {
@@ -45,13 +50,11 @@ impl Roverd {
             })),
         };
 
-        if roverd.info.status == DaemonStatus::Operational {
-            info!("initialized successfully");
-        } else {
+        if roverd.info.status != DaemonStatus::Operational {
             warn!("did not initialize successfully {:#?}", roverd);
         }
 
-        roverd
+        Ok(roverd)
     }
 }
 

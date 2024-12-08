@@ -10,7 +10,12 @@ downloaded:
   - name: actuator
     source: github.com/VU-ASE/actuator
     version: 1.0.5
+  - name: transceiver
+    source: github.com/VU-ASE/transceiver
+    version: 1.0.1
+
 enabled:
-  - /home/debix/.rover/services/imaging/
-  - /home/debix/.rover/services/controller
-  - /home/debix/.rover/services/actuator/service.yaml
+  - /home/debix/.rover/vu-ase/imaging/1.0.0
+  - /home/debix/.rover/vu-ase/controller/1.0.1
+  - /home/debix/.rover/vu-ase/actuator/1.0.5/
+

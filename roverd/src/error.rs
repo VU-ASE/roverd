@@ -32,6 +32,17 @@ pub enum Error {
     ServiceParseIncorrect,
     ServiceDownloadFailed,
 
+    // --- Validation ----
+    EnabledPathInvalid,
+    EnabledPathNotFound,
+
+    // ---
+    MissingUrl,
+
+    PathConversion,
+
+    StringToFqServiceConversion,
+
     PipielineValidation,
 
     #[from]

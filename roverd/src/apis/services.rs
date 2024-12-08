@@ -12,6 +12,7 @@ use axum_extra::extract::{CookieJar, Multipart};
 
 use tracing::warn;
 
+use crate::services::FqService;
 use crate::state::Roverd;
 use crate::warn_generic;
 
@@ -44,9 +45,20 @@ impl Services for Roverd {
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
-        _path_params: ServicesAuthorServiceVersionDeletePathParams,
+        path_params: ServicesAuthorServiceVersionDeletePathParams,
     ) -> Result<ServicesAuthorServiceVersionDeleteResponse, String> {
-        Ok(ServicesAuthorServiceVersionDeleteResponse::Status404_EntityNotFound)
+        let state = self.state.write().await;
+
+        let rebuild_pipeline = warn_generic!(
+            state.services.delete(&state, &path_params).await,
+            ServicesAuthorServiceVersionDeleteResponse
+        );
+
+        Ok(ServicesAuthorServiceVersionDeleteResponse::Status200_TheServiceVersionWasDeletedSuccessfully(
+            ServicesAuthorServiceVersionDelete200Response {
+                invalidated_pipeline: rebuild_pipeline
+            }
+        ))
     }
 
     /// Retrieve the status of a specific version of a service.
@@ -109,15 +121,12 @@ impl Services for Roverd {
     ) -> Result<ServicesGetResponse, String> {
         let state = self.state.read().await;
 
-        let authors = warn_generic!(
-            state.services.get_authors().await,
-            ServicesGetResponse
-        );
+        let authors = warn_generic!(state.services.get_authors().await, ServicesGetResponse);
 
         Ok(ServicesGetResponse::Status200_TheListOfAuthors(authors))
     }
 
-        /// Retrieve the list of parsable services for a specific author.
+    /// Retrieve the list of parsable services for a specific author.
     ///
     /// ServicesAuthorGet - GET /services/{author}
     async fn services_author_get(

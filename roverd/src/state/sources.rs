@@ -35,7 +35,9 @@ impl Sources {
 
         let incoming_fq = FqService::from(&source);
 
-        if incoming_fq.source_url.contains("http") {
+        let source_url = incoming_fq.url.ok_or(Error::MissingUrl)?;
+
+        if source_url.contains("http") {
             return Err(Error::Generic(
                 "source url should not contain schema, remove 'http...'".to_string(),
             ));
@@ -51,16 +53,17 @@ impl Sources {
 
         // If it exists, delete it and re-add it
         if service_exists(&incoming_fq)? {
-            std::fs::remove_dir_all(&incoming_fq.path)?;
+            std::fs::remove_dir_all(incoming_fq.path())?;
         }
 
         config.enabled.clear();
 
         download_and_install_service(&incoming_fq).await?;
+
         // If the download was successful, add it to the config file
         config.downloaded.push(Downloaded {
             name: incoming_fq.name.to_string(),
-            source: incoming_fq.source_url.to_string(),
+            source: source_url.to_string(),
             version: incoming_fq.version.to_string(),
             sha: None, // todo add sha
         });
@@ -88,7 +91,7 @@ impl Sources {
 
         // Delete files on disk
         if service_exists(&fq_to_delete)? {
-            std::fs::remove_dir_all(&fq_to_delete.path)?;
+            std::fs::remove_dir_all(fq_to_delete.path())?;
         }
 
         config.enabled.clear();
@@ -111,9 +114,10 @@ impl Sources {
             let fq = FqService::from(existing_source);
 
             if !service_exists(&fq)? {
+                info!("Missing source: {} ", fq);
                 download_and_install_service(&fq).await?;
             } else {
-                info!("Service {} already installed", &fq.name);
+                info!("Source {} installed", fq);
             }
         }
 
