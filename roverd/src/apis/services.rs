@@ -17,26 +17,6 @@ use crate::warn_generic;
 
 #[async_trait]
 impl Services for Roverd {
-    /// Retrieve the list of parsable services for a specific author.
-    ///
-    /// ServicesAuthorGet - GET /services/{author}
-    async fn services_author_get(
-        &self,
-        _method: Method,
-        _host: Host,
-        _cookies: CookieJar,
-        _path_params: ServicesAuthorGetPathParams,
-    ) -> Result<ServicesAuthorGetResponse, String> {
-        let state = self.state.read().await;
-
-        let authors = warn_generic!(
-            state.services.get_authors().await,
-            ServicesAuthorGetResponse
-        );
-
-        Ok(ServicesAuthorGetResponse::Status200_TheListOfServicesForTheAuthor(authors))
-    }
-
     /// Retrieve the list of parsable service versions for a specific author and service.
     ///
     /// ServicesAuthorServiceGet - GET /services/{author}/{service}
@@ -48,20 +28,12 @@ impl Services for Roverd {
         path_params: ServicesAuthorServiceGetPathParams,
     ) -> Result<ServicesAuthorServiceGetResponse, String> {
         let state = self.state.read().await;
-        let _service = match state.services.get_version(path_params).await {
-            Ok(data) => data,
-            Err(e) => {
-                warn!("{:#?}", e);
-                return Ok(ServicesAuthorServiceGetResponse::Status400_AnErrorOccurred(
-                    GenericError {
-                        message: Some(format!("{:?}", e)),
-                        code: Some(1),
-                    },
-                ));
-            }
-        };
+        let versions = warn_generic!(
+            state.services.get_versions(path_params).await,
+            ServicesAuthorServiceGetResponse
+        );
 
-        Err("todo".to_string())
+        Ok(ServicesAuthorServiceGetResponse::Status200_TheListOfVersionsForThisAuthorAndServiceName(versions))
     }
 
     /// Delete a specific version of a service.
@@ -88,20 +60,11 @@ impl Services for Roverd {
         path_params: ServicesAuthorServiceVersionGetPathParams,
     ) -> Result<ServicesAuthorServiceVersionGetResponse, String> {
         let state = self.state.read().await;
-        let service = match state.services.get_service(path_params).await {
-            Ok(data) => data,
-            Err(e) => {
-                warn!("{:#?}", e);
-                return Ok(
-                    ServicesAuthorServiceVersionGetResponse::Status400_AnErrorOccurred(
-                        GenericError {
-                            message: Some(format!("{:?}", e)),
-                            code: Some(1),
-                        },
-                    ),
-                );
-            }
-        };
+
+        let service = warn_generic!(
+            state.services.get_service(path_params).await,
+            ServicesAuthorServiceVersionGetResponse
+        );
 
         Ok(
             ServicesAuthorServiceVersionGetResponse::Status200_TheServiceConfiguration(
@@ -145,20 +108,33 @@ impl Services for Roverd {
         _cookies: CookieJar,
     ) -> Result<ServicesGetResponse, String> {
         let state = self.state.read().await;
-        let authors = match state.services.get_authors().await {
-            Ok(data) => data,
-            Err(e) => {
-                warn!("{:#?}", e);
-                return Ok(ServicesGetResponse::Status400_AnErrorOccurred(
-                    GenericError {
-                        message: Some(format!("{:?}", e)),
-                        code: Some(1),
-                    },
-                ));
-            }
-        };
+
+        let authors = warn_generic!(
+            state.services.get_authors().await,
+            ServicesGetResponse
+        );
 
         Ok(ServicesGetResponse::Status200_TheListOfAuthors(authors))
+    }
+
+        /// Retrieve the list of parsable services for a specific author.
+    ///
+    /// ServicesAuthorGet - GET /services/{author}
+    async fn services_author_get(
+        &self,
+        _method: Method,
+        _host: Host,
+        _cookies: CookieJar,
+        path_params: ServicesAuthorGetPathParams,
+    ) -> Result<ServicesAuthorGetResponse, String> {
+        let state = self.state.read().await;
+
+        let services = warn_generic!(
+            state.services.get_services(path_params).await,
+            ServicesAuthorGetResponse
+        );
+
+        Ok(ServicesAuthorGetResponse::Status200_TheListOfServicesForTheAuthor(services))
     }
 
     /// Upload a new service or new version to the rover by uploading a ZIP file.

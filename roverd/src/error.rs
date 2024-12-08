@@ -61,4 +61,6 @@ pub enum Error {
     Synchronization,
 
     Url,
+
+    Unimplemented, // Todo this should be removed for prod!
 }

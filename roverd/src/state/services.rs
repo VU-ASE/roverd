@@ -71,17 +71,28 @@ impl Services {
         Ok(list_dir_contents("")?)
     }
 
-    pub async fn get_service(
+    pub async fn get_services(
         &self,
-        _fq_service: ServicesAuthorServiceVersionGetPathParams,
-    ) -> Result<ValidatedService, Error> {
-        Err(Error::ConfigFileNotFound)
+        path_params: ServicesAuthorGetPathParams,
+    ) -> Result<Vec<String>, Error> {
+        Ok(list_dir_contents(
+            format!("{}", path_params.author).as_str(),
+        )?)
     }
 
-    pub async fn get_version(
+    pub async fn get_versions(
         &self,
-        _path_params: ServicesAuthorServiceGetPathParams,
+        path_params: ServicesAuthorServiceGetPathParams,
     ) -> Result<Vec<String>, Error> {
-        Ok(vec!["asdf".to_string()])
+        Ok(list_dir_contents(
+            format!("{}/{}", path_params.author, path_params.service).as_str(),
+        )?)
+    }
+
+    pub async fn get_service(
+        &self,
+        _path_params: ServicesAuthorServiceVersionGetPathParams,
+    ) -> Result<ValidatedService, Error> {
+        Err(Error::Unimplemented)
     }
 }
