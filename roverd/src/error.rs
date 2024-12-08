@@ -37,7 +37,8 @@ pub enum Error {
     #[from]
     Serialization(serde_yaml::Error),
 
-    Download,
+    #[from]
+    OsString(std::ffi::OsString),
 
     #[from]
     Zip(zip::result::ZipError),

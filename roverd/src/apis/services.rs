@@ -13,6 +13,7 @@ use axum_extra::extract::{CookieJar, Multipart};
 use tracing::warn;
 
 use crate::state::Roverd;
+use crate::warn_generic;
 
 #[async_trait]
 impl Services for Roverd {
@@ -27,18 +28,11 @@ impl Services for Roverd {
         _path_params: ServicesAuthorGetPathParams,
     ) -> Result<ServicesAuthorGetResponse, String> {
         let state = self.state.read().await;
-        let authors = match state.services.get_authors().await {
-            Ok(data) => data,
-            Err(e) => {
-                warn!("{:#?}", e);
-                return Ok(ServicesAuthorGetResponse::Status400_AnErrorOccurred(
-                    GenericError {
-                        message: Some(format!("{:?}", e)),
-                        code: Some(1),
-                    },
-                ));
-            }
-        };
+
+        let authors = warn_generic!(
+            state.services.get_authors().await,
+            ServicesAuthorGetResponse
+        );
 
         Ok(ServicesAuthorGetResponse::Status200_TheListOfServicesForTheAuthor(authors))
     }

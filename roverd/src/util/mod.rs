@@ -162,6 +162,17 @@ pub fn download_exists(config: &Configuration, rhs: &FqService) -> bool {
         .any(|downloaded| &FqService::from(downloaded) == rhs)
 }
 
+pub fn list_dir_contents(added_path: &str) -> Result<Vec<String>, Error> {
+    let paths = fs::read_dir(format!("{}/{}", ROVER_DIR, added_path))?;
+    let mut contents: Vec<String> = vec![];
+
+    for path in paths {
+        contents.push(path?.file_name().to_os_string().into_string()?)
+    }
+
+    Ok(contents)
+}
+
 #[macro_export]
 macro_rules! warn_generic {
     ($expr:expr, $error_type:ty) => {{

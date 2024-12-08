@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::Error;
+use crate::{util::list_dir_contents, Error};
 
 use rovervalidate::{config::Downloaded, service::ValidatedService};
 
@@ -68,7 +68,7 @@ impl<'a> PartialEq for FqService<'a> {
 
 impl Services {
     pub async fn get_authors(&self) -> Result<Vec<String>, Error> {
-        Ok(vec!["asdf".to_string()])
+        Ok(list_dir_contents("")?)
     }
 
     pub async fn get_service(
