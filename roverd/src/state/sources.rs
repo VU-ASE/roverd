@@ -7,7 +7,7 @@ use rovervalidate::config::{Configuration, Downloaded, Validate, ValidatedConfig
 
 use crate::util::download_and_install_service;
 
-use tracing::{info, error};
+use tracing::{error, info};
 
 use crate::constants::*;
 
@@ -42,7 +42,7 @@ impl Sources {
         };
 
         if incoming_source.source.contains("http") {
-            return Err(Error::Source(
+            return Err(Error::Generic(
                 "source url should not contain schema, remove 'http...'".to_string(),
             ));
         }
@@ -52,23 +52,31 @@ impl Sources {
                 && existing_source.source.to_lowercase() == incoming_source.source
                 && existing_source.version.to_lowercase() == incoming_source.version
             {
-                let error_msg = "already exists".to_string();
-                return Err(Error::Source(error_msg));
+                return Err(Error::SourceAlreadyExists);
             }
         }
 
-        // Update the config file with the newly added source
-        config.downloaded.push(incoming_source);
-        let contents = serde_yaml::to_string(&config)?;
-        write(ROVER_CONFIG_FILE, contents)?;
+        let fq = FqService {
+            name: &incoming_source.name,
+            author: AUTHOR,
+            version: &incoming_source.version,
+        };
 
-        // Based on the updated config file, download & install all sources that may be missing
-        self.install_missing_sources().await?;
+        if !util::service_exists(&fq)? {
+            download_and_install_service(&fq).await?;
+            // If the download was successful, add it to the config file
+            config.downloaded.push(incoming_source);
+            let contents = serde_yaml::to_string(&config)?;
+            write(ROVER_CONFIG_FILE, contents)?;
+        } else {
+            return Err(Error::ServiceAlreadyExists);
+        }
 
         Ok(())
     }
 
-    /// Idempotently installs any missing sources based on roverd config file.
+    /// Idempotent operation that downloads and installs any
+    /// missing sources based on roverd config file.
     pub async fn install_missing_sources(&self) -> Result<(), Error> {
         let config = self.get().await?.0;
 
@@ -80,7 +88,6 @@ impl Sources {
             };
 
             if !util::service_exists(&fq_service)? {
-                info!("Service {} does not exist, downloading", &fq_service.name);
                 download_and_install_service(&fq_service).await?;
             } else {
                 info!("Service {} already installed", &fq_service.name);

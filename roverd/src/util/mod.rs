@@ -105,6 +105,7 @@ pub async fn download_service(name: &str, version: &str) -> Result<String, Error
         match response.status() {
             StatusCode::NOT_FOUND => return Err(Error::ServiceNotFound),
             StatusCode::BAD_REQUEST => return Err(Error::DownloadServiceError),
+            StatusCode::FORBIDDEN => return Err(Error::ServiceNotFound),
             _ => return Err(Error::Http(resp)),
         }
     }
@@ -133,9 +134,11 @@ pub async fn download_and_install_service<'a>(fq: &FqService<'a>) -> Result<(), 
     // Makes sure the directories exist.
     let full_path = prepare_dirs(fq.author, fq.name, fq.version)?;
 
+    info!("  Unpacking zip {}", &fq.name);
     // Unpack the downloaded service and validate it.
     extract_zip(&zip_file, &contents_dir)?;
 
+    info!("  copying contents {}", &fq.name);
     // Copy contents into place
     copy_recursively(contents_dir, full_path)?;
 

@@ -27,9 +27,6 @@ impl Sources for Roverd {
 
         let config = unwrap_generic!(state.sources.get().await, SourcesGetResponse);
 
-        // Make sure all sources are downloaded
-        // let _ = unwrap_generic!(state.sources.install_missing_sources().await, SourcesGetResponse);
-    
 
         let sources: Vec<SourcesGet200ResponseInner> = config
             .0
