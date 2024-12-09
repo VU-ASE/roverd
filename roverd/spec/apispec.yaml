@@ -644,7 +644,7 @@ paths:
                 url:
                   type: string
                   description: "The URL of the source (without scheme)"
-                  example: "github.com/VU-ASE/imaging"
+                  example: "downloads.ase.vu.nl/api/imaging/v1.0.0"
                 version:
                   type: string
                   description: "The version of the source"
@@ -679,7 +679,7 @@ paths:
                 url:
                   type: string
                   description: "The URL of the source (without scheme)"
-                  example: "github.com/VU-ASE/imaging"
+                  example: "downloads.ase.vu.nl/api/imaging/v1.0.0"
                 version:
                   type: string
                   description: "The version of the source"

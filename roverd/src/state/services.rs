@@ -27,7 +27,7 @@ use super::{rover, Roverd, State};
 #[derive(Debug, Clone)]
 pub struct Services;
 
-pub struct FqVec<'a>(Vec<FqService<'a>>);
+pub struct FqVec<'a>(pub Vec<FqService<'a>>);
 
 /// Internal representation of a service, whether as a source or user service.
 #[derive(Debug)]

@@ -1,5 +1,6 @@
 use crate::{error::Error, util::*};
 
+use axum::routing::delete;
 use openapi::models::SourcesPostRequest;
 use rovervalidate::config::{Configuration, Downloaded, Validate, ValidatedConfiguration};
 
@@ -9,7 +10,7 @@ use tracing::{error, info, warn};
 
 use crate::constants::*;
 
-use super::services::FqService;
+use super::services::{FqService, FqVec};
 
 /// Data structure that holds the run-time mutable configuration of the rover.
 /// Reflective of a valid /etc/roverd/rover.yaml configurtaion file.
@@ -51,10 +52,13 @@ impl Sources {
 
         // If it exists, delete it and re-add it
         if service_exists(&incoming_fq)? {
+            // Clear pipeline if incoming service is replacing one that is enabled
+            let enabled_fq_vec = FqVec::try_from(&config.enabled)?.0;
+            if enabled_fq_vec.contains(&incoming_fq) {
+                config.enabled.clear();
+            }
             std::fs::remove_dir_all(incoming_fq.path())?;
         }
-
-        config.enabled.clear();
 
         download_and_install_service(&incoming_fq).await?;
 
@@ -74,28 +78,18 @@ impl Sources {
         let mut config = self.get().await?.0;
         let fq_to_delete = FqService::from(&source);
 
-        if !download_exists(&config, &fq_to_delete) {
-            return Err(Error::SourceNotFound);
-        }
+        // Delete service files on disk if there are any
+        delete_service_from_disk(&fq_to_delete)?;
 
-        // Remove from config file
-        let delete_index = config
-            .downloaded
-            .iter()
-            .position(|x| FqService::from(x) == fq_to_delete)
-            .unwrap();
-        config.downloaded.remove(delete_index);
+        // Remove service from list of downloads if it was there
+        remove_download(&mut config, &fq_to_delete);
 
-        // Delete files on disk
-        if service_exists(&fq_to_delete)? {
-            std::fs::remove_dir_all(fq_to_delete.path())?;
-        }
+        // Clear the enabled pipeline if it was there
+        remove_enabled(&mut config, &fq_to_delete);
 
-        config.enabled.clear();
-
-        // If the directory has been removed, update the file on disk
+        // Write the updated config back to disk
         update_config(&config)?;
-        info!("Deleted {}", fq_to_delete);
+        info!("Deleted source: {}", fq_to_delete);
 
         Ok(())
     }
@@ -119,3 +113,17 @@ impl Sources {
         Ok(())
     }
 }
+
+fn remove_download(config: &mut Configuration, fq: &FqService) {
+    // Remove from config file
+    let delete_index = config
+        .downloaded
+        .iter()
+        .position(|x| FqService::from(x) == *fq);
+
+    if let Some(i) = delete_index {
+        config.downloaded.remove(i);
+    }
+}
+
+fn remove_enabled(config: &mut Configuration, fq: &FqService) {}

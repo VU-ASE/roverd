@@ -13,6 +13,7 @@ use rovervalidate::config::{Configuration, Downloaded};
 use tracing::info;
 
 use crate::error::Error;
+use crate::services::FqVec;
 
 use super::state::services::FqService;
 
@@ -72,6 +73,7 @@ fn prepare_dirs(fq: &FqService) -> Result<String, Error> {
 /// Downloads the vu-ase service from the downloads page and creates a zip file
 /// /tmp/name-version.zip.
 pub async fn download_service(fq: &FqService<'_>) -> Result<String, Error> {
+    dbg!(fq);
     let url = format!("https://{}", fq.url.ok_or(Error::ServiceMissingUrl)?);
 
     info!("Downloading: {}", url);
@@ -134,13 +136,13 @@ pub fn service_exists(fq: &FqService<'_>) -> Result<bool, Error> {
     }
 }
 
-/// Checks if the source exists as part of the Download section of the rover conf.
-/// Does not check whether service exists on disk.
-pub fn download_exists(config: &Configuration, rhs: &FqService) -> bool {
-    config
-        .downloaded
-        .iter()
-        .any(|downloaded| &FqService::from(downloaded) == rhs)
+
+
+pub fn delete_service_from_disk<'a>(fq: &FqService<'a>) -> Result<(), Error> {
+    if service_exists(fq)? {
+        std::fs::remove_dir_all(fq.path())?;
+    }
+    Ok(())
 }
 
 pub fn list_dir_contents(added_path: &str) -> Result<Vec<String>, Error> {
