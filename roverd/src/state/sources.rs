@@ -1,5 +1,3 @@
-use std::fs::write;
-
 use crate::{error::Error, util::*};
 
 use openapi::models::SourcesPostRequest;
@@ -67,8 +65,7 @@ impl Sources {
             version: incoming_fq.version.to_string(),
             sha: None, // todo add sha
         });
-        let contents = serde_yaml::to_string(&config)?;
-        write(ROVER_CONFIG_FILE, contents)?;
+        update_config(&config)?;
 
         Ok(())
     }
@@ -97,9 +94,7 @@ impl Sources {
         config.enabled.clear();
 
         // If the directory has been removed, update the file on disk
-        let contents = serde_yaml::to_string(&config)?;
-        write(ROVER_CONFIG_FILE, contents)?;
-
+        update_config(&config)?;
         info!("Deleted {}", fq_to_delete);
 
         Ok(())

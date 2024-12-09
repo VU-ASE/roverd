@@ -90,7 +90,7 @@ impl Services for Roverd {
                             streams: i.streams.clone(),
                         })
                         .collect::<Vec<_>>(),
-                    built_at: None, // Todo this needs to be kept track of by state
+                    built_at: Some(69), // Todo this needs to be kept track of by state
                     outputs: service.0.outputs,
                 },
             ),

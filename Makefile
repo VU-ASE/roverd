@@ -16,7 +16,7 @@ build:
 setup:
 	sudo ./scripts/setup_rover_files.sh
 
-dev: build setup
+dev: build
 	sudo ./target/release/roverd
 
 clean:

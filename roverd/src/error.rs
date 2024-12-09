@@ -31,6 +31,7 @@ pub enum Error {
     ServiceAlreadyExists,
     ServiceParseIncorrect,
     ServiceDownloadFailed,
+    ServiceMissingUrl,
 
     // --- Validation ----
     EnabledPathInvalid,

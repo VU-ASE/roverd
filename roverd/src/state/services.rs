@@ -4,7 +4,10 @@ use std::{
     path::Path,
 };
 
-use crate::{util::list_dir_contents, Error};
+use crate::{
+    util::{list_dir_contents, update_config},
+    Error,
+};
 
 use crate::error;
 
@@ -19,33 +22,22 @@ use crate::constants::*;
 
 use openapi::models::*;
 
-use super::{Roverd, State};
+use super::{rover, Roverd, State};
 
 #[derive(Debug, Clone)]
 pub struct Services;
 
+pub struct FqVec<'a>(Vec<FqService<'a>>);
+
+/// Internal representation of a service, whether as a source or user service.
 #[derive(Debug)]
 pub struct FqService<'a> {
     pub author: &'a str,
     pub name: &'a str,
     pub version: &'a str,
+    /// Optional because we want to reference a fully qualified service from parameters
+    /// in a HTTP request. Those don't involve a source URL.
     pub url: Option<&'a str>,
-}
-
-impl<'a> FqService<'a> {
-    pub fn path(&self) -> String {
-        format!(
-            "{}/{}/{}/{}",
-            ROVER_DIR, self.author, self.name, self.version
-        )
-    }
-}
-
-impl<'a> Display for FqService<'a> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}/{}/{}", self.author, self.name, self.version)?;
-        Ok(())
-    }
 }
 
 impl<'a> TryFrom<&'a String> for FqService<'a> {
@@ -69,14 +61,46 @@ impl<'a> TryFrom<&'a String> for FqService<'a> {
             })
             .collect::<Result<Vec<&str>, Error>>()?;
 
-        dbg!(&values);
-
         Ok(FqService {
             author: values.first().ok_or(Error::StringToFqServiceConversion)?,
             name: values.get(1).ok_or(Error::StringToFqServiceConversion)?,
             version: values.get(2).ok_or(Error::StringToFqServiceConversion)?,
             url: None,
         })
+    }
+}
+
+impl<'a> TryFrom<&'a Vec<String>> for FqVec<'a> {
+    type Error = error::Error;
+    fn try_from(string_vec: &'a Vec<String>) -> Result<Self, Self::Error> {
+        let fq_services: Vec<FqService<'a>> = string_vec
+            .iter()
+            .map(FqService::try_from)
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(FqVec(fq_services))
+    }
+}
+
+impl<'a> From<&'a Vec<Downloaded>> for FqVec<'a> {
+    fn from(downloaded_vec: &'a Vec<Downloaded>) -> Self {
+        let fq_services: Vec<FqService<'a>> = downloaded_vec.iter().map(FqService::from).collect();
+        FqVec(fq_services)
+    }
+}
+
+impl<'a> FqService<'a> {
+    pub fn path(&self) -> String {
+        format!(
+            "{}/{}/{}/{}",
+            ROVER_DIR, self.author, self.name, self.version
+        )
+    }
+}
+
+impl<'a> Display for FqService<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}/{}/{}", self.author, self.name, self.version)?;
+        Ok(())
     }
 }
 
@@ -144,11 +168,11 @@ impl Services {
         &self,
         path_params: ServicesAuthorServiceVersionGetPathParams,
     ) -> Result<ValidatedService, Error> {
+        // Load config from file on disk
         let service_file_path = format!(
             "{}/{}/{}/{}/service.yaml",
             ROVER_DIR, path_params.author, path_params.service, path_params.version
         );
-
         let contents = fs::read_to_string(service_file_path)?;
         let service =
             serde_yaml::from_str::<rovervalidate::service::Service>(&contents)?.validate()?;
@@ -162,31 +186,33 @@ impl Services {
         path_params: &ServicesAuthorServiceVersionDeletePathParams,
     ) -> Result<bool, Error> {
         let delete_fq = FqService::from(path_params);
+
+        // Get the current configuration from disk
         let mut config = state.sources.get().await?.0;
 
+        // Remove the service to delete from the filesystem
         std::fs::remove_dir_all(delete_fq.path())?;
 
-        let enabled_fq_vec = self.validate_enabled(&config.enabled)?;
+        // Remove the "download" entry from config data structure
+        let delete_download_index = config
+            .downloaded
+            .iter()
+            .position(|d| FqService::from(d) == delete_fq);
+        if let Some(i) = delete_download_index {
+            config.downloaded.remove(i);
+        }
 
-        if enabled_fq_vec.iter().any(|enabled_fq| {
-            dbg!((enabled_fq, &delete_fq));
-            enabled_fq == &delete_fq
-        }) {
+        // Return whether or not the service was enabled and if it was,
+        // reset the pipeline
+        let enabled_fq_vec = FqVec::try_from(&config.enabled)?.0;
+        if enabled_fq_vec
+            .iter()
+            .any(|enabled_fq| enabled_fq == &delete_fq)
+        {
             config.enabled.clear();
+            update_config(&config)?;
             return Ok(true);
         }
         Ok(false)
-    }
-
-    fn validate_enabled<'a>(
-        &self,
-        enabled_vec: &'a Vec<String>,
-    ) -> Result<Vec<FqService<'a>>, Error> {
-        let mut result: Vec<FqService<'a>> = vec![];
-        for enabled in enabled_vec {
-            result.push(FqService::try_from(enabled)?)
-        }
-
-        Ok(result)
     }
 }

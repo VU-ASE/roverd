@@ -1,3 +1,5 @@
+use std::fs::write;
+
 use std::{
     fs,
     io::{self, Read, Write},
@@ -53,9 +55,10 @@ pub fn extract_zip(zip_file: &str, destination_dir: &str) -> Result<(), Error> {
 /// Makes sure the directories for a given service exist. If there is an
 /// existing service at a given path it will delete it and prepare it such
 /// that the new service can be safely moved in place.
-fn prepare_dirs(author: &str, name: &str, version: &str) -> Result<String, Error> {
+// fn prepare_dirs(author: &str, name: &str, version: &str) -> Result<String, Error> {
+fn prepare_dirs(fq: &FqService) -> Result<String, Error> {
     // Construct the full path
-    let full_path_string = format!("{ROVER_DIR}/{author}/{name}/{version}");
+    let full_path_string = format!("{}/{}/{}/{}", ROVER_DIR, fq.author, fq.name, fq.version);
     let full_path = PathBuf::from(full_path_string.clone());
 
     // Ensure the directory exists
@@ -68,16 +71,16 @@ fn prepare_dirs(author: &str, name: &str, version: &str) -> Result<String, Error
 
 /// Downloads the vu-ase service from the downloads page and creates a zip file
 /// /tmp/name-version.zip.
-pub async fn download_service(name: &str, version: &str) -> Result<String, Error> {
-    let url = format!("{}/api/{}/v{}", DOWNLOAD_URL, name, version);
+pub async fn download_service(fq: &FqService<'_>) -> Result<String, Error> {
+    let url = format!("https://{}", fq.url.ok_or(Error::ServiceMissingUrl)?);
 
     info!("Downloading: {}", url);
 
-    if name.contains(char::is_whitespace) || version.contains(char::is_whitespace) {
+    if fq.name.contains(char::is_whitespace) || fq.version.contains(char::is_whitespace) {
         return Err(Error::ServiceParseIncorrect);
     }
 
-    let zip_file = format!("{DOWNLOAD_DESTINATION}/{name}-{version}.zip");
+    let zip_file = format!("{}/{}-{}.zip", DOWNLOAD_DESTINATION, fq.name, fq.version);
 
     let response = reqwest::get(url).await?;
 
@@ -104,16 +107,16 @@ pub async fn download_service(name: &str, version: &str) -> Result<String, Error
 /// There shouldn't be any directories or files in the unique path of the service,
 /// however if there are, they will get deleted to make space.
 pub async fn download_and_install_service<'a>(fq: &FqService<'a>) -> Result<(), Error> {
+    let zip_file = download_service(fq).await?;
+
+    // Deletes any existing files/dirs that are on the /author/name/version path
+    // Makes sure the directories exist.
+    let full_path = prepare_dirs(fq)?;
+
     let contents_dir = format!(
         "{DOWNLOAD_DESTINATION}/{}-{}-{}",
         fq.author, fq.name, fq.version
     );
-
-    let zip_file = download_service(fq.name, fq.version).await?;
-
-    // Deletes any existing files/dirs that are on the /author/name/version path
-    // Makes sure the directories exist.
-    let full_path = prepare_dirs(fq.author, fq.name, fq.version)?;
 
     // Unpack the downloaded service and validate it.
     extract_zip(&zip_file, &contents_dir)?;
@@ -124,10 +127,8 @@ pub async fn download_and_install_service<'a>(fq: &FqService<'a>) -> Result<(), 
     Ok(())
 }
 
-/// Check Check wh
 pub fn service_exists(fq: &FqService<'_>) -> Result<bool, Error> {
-    let full_path_string = format!("{ROVER_DIR}/{}/{}/{}", fq.author, fq.name, fq.version);
-    match Path::new(full_path_string.as_str()).try_exists() {
+    match Path::new(fq.path().as_str()).try_exists() {
         Ok(a) => Ok(a),
         Err(e) => Err(Error::Io(e)),
     }
@@ -151,6 +152,12 @@ pub fn list_dir_contents(added_path: &str) -> Result<Vec<String>, Error> {
     }
 
     Ok(contents)
+}
+
+pub fn update_config(config: &Configuration) -> Result<(), Error> {
+    let contents = serde_yaml::to_string(&config)?;
+    write(ROVER_CONFIG_FILE, contents)?;
+    Ok(())
 }
 
 #[macro_export]
