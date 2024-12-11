@@ -15,8 +15,9 @@ use rovervalidate::service::Service;
 use tracing::{error, info};
 
 use crate::error::Error;
+use crate::service::FqServiceBuf;
 
-use super::state::services::FqService;
+use super::state::service::FqService;
 
 use crate::constants::*;
 
@@ -58,7 +59,7 @@ pub fn extract_zip(zip_file: &str, destination_dir: &str) -> Result<(), Error> {
 /// existing service at a given path it will delete it and prepare it such
 /// that the new service can be safely moved in place.
 // fn prepare_dirs(author: &str, name: &str, version: &str) -> Result<String, Error> {
-fn prepare_dirs(fq: &FqService) -> Result<String, Error> {
+fn prepare_dirs(fq: &FqServiceBuf) -> Result<String, Error> {
     // Construct the full path
     let full_path_string = format!("{}/{}/{}/{}", ROVER_DIR, fq.author, fq.name, fq.version);
     let full_path = PathBuf::from(full_path_string.clone());
@@ -73,7 +74,7 @@ fn prepare_dirs(fq: &FqService) -> Result<String, Error> {
 
 /// Downloads the vu-ase service from the downloads page and creates a zip file
 /// /tmp/name-version.zip.
-pub async fn download_service(url: String) -> Result<(), Error> {
+pub async fn download_service(url: &String) -> Result<(), Error> {
     info!("Downloading: {}", url);
 
     let response = reqwest::get(url).await?;
@@ -100,19 +101,18 @@ pub async fn download_service(url: String) -> Result<(), Error> {
 /// Downloads a service to /tmp and moves it into the correct place on disk.
 /// There shouldn't be any directories or files in the unique path of the service,
 /// however if there are, they will get deleted to make space.
-pub async fn download_and_install_service(url: String) -> Result<(), Error> {
+pub async fn download_and_install_service(url: &String) -> Result<FqServiceBuf, Error> {
     download_service(url).await?;
-    install_service().await?;
-    Ok(())
+    Ok(install_service().await?)
 }
 
 /// Given the path of a zipfile, extract it and install it, parse the service.yaml
 /// and install it into the correct location on disk.
-pub async fn install_service() -> Result<(), Error> {
-    // Clear the destination directory
-    std::fs::remove_dir_all(UNZIPPED_DIR)?;
+pub async fn install_service() -> Result<FqServiceBuf, Error> {
+    // Clear the destination directory, no matter if it fails
+    let _ = std::fs::remove_dir_all(UNZIPPED_DIR);
 
-    // Create directory
+    // Create directory, this must not fail
     std::fs::create_dir_all(UNZIPPED_DIR)?;
 
     // Unpack the downloaded service and validate it.
@@ -124,21 +124,18 @@ pub async fn install_service() -> Result<(), Error> {
     let service =
         serde_yaml::from_str::<rovervalidate::service::Service>(&service_contents)?.validate()?;
 
-    let fq = FqService::from(&service);
+    let fq = FqServiceBuf::from(service);
+
+    info!("Installing: {}", fq);
 
     // Deletes any existing files/dirs that are on the /author/name/version path
     // Makes sure the directories exist.
     let full_path = prepare_dirs(&fq)?;
 
-    let contents_dir = PathBuf::from(format!(
-        "{DOWNLOAD_DESTINATION}/{}-{}-{}",
-        fq.author, fq.name, fq.version
-    ));
-
     // Copy contents into place
-    copy_recursively(contents_dir, full_path)?;
+    copy_recursively(UNZIPPED_DIR, full_path)?;
 
-    Ok(())
+    Ok(fq)
 }
 
 pub fn service_exists(fq: &FqService<'_>) -> Result<bool, Error> {
@@ -156,7 +153,8 @@ pub fn delete_service_from_disk(fq: &FqService<'_>) -> Result<(), Error> {
 }
 
 pub fn list_dir_contents(added_path: &str) -> Result<Vec<String>, Error> {
-    let paths = fs::read_dir(format!("{}/{}", ROVER_DIR, added_path))?;
+    let paths = fs::read_dir(format!("{}/{}", ROVER_DIR, added_path))
+        .map_err(|_| Error::ServiceNotFound)?;
     let mut contents: Vec<String> = vec![];
 
     for path in paths {

@@ -62,7 +62,7 @@ impl Pipeline for Roverd {
     ) -> Result<PipelineStartPostResponse, String> {
         let mut state = self.state.write().await;
 
-        let _ = match state.core.start().await {
+        let _ = match state.start().await {
             Ok(data) => data,
             Err(e) => {
                 warn!("{:#?}", e);
@@ -92,7 +92,7 @@ impl Pipeline for Roverd {
         let mut state = self.state.write().await;
 
         info!(">> calling stop");
-        let _ = match state.core.stop().await {
+        let _ = match state.stop().await {
             Ok(data) => data,
             Err(e) => {
                 warn!("{:#?}", e);

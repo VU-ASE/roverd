@@ -44,21 +44,6 @@ impl Validate<ValidatedService> for gen::Service {
             None
         });
 
-        validate_field!(self.source, &mut errors, |source| {
-            if source.is_empty() {
-                return Some("must not be empty");
-            }
-
-            let pattern =
-                Regex::new(r"^([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})(/[a-zA-Z0-9._~%!$&'()*+,;=:@-]*)*$")
-                    .unwrap();
-            if !pattern.is_match(source) {
-                return Some("must be a valid URL, without a scheme (no http:// or https://)");
-            }
-
-            None
-        });
-
         validate_field!(self.version, &mut errors, |version| {
             if version.is_empty() {
                 return Some("must not be empty");

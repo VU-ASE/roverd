@@ -4,10 +4,6 @@ use tracing::warn;
 
 use derive_more::From;
 
-// mod state;
-// use state::*;
-use crate::state::rover::process::ProcessManager;
-
 #[derive(Debug, From)]
 pub enum Error {
     RoverInfoFileIo(String, std::io::Error),

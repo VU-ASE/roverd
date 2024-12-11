@@ -12,6 +12,7 @@ use axum_extra::extract::{CookieJar, Multipart};
 
 use tracing::warn;
 
+use crate::service::{FqService, FqVec};
 use crate::state::Roverd;
 use crate::warn_generic;
 
@@ -25,9 +26,21 @@ impl Services for Roverd {
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
-        _body: models::FetchPostRequest,
+        body: models::FetchPostRequest,
     ) -> Result<FetchPostResponse, String> {
-        Err("unimplemented".to_string())
+        let state = self.state.write().await;
+
+        let (fq_buf, invalidated_pipeline) =
+            warn_generic!(state.fetch_service(&body).await, FetchPostResponse);
+
+        Ok(
+            FetchPostResponse::Status200_TheServiceWasUploadedSuccessfully(FetchPost200Response {
+                name: fq_buf.name,
+                author: fq_buf.author,
+                version: fq_buf.version,
+                invalidated_pipeline,
+            }),
+        )
     }
 
     /// Upload a new service or new version to the rover by uploading a ZIP file.
@@ -55,7 +68,7 @@ impl Services for Roverd {
     ) -> Result<ServicesAuthorServiceGetResponse, String> {
         let state = self.state.read().await;
         let versions = warn_generic!(
-            state.services.get_versions(path_params).await,
+            state.get_versions(path_params).await,
             ServicesAuthorServiceGetResponse
         );
 
@@ -75,7 +88,7 @@ impl Services for Roverd {
         let state = self.state.write().await;
 
         let rebuild_pipeline = warn_generic!(
-            state.services.delete(&state, &path_params).await,
+            state.delete_service(&path_params).await,
             ServicesAuthorServiceVersionDeleteResponse
         );
 
@@ -99,7 +112,7 @@ impl Services for Roverd {
         let state = self.state.read().await;
 
         let service = warn_generic!(
-            state.services.get_service(path_params).await,
+            state.get_service(path_params).await,
             ServicesAuthorServiceVersionGetResponse
         );
 
@@ -133,7 +146,7 @@ impl Services for Roverd {
         path_params: ServicesAuthorServiceVersionPostPathParams,
     ) -> Result<ServicesAuthorServiceVersionPostResponse, String> {
         let state = self.state.write().await;
-        let _ = if let Err(e) = state.services.build_service(path_params).await {
+        let _ = if let Err(e) = state.build_service(path_params).await {
             warn!("{:#?}", e);
             return Ok(
                 ServicesAuthorServiceVersionPostResponse::Status400_TheBuildFailed(
@@ -159,7 +172,7 @@ impl Services for Roverd {
     ) -> Result<ServicesGetResponse, String> {
         let state = self.state.read().await;
 
-        let authors = warn_generic!(state.services.get_authors().await, ServicesGetResponse);
+        let authors = warn_generic!(state.get_authors().await, ServicesGetResponse);
 
         Ok(ServicesGetResponse::Status200_TheListOfAuthors(authors))
     }
@@ -177,7 +190,7 @@ impl Services for Roverd {
         let state = self.state.read().await;
 
         let services = warn_generic!(
-            state.services.get_services(path_params).await,
+            state.get_services(path_params).await,
             ServicesAuthorGetResponse
         );
 

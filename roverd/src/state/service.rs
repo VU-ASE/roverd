@@ -1,7 +1,7 @@
 use std::{fmt::Display, fs, path::Path};
 
 use crate::{
-    util::{list_dir_contents, update_config},
+    util::{download_and_install_service, list_dir_contents, update_config},
     Error,
 };
 
@@ -14,10 +14,7 @@ use crate::constants::*;
 
 use openapi::models::*;
 
-use super::State;
 
-#[derive(Debug, Clone)]
-pub struct Services;
 
 pub struct FqVec<'a>(pub Vec<FqService<'a>>);
 
@@ -27,6 +24,31 @@ pub struct FqService<'a> {
     pub author: &'a str,
     pub name: &'a str,
     pub version: &'a str,
+}
+
+/// Same as FqService but with Strings instead of &str.
+#[derive(Debug)]
+pub struct FqServiceBuf {
+    pub author: String,
+    pub name: String,
+    pub version: String,
+}
+
+impl From<ValidatedService> for FqServiceBuf {
+    fn from(service: ValidatedService) -> Self {
+        FqServiceBuf {
+            name: service.0.name,
+            author: service.0.author,
+            version: service.0.version,
+        }
+    }
+}
+
+impl Display for FqServiceBuf {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}/{}/{}", self.author, self.name, self.version)?;
+        Ok(())
+    }
 }
 
 impl<'a> TryFrom<&'a String> for FqService<'a> {
@@ -95,12 +117,12 @@ impl<'a> From<&'a ServicesAuthorServiceVersionDeletePathParams> for FqService<'a
     }
 }
 
-impl<'a> From<&'a ValidatedService> for FqService<'a> {
-    fn from(s: &'a ValidatedService) -> Self {
+impl<'a> From<&'a FqServiceBuf> for FqService<'a> {
+    fn from(param: &'a FqServiceBuf) -> Self {
         FqService {
-            name: &s.0.name,
-            author: &s.0.author,
-            version: &s.0.version,
+            name: &param.name,
+            author: &param.author,
+            version: &param.version,
         }
     }
 }
@@ -125,74 +147,4 @@ impl<'a> PartialEq for FqService<'a> {
     }
 }
 
-impl Services {
-    pub async fn get_authors(&self) -> Result<Vec<String>, Error> {
-        list_dir_contents("")
-    }
 
-    pub async fn get_services(
-        &self,
-        path_params: ServicesAuthorGetPathParams,
-    ) -> Result<Vec<String>, Error> {
-        list_dir_contents(&path_params.author.to_string())
-    }
-
-    pub async fn get_versions(
-        &self,
-        path_params: ServicesAuthorServiceGetPathParams,
-    ) -> Result<Vec<String>, Error> {
-        list_dir_contents(format!("{}/{}", path_params.author, path_params.service).as_str())
-    }
-
-    pub async fn get_service(
-        &self,
-        path_params: ServicesAuthorServiceVersionGetPathParams,
-    ) -> Result<ValidatedService, Error> {
-        // Load config from file on disk
-        let service_file_path = format!(
-            "{}/{}/{}/{}/service.yaml",
-            ROVER_DIR, path_params.author, path_params.service, path_params.version
-        );
-        let contents = fs::read_to_string(service_file_path)?;
-        let service =
-            serde_yaml::from_str::<rovervalidate::service::Service>(&contents)?.validate()?;
-
-        Ok(service)
-    }
-
-    pub async fn delete(
-        &self,
-        state: &RwLockWriteGuard<'_, State>,
-        path_params: &ServicesAuthorServiceVersionDeletePathParams,
-    ) -> Result<bool, Error> {
-        let delete_fq = FqService::from(path_params);
-
-        // Get the current configuration from disk
-        let mut config = state.config.get().await?.0;
-
-        let mut return_bool = false;
-        // Return whether or not the service was enabled and if it was,
-        // reset the pipeline
-        let enabled_fq_vec = FqVec::try_from(&config.enabled)?.0;
-        if enabled_fq_vec
-            .iter()
-            .any(|enabled_fq| enabled_fq == &delete_fq)
-        {
-            config.enabled.clear();
-            update_config(&config)?;
-            return_bool = true;
-        }
-
-        // Remove the service to delete from the filesystem
-        std::fs::remove_dir_all(delete_fq.path())?;
-
-        Ok(return_bool)
-    }
-
-    pub async fn build_service(
-        &self,
-        _params: ServicesAuthorServiceVersionPostPathParams,
-    ) -> Result<(), Error> {
-        Err(Error::Unimplemented)
-    }
-}
