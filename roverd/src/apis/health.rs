@@ -9,9 +9,15 @@ use axum::http::Method;
 use axum_extra::extract::CookieJar;
 use tracing::info;
 
+use openapi::models::GenericError;
+use tracing::warn;
+
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::state::Roverd;
+use crate::warn_generic;
+
+use crate::error::Error;
 
 #[async_trait]
 impl Health for Roverd {
@@ -24,7 +30,6 @@ impl Health for Roverd {
         _host: Host,
         _cookies: CookieJar,
     ) -> Result<StatusGetResponse, String> {
-        info!("{:?} /status", method);
         let uptime = SystemTime::now()
             .duration_since(self.info.start_time)
             .unwrap()
@@ -74,12 +79,8 @@ impl Health for Roverd {
         _host: Host,
         _cookies: CookieJar,
     ) -> Result<UpdatePostResponse, String> {
-        info!("{:?} /update", method);
-        Ok(UpdatePostResponse::Status400_AnErrorOccurred(
-            models::GenericError {
-                message: Some("todo: /update is not yet fully implemented".to_string()),
-                code: None,
-            },
-        ))
+        let a = || Err(Error::Unimplemented);
+        warn_generic!(a(), UpdatePostResponse)
+        
     }
 }

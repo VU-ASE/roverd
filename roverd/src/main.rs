@@ -3,13 +3,15 @@ use axum::http::{self, StatusCode};
 use axum::response::Response;
 use base64::Engine;
 
-use tracing::info;
+use tracing::{info, warn};
 
 use sha256::digest;
 
 use tower_http::cors::CorsLayer;
 
 use axum::middleware::{self, Next};
+
+use constants::*;
 
 mod error;
 use error::Error::*;
@@ -57,6 +59,16 @@ fn check_auth(state: &Roverd, auth_str: &str) -> Result<(), Error> {
             return Ok(());
         }
     }
+
+    warn!(
+        "{}",
+        format!(
+            "Unauthorized access denied: missing credentials from {}",
+            ROVER_INFO_FILE
+        )
+        .as_str()
+    );
+
     Err(Http(StatusCode::UNAUTHORIZED))
 }
 

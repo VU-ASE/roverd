@@ -1,4 +1,4 @@
-use std::fs::write;
+use std::fs::{write, OpenOptions};
 
 use std::{
     fs,
@@ -73,7 +73,6 @@ fn prepare_dirs(fq: &FqService) -> Result<String, Error> {
 /// Downloads the vu-ase service from the downloads page and creates a zip file
 /// /tmp/name-version.zip.
 pub async fn download_service(fq: &FqService<'_>) -> Result<String, Error> {
-    dbg!(fq);
     let url = format!("https://{}", fq.url.ok_or(Error::ServiceMissingUrl)?);
 
     info!("Downloading: {}", url);
@@ -136,8 +135,6 @@ pub fn service_exists(fq: &FqService<'_>) -> Result<bool, Error> {
     }
 }
 
-
-
 pub fn delete_service_from_disk<'a>(fq: &FqService<'a>) -> Result<(), Error> {
     if service_exists(fq)? {
         std::fs::remove_dir_all(fq.path())?;
@@ -156,9 +153,21 @@ pub fn list_dir_contents(added_path: &str) -> Result<Vec<String>, Error> {
     Ok(contents)
 }
 
+/// Updates the config and creates the file if it doesn't exist
 pub fn update_config(config: &Configuration) -> Result<(), Error> {
     let contents = serde_yaml::to_string(&config)?;
-    write(ROVER_CONFIG_FILE, contents)?;
+
+    std::fs::create_dir_all(ROVER_CONFIG_DIR)?;
+
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .open(ROVER_CONFIG_FILE)
+        .map_err(|_| Error::CouldNotCreateConfigFile)?;
+
+    file.write_all(contents.as_bytes())
+        .map_err(|_| Error::CouldNotWriteToConfigFile)?;
+
     Ok(())
 }
 

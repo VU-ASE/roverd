@@ -51,7 +51,7 @@ impl Roverd {
         };
 
         if roverd.info.status != DaemonStatus::Operational {
-            warn!("did not initialize successfully {:#?}", roverd);
+            warn!("did not initialize successfully {:#?}", roverd.info);
         }
 
         Ok(roverd)

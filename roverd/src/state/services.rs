@@ -190,8 +190,9 @@ impl Services {
         // Get the current configuration from disk
         let mut config = state.sources.get().await?.0;
 
-        // Remove the service to delete from the filesystem
-        std::fs::remove_dir_all(delete_fq.path())?;
+        if !FqVec::from(&config.downloaded).0.contains(&delete_fq) {
+            return Err(Error::ServiceNotFound);
+        }
 
         // Remove the "download" entry from config data structure
         let delete_download_index = config
@@ -202,6 +203,7 @@ impl Services {
             config.downloaded.remove(i);
         }
 
+        let mut return_bool = false;
         // Return whether or not the service was enabled and if it was,
         // reset the pipeline
         let enabled_fq_vec = FqVec::try_from(&config.enabled)?.0;
@@ -211,8 +213,19 @@ impl Services {
         {
             config.enabled.clear();
             update_config(&config)?;
-            return Ok(true);
+            return_bool = true;
         }
-        Ok(false)
+
+        // Remove the service to delete from the filesystem
+        std::fs::remove_dir_all(delete_fq.path())?;
+
+        Ok(return_bool)
+    }
+
+    pub async fn build_service(
+        &self,
+        _params: ServicesAuthorServiceVersionPostPathParams,
+    ) -> Result<(), Error> {
+        Err(Error::Unimplemented)
     }
 }

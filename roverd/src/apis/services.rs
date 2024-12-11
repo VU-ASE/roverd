@@ -105,9 +105,25 @@ impl Services for Roverd {
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
-        _path_params: ServicesAuthorServiceVersionPostPathParams,
+        path_params: ServicesAuthorServiceVersionPostPathParams,
     ) -> Result<ServicesAuthorServiceVersionPostResponse, String> {
-        Ok(ServicesAuthorServiceVersionPostResponse::Status404_EntityNotFound)
+        let state = self.state.write().await;
+        let _ = match state.services.build_service(path_params).await {
+            Err(e) => {
+                warn!("{:#?}", e);
+                return Ok(
+                    ServicesAuthorServiceVersionPostResponse::Status400_TheBuildFailed(
+                        ServicesAuthorServiceVersionPost400Response {
+                            build_log: None,             // TODO
+                            message: "todo".to_string(), // TODO
+                        },
+                    ),
+                );
+            }
+            _ => (),
+        };
+
+        Ok(ServicesAuthorServiceVersionPostResponse::Status200_TheServiceWasBuiltSuccessfully)
     }
 
     /// Retrieve the list of all authors that have parsable services. With these authors you can query further for services.

@@ -13,13 +13,23 @@ pub enum Error {
     RoverInfoFileIo(String, std::io::Error),
     RoverInfoFileFormat(String),
 
-    ConfigFileNotFound,
+    
 
     #[from]
     ConfigValidation(Vec<rovervalidate::error::Error>),
 
     // --- Roverd Generic ---
     Generic(String),
+
+
+
+    // --- Rover info file /etc/rover ---
+    RoverInfoFileNotFound,
+
+    // --- Config File /etc/roverd/rover.yaml ---
+    CouldNotCreateConfigFile,
+    CouldNotWriteToConfigFile,
+
 
     // --- Source Errors ---
     SourceAlreadyExists,

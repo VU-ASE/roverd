@@ -1,5 +1,7 @@
 use crate::Error;
 use openapi::models::DaemonStatus;
+use std::fs::OpenOptions;
+use std::io::Read;
 use std::path::Path;
 use std::{fs::read_to_string, time::SystemTime};
 use tracing::error;
@@ -53,8 +55,11 @@ impl Info {
 /// the rover's id on the first line, the rover's name on the second, and a sha256
 /// hash of the user password on the last line.
 fn read_rover_info() -> Result<(i32, String, String), Error> {
-    let text = read_to_string(Path::new(ROVER_INFO_PATH))
-        .map_err(|e| Error::RoverInfoFileIo(ROVER_INFO_PATH.to_string(), e))?;
+    if !Path::new(ROVER_INFO_FILE).exists() {
+        return Err(Error::RoverInfoFileNotFound);
+    }
+
+    let text = read_to_string(ROVER_INFO_FILE)?;
 
     let text = text.split_whitespace().collect::<Vec<&str>>();
     if text.len() < 3 {
@@ -64,7 +69,7 @@ fn read_rover_info() -> Result<(i32, String, String), Error> {
         )));
     }
     let id: i32 = text[0].trim().parse().map_err(|e| {
-        Error::RoverInfoFileFormat(format!("Invalid format of {}, {}", ROVER_INFO_PATH, e))
+        Error::RoverInfoFileFormat(format!("Invalid format of {}, {}", ROVER_INFO_FILE, e))
     })?;
 
     let rover_name: String = text[1].to_string();

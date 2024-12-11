@@ -1,5 +1,7 @@
 use crate::{error::Error, util::*};
 
+use std::path::Path;
+
 use axum::routing::delete;
 use openapi::models::SourcesPostRequest;
 use rovervalidate::config::{Configuration, Downloaded, Validate, ValidatedConfiguration};
@@ -20,8 +22,19 @@ pub struct Sources;
 impl Sources {
     /// Retrieves rover.yaml file from disk, performs validation and returns object.
     pub async fn get(&self) -> Result<rovervalidate::config::ValidatedConfiguration, Error> {
-        let file_content =
-            std::fs::read_to_string(ROVER_CONFIG_FILE).map_err(|_| Error::ConfigFileNotFound)?;
+        if !Path::new(ROVER_CONFIG_FILE).exists() {
+            // If there is no existing config, create a new file and write
+            // an empty config to it.
+            let empty_config = Configuration {
+                enabled: vec![],
+                downloaded: vec![],
+            };
+
+            update_config(&empty_config)?;
+        }
+
+        let file_content = std::fs::read_to_string(ROVER_CONFIG_FILE)
+            .map_err(|_| Error::CouldNotCreateConfigFile)?;
 
         let config: ValidatedConfiguration =
             serde_yaml::from_str::<Configuration>(&file_content)?.validate()?;
