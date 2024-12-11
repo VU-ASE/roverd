@@ -1,7 +1,7 @@
 use super::gen;
 
 use crate::error::{Error, Result};
-use crate::{validate::Validate, validate_field};
+use crate::validate::Validate;
 use regex::Regex;
 
 // This enforces the type-state pattern, useful for ensuring only accepting valid configurations
@@ -37,61 +37,6 @@ impl Validate<ValidatedConfiguration> for gen::Configuration {
             }
         }
 
-        // Validate all downloaded services, iterate and use the index for every error message
-        for (index, downloaded) in self.downloaded.iter().enumerate() {
-            if let Err(mut downloaded_errors) = downloaded.validate() {
-                for error in downloaded_errors.iter_mut() {
-                    match error {
-                        Error::FieldValidationError(field_error) => {
-                            field_error.path.insert(0, "downloaded".to_string());
-                            field_error.path.insert(1, index.to_string());
-                        }
-                        Error::ParseError(parse_error) => {
-                            parse_error.path.insert(0, "downloaded".to_string());
-                            parse_error.path.insert(1, index.to_string());
-                        }
-                        _ => (),
-                    }
-                }
-                errors.append(&mut downloaded_errors);
-            }
-        }
-
-        // Check that there are no duplicate services in the downloaded services
-        let mut service_names = Vec::new();
-        let mut service_sources = Vec::new();
-        for (index, downloaded) in self.downloaded.iter().enumerate() {
-            let path = vec!["downloaded".to_string(), index.to_string()];
-
-            if service_names.contains(&downloaded.name) {
-                let msg = format!(
-                    "names of downloaded services must be unique, but {} exists more than once",
-                    downloaded.name
-                );
-
-                errors.push(Error::FieldValidationError(crate::error::FieldError {
-                    path: path.clone(),
-                    message: msg,
-                }));
-            } else {
-                service_names.push(downloaded.name.clone());
-            }
-
-            if service_sources.contains(&downloaded.source) {
-                let msg = format!(
-                    "sources of downloaded services must be unique, but {} exists more than once",
-                    downloaded.source
-                );
-
-                errors.push(Error::FieldValidationError(crate::error::FieldError {
-                    path: path.clone(),
-                    message: msg,
-                }));
-            } else {
-                service_sources.push(downloaded.source.clone());
-            }
-        }
-
         // Check that there are no duplicate services in the enabled services
         let mut enabled_services = Vec::new();
         for (index, enabled) in self.enabled.iter().enumerate() {
@@ -112,71 +57,6 @@ impl Validate<ValidatedConfiguration> for gen::Configuration {
 
         if errors.is_empty() {
             Ok(ValidatedConfiguration(self.clone()))
-        } else {
-            Err(errors)
-        }
-    }
-}
-
-impl Validate<bool> for gen::Downloaded {
-    fn validate(&self) -> Result<bool> {
-        let mut errors = Vec::new();
-
-        validate_field!(self.name, &mut errors, |value| {
-            if value.is_empty() {
-                return Some("must not be empty");
-            }
-
-            let pattern = Regex::new(r"^[a-z]+(-[a-z]+)*$").unwrap();
-            if !pattern.is_match(value) {
-                return Some("can only consist of lowercase letters and hyphens");
-            }
-
-            None
-        });
-
-        validate_field!(self.source, &mut errors, |value| {
-            if value.is_empty() {
-                return Some("must not be empty");
-            }
-
-            let pattern =
-                Regex::new(r"^([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})(/[a-zA-Z0-9._~%!$&'()*+,;=:@-]*)*$")
-                    .unwrap();
-            if !pattern.is_match(value) {
-                return Some("must be a valid URL, without a scheme (no http:// or https://)");
-            }
-
-            None
-        });
-
-        validate_field!(self.version, &mut errors, |value| {
-            if value.is_empty() {
-                return Some("must not be empty");
-            }
-
-            let pattern = Regex::new(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$").unwrap();
-            if !pattern.is_match(value) {
-                return Some("must be a valid semantic version");
-            }
-
-            None
-        });
-
-        // Validate SHA if present
-        validate_field!(self.sha, &mut errors, |value| {
-            if let Some(sha) = value {
-                let pattern = Regex::new(r"[a-fA-F0-9]{64}$").unwrap();
-                if !pattern.is_match(sha) {
-                    return Some("must be a valid SHA256 hash or must be omitted");
-                }
-            }
-
-            None
-        });
-
-        if errors.is_empty() {
-            Ok(true)
         } else {
             Err(errors)
         }

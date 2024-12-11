@@ -105,53 +105,50 @@ impl ProcessManager {
             let process_shutdown_tx = self.shutdown_tx.clone();
 
             tokio::spawn(async move {
-                loop {
-                    info!(">> start: before child lock of {:?}", proc.name);
-                    let mut child = proc.child.lock().await;
-                    select! {
-                        // Wait for process completion
-                        status = child.wait() => {
-                            match status {
-                                Ok(status) => {
-                                    if !status.success() {
-                                        process_shutdown_tx.send(()).ok();
-                                    }
-                                }
-                                Err(e) => {
-                                    error!("Error waiting for process {}: {}", proc.name, e);
+                info!(">> start: before child lock of {:?}", proc.name);
+                let mut child = proc.child.lock().await;
+                // todo test this make sure the loop doesn't need to be here
+                select! {
+                    // Wait for process completion
+                    status = child.wait() => {
+                        match status {
+                            Ok(status) => {
+                                if !status.success() {
                                     process_shutdown_tx.send(()).ok();
                                 }
                             }
-                            break;
+                            Err(e) => {
+                                error!("Error waiting for process {}: {}", proc.name, e);
+                                process_shutdown_tx.send(()).ok();
+                            }
                         }
-                        // Wait for shutdown signal
-                        _ = shutdown_rx.recv() => {
-                            if let Some(id) = child.id() {
-                                unsafe {
-                                    info!("Sending terminate to {}", proc.name);
-                                    libc::kill(id as i32, libc::SIGTERM);
-                                }
+                    }
+                    // Wait for shutdown signal
+                    _ = shutdown_rx.recv() => {
+                        if let Some(id) = child.id() {
+                            unsafe {
+                                info!("Sending terminate to {}", proc.name);
+                                libc::kill(id as i32, libc::SIGTERM);
                             }
+                        }
 
-                            // Wait for 1 second before sending KILL signal
-                            time::sleep(Duration::from_secs(1)).await;
+                        // Wait for 1 second before sending KILL signal
+                        time::sleep(Duration::from_secs(1)).await;
 
 
-                            match child.try_wait() {
-                                Ok(None) => {
-                                    info!("Force killing process: {}", proc.name);
-                                    if let Err(e) = child.kill().await {
-                                        error!("Error killing process {:?}: {:?}", proc.name, e);
-                                    }
-                                },
-                                Ok(Some(status)) => {
-                                    info!("Successfully terminated child: {:?} with {:?}", child, status)
-                                },
-                                Err(e) => {
-                                    error!("Error: {:?}", e);
+                        match child.try_wait() {
+                            Ok(None) => {
+                                info!("Force killing process: {}", proc.name);
+                                if let Err(e) = child.kill().await {
+                                    error!("Error killing process {:?}: {:?}", proc.name, e);
                                 }
+                            },
+                            Ok(Some(status)) => {
+                                info!("Successfully terminated child: {:?} with {:?}", child, status)
+                            },
+                            Err(e) => {
+                                error!("Error: {:?}", e);
                             }
-                            break;
                         }
                     }
                 }

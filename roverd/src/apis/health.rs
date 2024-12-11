@@ -7,7 +7,7 @@ use openapi::models::{self, StatusGet200ResponseCpuInner, StatusGet200ResponseMe
 use axum::extract::Host;
 use axum::http::Method;
 use axum_extra::extract::CookieJar;
-use tracing::info;
+
 
 use openapi::models::GenericError;
 use tracing::warn;
@@ -26,7 +26,7 @@ impl Health for Roverd {
     /// StatusGet - GET /status
     async fn status_get(
         &self,
-        method: Method,
+        _method: Method,
         _host: Host,
         _cookies: CookieJar,
     ) -> Result<StatusGetResponse, String> {
@@ -75,12 +75,11 @@ impl Health for Roverd {
     /// UpdatePost - POST /update
     async fn update_post(
         &self,
-        method: Method,
+        _method: Method,
         _host: Host,
         _cookies: CookieJar,
     ) -> Result<UpdatePostResponse, String> {
         let a = || Err(Error::Unimplemented);
         warn_generic!(a(), UpdatePostResponse)
-        
     }
 }

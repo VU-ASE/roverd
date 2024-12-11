@@ -13,8 +13,6 @@ tags:
     description: "Managing pipeline execution and processes"
   - name: "Services"
     description: "Managing services that compose a pipeline"
-  - name: "Sources"
-    description: "Managing sources that services can be downloaded from"
   - name: "Health"
     description: "Health and versioning information"
 
@@ -258,28 +256,64 @@ paths:
           $ref: "#/components/responses/UnauthorizedError"
 
   #
-  # Services
+  # Upload ZIP endpoint
   #
-  /services:
-    get:
+  /fetch:
+    post:
       tags:
         - "Services"
-      summary: "Retrieve the list of all authors that have parsable services. With these authors you can query further for services"
+      summary: "Fetches the zip file from the given URL and installs the service onto the filesystem"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - "url"
+              properties:
+                url:
+                  type: string
+                  description: "Download URL of the service to be downloaded, must include scheme"
+                  example: "https://downloads.ase.vu.nl/api/imaging/v1.0.0"
       responses:
         "200":
-          description: "The list of authors"
+          description: "The service was uploaded successfully"
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  type: string
-                  description: "An author of a parsable service"
-                  example: "vu-ase"
+                type: object
+                required:
+                  - "name"
+                  - "version"
+                  - "author"
+                  - "invalidated_pipeline"
+                properties:
+                  name:
+                    type: string
+                    description: "The name of the service"
+                    example: "imaging"
+                  version:
+                    type: string
+                    description: "The version of the service"
+                    example: "1.0.0"
+                  author:
+                    type: string
+                    description: "The author of the service"
+                    example: "vu-ase"
+                  invalidated_pipeline:
+                    type: boolean
+                    description: "Whether the pipeline was invalidated by this service upload"
+                    example: true
         "400":
           $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+
+  #
+  # Upload ZIP endpoint
+  #
+  /upload:
     post:
       tags:
         - "Services"
@@ -324,6 +358,30 @@ paths:
                     type: boolean
                     description: "Whether the pipeline was invalidated by this service upload"
                     example: true
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
+  #
+  # Services
+  #
+  /services:
+    get:
+      tags:
+        - "Services"
+      summary: "Retrieve the list of all authors that have parsable services. With these authors you can query further for services"
+      responses:
+        "200":
+          description: "The list of authors"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                  description: "An author of a parsable service"
+                  example: "vu-ase"
         "400":
           $ref: "#/components/responses/Error"
         "401":
@@ -581,120 +639,6 @@ paths:
           $ref: "#/components/responses/UnauthorizedError"
 
   #
-  # Sources
-  #
-  /sources:
-    get:
-      tags:
-        - "Sources"
-      summary: "Retrieve all sources"
-      responses:
-        "200":
-          description: "An array of sources"
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  required:
-                    - "name"
-                    - "url"
-                    - "version"
-                  properties:
-                    name:
-                      type: string
-                      description: "The name of the source"
-                      example: "imaging"
-                    url:
-                      type: string
-                      description: "The URL of the source (without scheme)"
-                      example: "github.com/VU-ASE/imaging"
-                    version:
-                      type: string
-                      example: "1.0.0"
-                    sha:
-                      type: string
-                      description: "The SHA256 hash of the source download, computed over the ZIP file downloaded"
-                      example: 68c4008de241ee6f8c17de9162f80c38533b94fc0ee6de2a83740cdc2e0edf64
-        "400":
-          $ref: "#/components/responses/Error"
-        "401":
-          $ref: "#/components/responses/UnauthorizedError"
-
-    post:
-      tags:
-        - "Sources"
-      summary: "Downloads and installs a new source, overwriting the prior version (if any) and adding it to the 'downloaded' section in rover.yaml (checks for duplicate source names)"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - "name"
-                - "url"
-                - "version"
-              properties:
-                name:
-                  type: string
-                  description: "The name of the source"
-                  example: "imaging"
-                url:
-                  type: string
-                  description: "The URL of the source (without scheme)"
-                  example: "downloads.ase.vu.nl/api/imaging/v1.0.0"
-                version:
-                  type: string
-                  description: "The version of the source"
-                  example: "1.0.0"
-      responses:
-        "200":
-          description: "The source was added successfully"
-        "400":
-          $ref: "#/components/responses/Error"
-        "401":
-          $ref: "#/components/responses/UnauthorizedError"
-
-    delete:
-      tags:
-        - "Sources"
-      summary: "Delete a source"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - "name"
-                - "url"
-                - "version"
-              properties:
-                name:
-                  type: string
-                  description: "The name of the source"
-                  example: "imaging"
-                url:
-                  type: string
-                  description: "The URL of the source (without scheme)"
-                  example: "downloads.ase.vu.nl/api/imaging/v1.0.0"
-                version:
-                  type: string
-                  description: "The version of the source"
-                  example: "1.0.0"
-      responses:
-        "200":
-          description: "The source was deleted successfully"
-        "400":
-          $ref: "#/components/responses/Error"
-        "404":
-          $ref: "#/components/responses/NotFoundError"
-        "401":
-          $ref: "#/components/responses/UnauthorizedError"
-
-  #
   # Health
   #
   /status:
@@ -891,6 +835,15 @@ components:
         - recoverable
         - unrecoverable
       description: "The status of the roverd process"
+
+    ReferencedService:
+      type: object
+      properties:
+        url:
+          type: string
+          description: "Fully qualified download url."
+          example: "https://downloads.ase.vu.nl/api/imaging/v1.0.0"
+
     GenericError:
       type: object
       properties:

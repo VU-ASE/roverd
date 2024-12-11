@@ -166,6 +166,339 @@ impl std::ops::DerefMut for DuplicateServiceError {
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize, validator::Validate)]
 #[cfg_attr(feature = "conversion", derive(frunk::LabelledGeneric))]
+pub struct FetchPost200Response {
+    /// The name of the service
+    #[serde(rename = "name")]
+    pub name: String,
+
+    /// The version of the service
+    #[serde(rename = "version")]
+    pub version: String,
+
+    /// The author of the service
+    #[serde(rename = "author")]
+    pub author: String,
+
+    /// Whether the pipeline was invalidated by this service upload
+    #[serde(rename = "invalidated_pipeline")]
+    pub invalidated_pipeline: bool,
+}
+
+impl FetchPost200Response {
+    #[allow(clippy::new_without_default, clippy::too_many_arguments)]
+    pub fn new(
+        name: String,
+        version: String,
+        author: String,
+        invalidated_pipeline: bool,
+    ) -> FetchPost200Response {
+        FetchPost200Response {
+            name,
+            version,
+            author,
+            invalidated_pipeline,
+        }
+    }
+}
+
+/// Converts the FetchPost200Response value to the Query Parameters representation (style=form, explode=false)
+/// specified in https://swagger.io/docs/specification/serialization/
+/// Should be implemented in a serde serializer
+impl std::fmt::Display for FetchPost200Response {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let params: Vec<Option<String>> = vec![
+            Some("name".to_string()),
+            Some(self.name.to_string()),
+            Some("version".to_string()),
+            Some(self.version.to_string()),
+            Some("author".to_string()),
+            Some(self.author.to_string()),
+            Some("invalidated_pipeline".to_string()),
+            Some(self.invalidated_pipeline.to_string()),
+        ];
+
+        write!(
+            f,
+            "{}",
+            params.into_iter().flatten().collect::<Vec<_>>().join(",")
+        )
+    }
+}
+
+/// Converts Query Parameters representation (style=form, explode=false) to a FetchPost200Response value
+/// as specified in https://swagger.io/docs/specification/serialization/
+/// Should be implemented in a serde deserializer
+impl std::str::FromStr for FetchPost200Response {
+    type Err = String;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        /// An intermediate representation of the struct to use for parsing.
+        #[derive(Default)]
+        #[allow(dead_code)]
+        struct IntermediateRep {
+            pub name: Vec<String>,
+            pub version: Vec<String>,
+            pub author: Vec<String>,
+            pub invalidated_pipeline: Vec<bool>,
+        }
+
+        let mut intermediate_rep = IntermediateRep::default();
+
+        // Parse into intermediate representation
+        let mut string_iter = s.split(',');
+        let mut key_result = string_iter.next();
+
+        while key_result.is_some() {
+            let val = match string_iter.next() {
+                Some(x) => x,
+                None => {
+                    return std::result::Result::Err(
+                        "Missing value while parsing FetchPost200Response".to_string(),
+                    )
+                }
+            };
+
+            if let Some(key) = key_result {
+                #[allow(clippy::match_single_binding)]
+                match key {
+                    #[allow(clippy::redundant_clone)]
+                    "name" => intermediate_rep.name.push(
+                        <String as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?,
+                    ),
+                    #[allow(clippy::redundant_clone)]
+                    "version" => intermediate_rep.version.push(
+                        <String as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?,
+                    ),
+                    #[allow(clippy::redundant_clone)]
+                    "author" => intermediate_rep.author.push(
+                        <String as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?,
+                    ),
+                    #[allow(clippy::redundant_clone)]
+                    "invalidated_pipeline" => intermediate_rep.invalidated_pipeline.push(
+                        <bool as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?,
+                    ),
+                    _ => {
+                        return std::result::Result::Err(
+                            "Unexpected key while parsing FetchPost200Response".to_string(),
+                        )
+                    }
+                }
+            }
+
+            // Get the next key
+            key_result = string_iter.next();
+        }
+
+        // Use the intermediate representation to return the struct
+        std::result::Result::Ok(FetchPost200Response {
+            name: intermediate_rep
+                .name
+                .into_iter()
+                .next()
+                .ok_or_else(|| "name missing in FetchPost200Response".to_string())?,
+            version: intermediate_rep
+                .version
+                .into_iter()
+                .next()
+                .ok_or_else(|| "version missing in FetchPost200Response".to_string())?,
+            author: intermediate_rep
+                .author
+                .into_iter()
+                .next()
+                .ok_or_else(|| "author missing in FetchPost200Response".to_string())?,
+            invalidated_pipeline: intermediate_rep
+                .invalidated_pipeline
+                .into_iter()
+                .next()
+                .ok_or_else(|| {
+                    "invalidated_pipeline missing in FetchPost200Response".to_string()
+                })?,
+        })
+    }
+}
+
+// Methods for converting between header::IntoHeaderValue<FetchPost200Response> and HeaderValue
+
+#[cfg(feature = "server")]
+impl std::convert::TryFrom<header::IntoHeaderValue<FetchPost200Response>> for HeaderValue {
+    type Error = String;
+
+    fn try_from(
+        hdr_value: header::IntoHeaderValue<FetchPost200Response>,
+    ) -> std::result::Result<Self, Self::Error> {
+        let hdr_value = hdr_value.to_string();
+        match HeaderValue::from_str(&hdr_value) {
+            std::result::Result::Ok(value) => std::result::Result::Ok(value),
+            std::result::Result::Err(e) => std::result::Result::Err(format!(
+                "Invalid header value for FetchPost200Response - value: {} is invalid {}",
+                hdr_value, e
+            )),
+        }
+    }
+}
+
+#[cfg(feature = "server")]
+impl std::convert::TryFrom<HeaderValue> for header::IntoHeaderValue<FetchPost200Response> {
+    type Error = String;
+
+    fn try_from(hdr_value: HeaderValue) -> std::result::Result<Self, Self::Error> {
+        match hdr_value.to_str() {
+            std::result::Result::Ok(value) => {
+                match <FetchPost200Response as std::str::FromStr>::from_str(value) {
+                    std::result::Result::Ok(value) => {
+                        std::result::Result::Ok(header::IntoHeaderValue(value))
+                    }
+                    std::result::Result::Err(err) => std::result::Result::Err(format!(
+                        "Unable to convert header value '{}' into FetchPost200Response - {}",
+                        value, err
+                    )),
+                }
+            }
+            std::result::Result::Err(e) => std::result::Result::Err(format!(
+                "Unable to convert header: {:?} to string: {}",
+                hdr_value, e
+            )),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize, validator::Validate)]
+#[cfg_attr(feature = "conversion", derive(frunk::LabelledGeneric))]
+pub struct FetchPostRequest {
+    /// Download URL of the service to be downloaded, must include scheme
+    #[serde(rename = "url")]
+    pub url: String,
+}
+
+impl FetchPostRequest {
+    #[allow(clippy::new_without_default, clippy::too_many_arguments)]
+    pub fn new(url: String) -> FetchPostRequest {
+        FetchPostRequest { url }
+    }
+}
+
+/// Converts the FetchPostRequest value to the Query Parameters representation (style=form, explode=false)
+/// specified in https://swagger.io/docs/specification/serialization/
+/// Should be implemented in a serde serializer
+impl std::fmt::Display for FetchPostRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let params: Vec<Option<String>> = vec![Some("url".to_string()), Some(self.url.to_string())];
+
+        write!(
+            f,
+            "{}",
+            params.into_iter().flatten().collect::<Vec<_>>().join(",")
+        )
+    }
+}
+
+/// Converts Query Parameters representation (style=form, explode=false) to a FetchPostRequest value
+/// as specified in https://swagger.io/docs/specification/serialization/
+/// Should be implemented in a serde deserializer
+impl std::str::FromStr for FetchPostRequest {
+    type Err = String;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        /// An intermediate representation of the struct to use for parsing.
+        #[derive(Default)]
+        #[allow(dead_code)]
+        struct IntermediateRep {
+            pub url: Vec<String>,
+        }
+
+        let mut intermediate_rep = IntermediateRep::default();
+
+        // Parse into intermediate representation
+        let mut string_iter = s.split(',');
+        let mut key_result = string_iter.next();
+
+        while key_result.is_some() {
+            let val = match string_iter.next() {
+                Some(x) => x,
+                None => {
+                    return std::result::Result::Err(
+                        "Missing value while parsing FetchPostRequest".to_string(),
+                    )
+                }
+            };
+
+            if let Some(key) = key_result {
+                #[allow(clippy::match_single_binding)]
+                match key {
+                    #[allow(clippy::redundant_clone)]
+                    "url" => intermediate_rep.url.push(
+                        <String as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?,
+                    ),
+                    _ => {
+                        return std::result::Result::Err(
+                            "Unexpected key while parsing FetchPostRequest".to_string(),
+                        )
+                    }
+                }
+            }
+
+            // Get the next key
+            key_result = string_iter.next();
+        }
+
+        // Use the intermediate representation to return the struct
+        std::result::Result::Ok(FetchPostRequest {
+            url: intermediate_rep
+                .url
+                .into_iter()
+                .next()
+                .ok_or_else(|| "url missing in FetchPostRequest".to_string())?,
+        })
+    }
+}
+
+// Methods for converting between header::IntoHeaderValue<FetchPostRequest> and HeaderValue
+
+#[cfg(feature = "server")]
+impl std::convert::TryFrom<header::IntoHeaderValue<FetchPostRequest>> for HeaderValue {
+    type Error = String;
+
+    fn try_from(
+        hdr_value: header::IntoHeaderValue<FetchPostRequest>,
+    ) -> std::result::Result<Self, Self::Error> {
+        let hdr_value = hdr_value.to_string();
+        match HeaderValue::from_str(&hdr_value) {
+            std::result::Result::Ok(value) => std::result::Result::Ok(value),
+            std::result::Result::Err(e) => std::result::Result::Err(format!(
+                "Invalid header value for FetchPostRequest - value: {} is invalid {}",
+                hdr_value, e
+            )),
+        }
+    }
+}
+
+#[cfg(feature = "server")]
+impl std::convert::TryFrom<HeaderValue> for header::IntoHeaderValue<FetchPostRequest> {
+    type Error = String;
+
+    fn try_from(hdr_value: HeaderValue) -> std::result::Result<Self, Self::Error> {
+        match hdr_value.to_str() {
+            std::result::Result::Ok(value) => {
+                match <FetchPostRequest as std::str::FromStr>::from_str(value) {
+                    std::result::Result::Ok(value) => {
+                        std::result::Result::Ok(header::IntoHeaderValue(value))
+                    }
+                    std::result::Result::Err(err) => std::result::Result::Err(format!(
+                        "Unable to convert header value '{}' into FetchPostRequest - {}",
+                        value, err
+                    )),
+                }
+            }
+            std::result::Result::Err(e) => std::result::Result::Err(format!(
+                "Unable to convert header: {:?} to string: {}",
+                hdr_value, e
+            )),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize, validator::Validate)]
+#[cfg_attr(feature = "conversion", derive(frunk::LabelledGeneric))]
 pub struct GenericError {
     /// A message describing the error
     #[serde(rename = "message")]
@@ -1610,6 +1943,141 @@ impl std::str::FromStr for ProcessStatus {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize, validator::Validate)]
+#[cfg_attr(feature = "conversion", derive(frunk::LabelledGeneric))]
+pub struct ReferencedService {
+    /// Fully qualified download url.
+    #[serde(rename = "url")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+}
+
+impl ReferencedService {
+    #[allow(clippy::new_without_default, clippy::too_many_arguments)]
+    pub fn new() -> ReferencedService {
+        ReferencedService { url: None }
+    }
+}
+
+/// Converts the ReferencedService value to the Query Parameters representation (style=form, explode=false)
+/// specified in https://swagger.io/docs/specification/serialization/
+/// Should be implemented in a serde serializer
+impl std::fmt::Display for ReferencedService {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let params: Vec<Option<String>> = vec![self
+            .url
+            .as_ref()
+            .map(|url| ["url".to_string(), url.to_string()].join(","))];
+
+        write!(
+            f,
+            "{}",
+            params.into_iter().flatten().collect::<Vec<_>>().join(",")
+        )
+    }
+}
+
+/// Converts Query Parameters representation (style=form, explode=false) to a ReferencedService value
+/// as specified in https://swagger.io/docs/specification/serialization/
+/// Should be implemented in a serde deserializer
+impl std::str::FromStr for ReferencedService {
+    type Err = String;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        /// An intermediate representation of the struct to use for parsing.
+        #[derive(Default)]
+        #[allow(dead_code)]
+        struct IntermediateRep {
+            pub url: Vec<String>,
+        }
+
+        let mut intermediate_rep = IntermediateRep::default();
+
+        // Parse into intermediate representation
+        let mut string_iter = s.split(',');
+        let mut key_result = string_iter.next();
+
+        while key_result.is_some() {
+            let val = match string_iter.next() {
+                Some(x) => x,
+                None => {
+                    return std::result::Result::Err(
+                        "Missing value while parsing ReferencedService".to_string(),
+                    )
+                }
+            };
+
+            if let Some(key) = key_result {
+                #[allow(clippy::match_single_binding)]
+                match key {
+                    #[allow(clippy::redundant_clone)]
+                    "url" => intermediate_rep.url.push(
+                        <String as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?,
+                    ),
+                    _ => {
+                        return std::result::Result::Err(
+                            "Unexpected key while parsing ReferencedService".to_string(),
+                        )
+                    }
+                }
+            }
+
+            // Get the next key
+            key_result = string_iter.next();
+        }
+
+        // Use the intermediate representation to return the struct
+        std::result::Result::Ok(ReferencedService {
+            url: intermediate_rep.url.into_iter().next(),
+        })
+    }
+}
+
+// Methods for converting between header::IntoHeaderValue<ReferencedService> and HeaderValue
+
+#[cfg(feature = "server")]
+impl std::convert::TryFrom<header::IntoHeaderValue<ReferencedService>> for HeaderValue {
+    type Error = String;
+
+    fn try_from(
+        hdr_value: header::IntoHeaderValue<ReferencedService>,
+    ) -> std::result::Result<Self, Self::Error> {
+        let hdr_value = hdr_value.to_string();
+        match HeaderValue::from_str(&hdr_value) {
+            std::result::Result::Ok(value) => std::result::Result::Ok(value),
+            std::result::Result::Err(e) => std::result::Result::Err(format!(
+                "Invalid header value for ReferencedService - value: {} is invalid {}",
+                hdr_value, e
+            )),
+        }
+    }
+}
+
+#[cfg(feature = "server")]
+impl std::convert::TryFrom<HeaderValue> for header::IntoHeaderValue<ReferencedService> {
+    type Error = String;
+
+    fn try_from(hdr_value: HeaderValue) -> std::result::Result<Self, Self::Error> {
+        match hdr_value.to_str() {
+            std::result::Result::Ok(value) => {
+                match <ReferencedService as std::str::FromStr>::from_str(value) {
+                    std::result::Result::Ok(value) => {
+                        std::result::Result::Ok(header::IntoHeaderValue(value))
+                    }
+                    std::result::Result::Err(err) => std::result::Result::Err(format!(
+                        "Unable to convert header value '{}' into ReferencedService - {}",
+                        value, err
+                    )),
+                }
+            }
+            std::result::Result::Err(e) => std::result::Result::Err(format!(
+                "Unable to convert header: {:?} to string: {}",
+                hdr_value, e
+            )),
+        }
+    }
+}
+
 /// The status of any given service is either enabled or disabled
 /// Enumeration of values.
 /// Since this enum's variants do not hold data, we can easily define them as `#[repr(C)]`
@@ -2243,562 +2711,6 @@ impl std::convert::TryFrom<HeaderValue>
              std::result::Result::Err(e) => std::result::Result::Err(
                  format!("Unable to convert header: {:?} to string: {}",
                      hdr_value, e))
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize, validator::Validate)]
-#[cfg_attr(feature = "conversion", derive(frunk::LabelledGeneric))]
-pub struct ServicesPost200Response {
-    /// The name of the service
-    #[serde(rename = "name")]
-    pub name: String,
-
-    /// The version of the service
-    #[serde(rename = "version")]
-    pub version: String,
-
-    /// The author of the service
-    #[serde(rename = "author")]
-    pub author: String,
-
-    /// Whether the pipeline was invalidated by this service upload
-    #[serde(rename = "invalidated_pipeline")]
-    pub invalidated_pipeline: bool,
-}
-
-impl ServicesPost200Response {
-    #[allow(clippy::new_without_default, clippy::too_many_arguments)]
-    pub fn new(
-        name: String,
-        version: String,
-        author: String,
-        invalidated_pipeline: bool,
-    ) -> ServicesPost200Response {
-        ServicesPost200Response {
-            name,
-            version,
-            author,
-            invalidated_pipeline,
-        }
-    }
-}
-
-/// Converts the ServicesPost200Response value to the Query Parameters representation (style=form, explode=false)
-/// specified in https://swagger.io/docs/specification/serialization/
-/// Should be implemented in a serde serializer
-impl std::fmt::Display for ServicesPost200Response {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let params: Vec<Option<String>> = vec![
-            Some("name".to_string()),
-            Some(self.name.to_string()),
-            Some("version".to_string()),
-            Some(self.version.to_string()),
-            Some("author".to_string()),
-            Some(self.author.to_string()),
-            Some("invalidated_pipeline".to_string()),
-            Some(self.invalidated_pipeline.to_string()),
-        ];
-
-        write!(
-            f,
-            "{}",
-            params.into_iter().flatten().collect::<Vec<_>>().join(",")
-        )
-    }
-}
-
-/// Converts Query Parameters representation (style=form, explode=false) to a ServicesPost200Response value
-/// as specified in https://swagger.io/docs/specification/serialization/
-/// Should be implemented in a serde deserializer
-impl std::str::FromStr for ServicesPost200Response {
-    type Err = String;
-
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        /// An intermediate representation of the struct to use for parsing.
-        #[derive(Default)]
-        #[allow(dead_code)]
-        struct IntermediateRep {
-            pub name: Vec<String>,
-            pub version: Vec<String>,
-            pub author: Vec<String>,
-            pub invalidated_pipeline: Vec<bool>,
-        }
-
-        let mut intermediate_rep = IntermediateRep::default();
-
-        // Parse into intermediate representation
-        let mut string_iter = s.split(',');
-        let mut key_result = string_iter.next();
-
-        while key_result.is_some() {
-            let val = match string_iter.next() {
-                Some(x) => x,
-                None => {
-                    return std::result::Result::Err(
-                        "Missing value while parsing ServicesPost200Response".to_string(),
-                    )
-                }
-            };
-
-            if let Some(key) = key_result {
-                #[allow(clippy::match_single_binding)]
-                match key {
-                    #[allow(clippy::redundant_clone)]
-                    "name" => intermediate_rep.name.push(
-                        <String as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?,
-                    ),
-                    #[allow(clippy::redundant_clone)]
-                    "version" => intermediate_rep.version.push(
-                        <String as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?,
-                    ),
-                    #[allow(clippy::redundant_clone)]
-                    "author" => intermediate_rep.author.push(
-                        <String as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?,
-                    ),
-                    #[allow(clippy::redundant_clone)]
-                    "invalidated_pipeline" => intermediate_rep.invalidated_pipeline.push(
-                        <bool as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?,
-                    ),
-                    _ => {
-                        return std::result::Result::Err(
-                            "Unexpected key while parsing ServicesPost200Response".to_string(),
-                        )
-                    }
-                }
-            }
-
-            // Get the next key
-            key_result = string_iter.next();
-        }
-
-        // Use the intermediate representation to return the struct
-        std::result::Result::Ok(ServicesPost200Response {
-            name: intermediate_rep
-                .name
-                .into_iter()
-                .next()
-                .ok_or_else(|| "name missing in ServicesPost200Response".to_string())?,
-            version: intermediate_rep
-                .version
-                .into_iter()
-                .next()
-                .ok_or_else(|| "version missing in ServicesPost200Response".to_string())?,
-            author: intermediate_rep
-                .author
-                .into_iter()
-                .next()
-                .ok_or_else(|| "author missing in ServicesPost200Response".to_string())?,
-            invalidated_pipeline: intermediate_rep
-                .invalidated_pipeline
-                .into_iter()
-                .next()
-                .ok_or_else(|| {
-                    "invalidated_pipeline missing in ServicesPost200Response".to_string()
-                })?,
-        })
-    }
-}
-
-// Methods for converting between header::IntoHeaderValue<ServicesPost200Response> and HeaderValue
-
-#[cfg(feature = "server")]
-impl std::convert::TryFrom<header::IntoHeaderValue<ServicesPost200Response>> for HeaderValue {
-    type Error = String;
-
-    fn try_from(
-        hdr_value: header::IntoHeaderValue<ServicesPost200Response>,
-    ) -> std::result::Result<Self, Self::Error> {
-        let hdr_value = hdr_value.to_string();
-        match HeaderValue::from_str(&hdr_value) {
-            std::result::Result::Ok(value) => std::result::Result::Ok(value),
-            std::result::Result::Err(e) => std::result::Result::Err(format!(
-                "Invalid header value for ServicesPost200Response - value: {} is invalid {}",
-                hdr_value, e
-            )),
-        }
-    }
-}
-
-#[cfg(feature = "server")]
-impl std::convert::TryFrom<HeaderValue> for header::IntoHeaderValue<ServicesPost200Response> {
-    type Error = String;
-
-    fn try_from(hdr_value: HeaderValue) -> std::result::Result<Self, Self::Error> {
-        match hdr_value.to_str() {
-            std::result::Result::Ok(value) => {
-                match <ServicesPost200Response as std::str::FromStr>::from_str(value) {
-                    std::result::Result::Ok(value) => {
-                        std::result::Result::Ok(header::IntoHeaderValue(value))
-                    }
-                    std::result::Result::Err(err) => std::result::Result::Err(format!(
-                        "Unable to convert header value '{}' into ServicesPost200Response - {}",
-                        value, err
-                    )),
-                }
-            }
-            std::result::Result::Err(e) => std::result::Result::Err(format!(
-                "Unable to convert header: {:?} to string: {}",
-                hdr_value, e
-            )),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize, validator::Validate)]
-#[cfg_attr(feature = "conversion", derive(frunk::LabelledGeneric))]
-pub struct SourcesGet200ResponseInner {
-    /// The name of the source
-    #[serde(rename = "name")]
-    pub name: String,
-
-    /// The URL of the source (without scheme)
-    #[serde(rename = "url")]
-    pub url: String,
-
-    #[serde(rename = "version")]
-    pub version: String,
-
-    /// The SHA256 hash of the source download, computed over the ZIP file downloaded
-    #[serde(rename = "sha")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub sha: Option<String>,
-}
-
-impl SourcesGet200ResponseInner {
-    #[allow(clippy::new_without_default, clippy::too_many_arguments)]
-    pub fn new(name: String, url: String, version: String) -> SourcesGet200ResponseInner {
-        SourcesGet200ResponseInner {
-            name,
-            url,
-            version,
-            sha: None,
-        }
-    }
-}
-
-/// Converts the SourcesGet200ResponseInner value to the Query Parameters representation (style=form, explode=false)
-/// specified in https://swagger.io/docs/specification/serialization/
-/// Should be implemented in a serde serializer
-impl std::fmt::Display for SourcesGet200ResponseInner {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let params: Vec<Option<String>> = vec![
-            Some("name".to_string()),
-            Some(self.name.to_string()),
-            Some("url".to_string()),
-            Some(self.url.to_string()),
-            Some("version".to_string()),
-            Some(self.version.to_string()),
-            self.sha
-                .as_ref()
-                .map(|sha| ["sha".to_string(), sha.to_string()].join(",")),
-        ];
-
-        write!(
-            f,
-            "{}",
-            params.into_iter().flatten().collect::<Vec<_>>().join(",")
-        )
-    }
-}
-
-/// Converts Query Parameters representation (style=form, explode=false) to a SourcesGet200ResponseInner value
-/// as specified in https://swagger.io/docs/specification/serialization/
-/// Should be implemented in a serde deserializer
-impl std::str::FromStr for SourcesGet200ResponseInner {
-    type Err = String;
-
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        /// An intermediate representation of the struct to use for parsing.
-        #[derive(Default)]
-        #[allow(dead_code)]
-        struct IntermediateRep {
-            pub name: Vec<String>,
-            pub url: Vec<String>,
-            pub version: Vec<String>,
-            pub sha: Vec<String>,
-        }
-
-        let mut intermediate_rep = IntermediateRep::default();
-
-        // Parse into intermediate representation
-        let mut string_iter = s.split(',');
-        let mut key_result = string_iter.next();
-
-        while key_result.is_some() {
-            let val = match string_iter.next() {
-                Some(x) => x,
-                None => {
-                    return std::result::Result::Err(
-                        "Missing value while parsing SourcesGet200ResponseInner".to_string(),
-                    )
-                }
-            };
-
-            if let Some(key) = key_result {
-                #[allow(clippy::match_single_binding)]
-                match key {
-                    #[allow(clippy::redundant_clone)]
-                    "name" => intermediate_rep.name.push(
-                        <String as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?,
-                    ),
-                    #[allow(clippy::redundant_clone)]
-                    "url" => intermediate_rep.url.push(
-                        <String as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?,
-                    ),
-                    #[allow(clippy::redundant_clone)]
-                    "version" => intermediate_rep.version.push(
-                        <String as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?,
-                    ),
-                    #[allow(clippy::redundant_clone)]
-                    "sha" => intermediate_rep.sha.push(
-                        <String as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?,
-                    ),
-                    _ => {
-                        return std::result::Result::Err(
-                            "Unexpected key while parsing SourcesGet200ResponseInner".to_string(),
-                        )
-                    }
-                }
-            }
-
-            // Get the next key
-            key_result = string_iter.next();
-        }
-
-        // Use the intermediate representation to return the struct
-        std::result::Result::Ok(SourcesGet200ResponseInner {
-            name: intermediate_rep
-                .name
-                .into_iter()
-                .next()
-                .ok_or_else(|| "name missing in SourcesGet200ResponseInner".to_string())?,
-            url: intermediate_rep
-                .url
-                .into_iter()
-                .next()
-                .ok_or_else(|| "url missing in SourcesGet200ResponseInner".to_string())?,
-            version: intermediate_rep
-                .version
-                .into_iter()
-                .next()
-                .ok_or_else(|| "version missing in SourcesGet200ResponseInner".to_string())?,
-            sha: intermediate_rep.sha.into_iter().next(),
-        })
-    }
-}
-
-// Methods for converting between header::IntoHeaderValue<SourcesGet200ResponseInner> and HeaderValue
-
-#[cfg(feature = "server")]
-impl std::convert::TryFrom<header::IntoHeaderValue<SourcesGet200ResponseInner>> for HeaderValue {
-    type Error = String;
-
-    fn try_from(
-        hdr_value: header::IntoHeaderValue<SourcesGet200ResponseInner>,
-    ) -> std::result::Result<Self, Self::Error> {
-        let hdr_value = hdr_value.to_string();
-        match HeaderValue::from_str(&hdr_value) {
-            std::result::Result::Ok(value) => std::result::Result::Ok(value),
-            std::result::Result::Err(e) => std::result::Result::Err(format!(
-                "Invalid header value for SourcesGet200ResponseInner - value: {} is invalid {}",
-                hdr_value, e
-            )),
-        }
-    }
-}
-
-#[cfg(feature = "server")]
-impl std::convert::TryFrom<HeaderValue> for header::IntoHeaderValue<SourcesGet200ResponseInner> {
-    type Error = String;
-
-    fn try_from(hdr_value: HeaderValue) -> std::result::Result<Self, Self::Error> {
-        match hdr_value.to_str() {
-            std::result::Result::Ok(value) => {
-                match <SourcesGet200ResponseInner as std::str::FromStr>::from_str(value) {
-                    std::result::Result::Ok(value) => {
-                        std::result::Result::Ok(header::IntoHeaderValue(value))
-                    }
-                    std::result::Result::Err(err) => std::result::Result::Err(format!(
-                        "Unable to convert header value '{}' into SourcesGet200ResponseInner - {}",
-                        value, err
-                    )),
-                }
-            }
-            std::result::Result::Err(e) => std::result::Result::Err(format!(
-                "Unable to convert header: {:?} to string: {}",
-                hdr_value, e
-            )),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize, validator::Validate)]
-#[cfg_attr(feature = "conversion", derive(frunk::LabelledGeneric))]
-pub struct SourcesPostRequest {
-    /// The name of the source
-    #[serde(rename = "name")]
-    pub name: String,
-
-    /// The URL of the source (without scheme)
-    #[serde(rename = "url")]
-    pub url: String,
-
-    /// The version of the source
-    #[serde(rename = "version")]
-    pub version: String,
-}
-
-impl SourcesPostRequest {
-    #[allow(clippy::new_without_default, clippy::too_many_arguments)]
-    pub fn new(name: String, url: String, version: String) -> SourcesPostRequest {
-        SourcesPostRequest { name, url, version }
-    }
-}
-
-/// Converts the SourcesPostRequest value to the Query Parameters representation (style=form, explode=false)
-/// specified in https://swagger.io/docs/specification/serialization/
-/// Should be implemented in a serde serializer
-impl std::fmt::Display for SourcesPostRequest {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let params: Vec<Option<String>> = vec![
-            Some("name".to_string()),
-            Some(self.name.to_string()),
-            Some("url".to_string()),
-            Some(self.url.to_string()),
-            Some("version".to_string()),
-            Some(self.version.to_string()),
-        ];
-
-        write!(
-            f,
-            "{}",
-            params.into_iter().flatten().collect::<Vec<_>>().join(",")
-        )
-    }
-}
-
-/// Converts Query Parameters representation (style=form, explode=false) to a SourcesPostRequest value
-/// as specified in https://swagger.io/docs/specification/serialization/
-/// Should be implemented in a serde deserializer
-impl std::str::FromStr for SourcesPostRequest {
-    type Err = String;
-
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        /// An intermediate representation of the struct to use for parsing.
-        #[derive(Default)]
-        #[allow(dead_code)]
-        struct IntermediateRep {
-            pub name: Vec<String>,
-            pub url: Vec<String>,
-            pub version: Vec<String>,
-        }
-
-        let mut intermediate_rep = IntermediateRep::default();
-
-        // Parse into intermediate representation
-        let mut string_iter = s.split(',');
-        let mut key_result = string_iter.next();
-
-        while key_result.is_some() {
-            let val = match string_iter.next() {
-                Some(x) => x,
-                None => {
-                    return std::result::Result::Err(
-                        "Missing value while parsing SourcesPostRequest".to_string(),
-                    )
-                }
-            };
-
-            if let Some(key) = key_result {
-                #[allow(clippy::match_single_binding)]
-                match key {
-                    #[allow(clippy::redundant_clone)]
-                    "name" => intermediate_rep.name.push(
-                        <String as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?,
-                    ),
-                    #[allow(clippy::redundant_clone)]
-                    "url" => intermediate_rep.url.push(
-                        <String as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?,
-                    ),
-                    #[allow(clippy::redundant_clone)]
-                    "version" => intermediate_rep.version.push(
-                        <String as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?,
-                    ),
-                    _ => {
-                        return std::result::Result::Err(
-                            "Unexpected key while parsing SourcesPostRequest".to_string(),
-                        )
-                    }
-                }
-            }
-
-            // Get the next key
-            key_result = string_iter.next();
-        }
-
-        // Use the intermediate representation to return the struct
-        std::result::Result::Ok(SourcesPostRequest {
-            name: intermediate_rep
-                .name
-                .into_iter()
-                .next()
-                .ok_or_else(|| "name missing in SourcesPostRequest".to_string())?,
-            url: intermediate_rep
-                .url
-                .into_iter()
-                .next()
-                .ok_or_else(|| "url missing in SourcesPostRequest".to_string())?,
-            version: intermediate_rep
-                .version
-                .into_iter()
-                .next()
-                .ok_or_else(|| "version missing in SourcesPostRequest".to_string())?,
-        })
-    }
-}
-
-// Methods for converting between header::IntoHeaderValue<SourcesPostRequest> and HeaderValue
-
-#[cfg(feature = "server")]
-impl std::convert::TryFrom<header::IntoHeaderValue<SourcesPostRequest>> for HeaderValue {
-    type Error = String;
-
-    fn try_from(
-        hdr_value: header::IntoHeaderValue<SourcesPostRequest>,
-    ) -> std::result::Result<Self, Self::Error> {
-        let hdr_value = hdr_value.to_string();
-        match HeaderValue::from_str(&hdr_value) {
-            std::result::Result::Ok(value) => std::result::Result::Ok(value),
-            std::result::Result::Err(e) => std::result::Result::Err(format!(
-                "Invalid header value for SourcesPostRequest - value: {} is invalid {}",
-                hdr_value, e
-            )),
-        }
-    }
-}
-
-#[cfg(feature = "server")]
-impl std::convert::TryFrom<HeaderValue> for header::IntoHeaderValue<SourcesPostRequest> {
-    type Error = String;
-
-    fn try_from(hdr_value: HeaderValue) -> std::result::Result<Self, Self::Error> {
-        match hdr_value.to_str() {
-            std::result::Result::Ok(value) => {
-                match <SourcesPostRequest as std::str::FromStr>::from_str(value) {
-                    std::result::Result::Ok(value) => {
-                        std::result::Result::Ok(header::IntoHeaderValue(value))
-                    }
-                    std::result::Result::Err(err) => std::result::Result::Err(format!(
-                        "Unable to convert header value '{}' into SourcesPostRequest - {}",
-                        value, err
-                    )),
-                }
-            }
-            std::result::Result::Err(e) => std::result::Result::Err(format!(
-                "Unable to convert header: {:?} to string: {}",
-                hdr_value, e
-            )),
         }
     }
 }

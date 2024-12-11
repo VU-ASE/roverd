@@ -1,4 +1,4 @@
-use std::fs::{write, OpenOptions};
+use std::fs::{remove_dir, OpenOptions};
 
 use std::{
     fs,
@@ -9,11 +9,12 @@ use std::{
 // use reqwest::StatusCode;
 use axum::http::StatusCode;
 
-use rovervalidate::config::{Configuration, Downloaded};
-use tracing::info;
+use rovervalidate::config::{Configuration, Validate};
+use rovervalidate::service::Service;
+
+use tracing::{error, info};
 
 use crate::error::Error;
-use crate::services::FqVec;
 
 use super::state::services::FqService;
 
@@ -72,16 +73,8 @@ fn prepare_dirs(fq: &FqService) -> Result<String, Error> {
 
 /// Downloads the vu-ase service from the downloads page and creates a zip file
 /// /tmp/name-version.zip.
-pub async fn download_service(fq: &FqService<'_>) -> Result<String, Error> {
-    let url = format!("https://{}", fq.url.ok_or(Error::ServiceMissingUrl)?);
-
+pub async fn download_service(url: String) -> Result<(), Error> {
     info!("Downloading: {}", url);
-
-    if fq.name.contains(char::is_whitespace) || fq.version.contains(char::is_whitespace) {
-        return Err(Error::ServiceParseIncorrect);
-    }
-
-    let zip_file = format!("{}/{}-{}.zip", DOWNLOAD_DESTINATION, fq.name, fq.version);
 
     let response = reqwest::get(url).await?;
 
@@ -95,32 +88,52 @@ pub async fn download_service(fq: &FqService<'_>) -> Result<String, Error> {
         }
     }
 
-    let mut file = std::fs::File::create(zip_file.clone())?;
+    let mut file = std::fs::File::create(ZIP_FILE)?;
 
     let bytes = response.bytes().await?;
 
     file.write_all(&bytes)?;
 
-    Ok(zip_file)
+    Ok(())
 }
 
-/// Source doesn't exist yet, so download it to /tmp and move it correct place on disk.
+/// Downloads a service to /tmp and moves it into the correct place on disk.
 /// There shouldn't be any directories or files in the unique path of the service,
 /// however if there are, they will get deleted to make space.
-pub async fn download_and_install_service<'a>(fq: &FqService<'a>) -> Result<(), Error> {
-    let zip_file = download_service(fq).await?;
+pub async fn download_and_install_service(url: String) -> Result<(), Error> {
+    download_service(url).await?;
+    install_service().await?;
+    Ok(())
+}
+
+/// Given the path of a zipfile, extract it and install it, parse the service.yaml
+/// and install it into the correct location on disk.
+pub async fn install_service() -> Result<(), Error> {
+    // Clear the destination directory
+    std::fs::remove_dir_all(UNZIPPED_DIR)?;
+
+    // Create directory
+    std::fs::create_dir_all(UNZIPPED_DIR)?;
+
+    // Unpack the downloaded service and validate it.
+    extract_zip(ZIP_FILE, UNZIPPED_DIR)?;
+
+    let service_contents = std::fs::read_to_string(format!("{}/service.yaml", UNZIPPED_DIR))
+        .map_err(|_| Error::ServiceYamlNotInZip)?;
+
+    let service =
+        serde_yaml::from_str::<rovervalidate::service::Service>(&service_contents)?.validate()?;
+
+    let fq = FqService::from(&service);
 
     // Deletes any existing files/dirs that are on the /author/name/version path
     // Makes sure the directories exist.
-    let full_path = prepare_dirs(fq)?;
+    let full_path = prepare_dirs(&fq)?;
 
-    let contents_dir = format!(
+    let contents_dir = PathBuf::from(format!(
         "{DOWNLOAD_DESTINATION}/{}-{}-{}",
         fq.author, fq.name, fq.version
-    );
-
-    // Unpack the downloaded service and validate it.
-    extract_zip(&zip_file, &contents_dir)?;
+    ));
 
     // Copy contents into place
     copy_recursively(contents_dir, full_path)?;
@@ -135,7 +148,7 @@ pub fn service_exists(fq: &FqService<'_>) -> Result<bool, Error> {
     }
 }
 
-pub fn delete_service_from_disk<'a>(fq: &FqService<'a>) -> Result<(), Error> {
+pub fn delete_service_from_disk(fq: &FqService<'_>) -> Result<(), Error> {
     if service_exists(fq)? {
         std::fs::remove_dir_all(fq.path())?;
     }
@@ -157,11 +170,14 @@ pub fn list_dir_contents(added_path: &str) -> Result<Vec<String>, Error> {
 pub fn update_config(config: &Configuration) -> Result<(), Error> {
     let contents = serde_yaml::to_string(&config)?;
 
-    std::fs::create_dir_all(ROVER_CONFIG_DIR)?;
+    std::fs::create_dir_all(ROVER_CONFIG_DIR).inspect_err(|f| {
+        error!("Could not create {f}");
+    })?;
 
     let mut file = OpenOptions::new()
         .write(true)
         .create(true)
+        .truncate(true)
         .open(ROVER_CONFIG_FILE)
         .map_err(|_| Error::CouldNotCreateConfigFile)?;
 

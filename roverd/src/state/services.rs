@@ -1,8 +1,4 @@
-use std::{
-    fmt::{format, Display},
-    fs,
-    path::Path,
-};
+use std::{fmt::Display, fs, path::Path};
 
 use crate::{
     util::{list_dir_contents, update_config},
@@ -11,18 +7,14 @@ use crate::{
 
 use crate::error;
 
-use libc::fwrite;
-use rovervalidate::{
-    config::{Downloaded, Validate},
-    service::ValidatedService,
-};
+use rovervalidate::{config::Validate, service::ValidatedService};
 use tokio::sync::RwLockWriteGuard;
 
 use crate::constants::*;
 
 use openapi::models::*;
 
-use super::{rover, Roverd, State};
+use super::State;
 
 #[derive(Debug, Clone)]
 pub struct Services;
@@ -35,9 +27,6 @@ pub struct FqService<'a> {
     pub author: &'a str,
     pub name: &'a str,
     pub version: &'a str,
-    /// Optional because we want to reference a fully qualified service from parameters
-    /// in a HTTP request. Those don't involve a source URL.
-    pub url: Option<&'a str>,
 }
 
 impl<'a> TryFrom<&'a String> for FqService<'a> {
@@ -65,7 +54,6 @@ impl<'a> TryFrom<&'a String> for FqService<'a> {
             author: values.first().ok_or(Error::StringToFqServiceConversion)?,
             name: values.get(1).ok_or(Error::StringToFqServiceConversion)?,
             version: values.get(2).ok_or(Error::StringToFqServiceConversion)?,
-            url: None,
         })
     }
 }
@@ -78,13 +66,6 @@ impl<'a> TryFrom<&'a Vec<String>> for FqVec<'a> {
             .map(FqService::try_from)
             .collect::<Result<Vec<_>, _>>()?;
         Ok(FqVec(fq_services))
-    }
-}
-
-impl<'a> From<&'a Vec<Downloaded>> for FqVec<'a> {
-    fn from(downloaded_vec: &'a Vec<Downloaded>) -> Self {
-        let fq_services: Vec<FqService<'a>> = downloaded_vec.iter().map(FqService::from).collect();
-        FqVec(fq_services)
     }
 }
 
@@ -110,32 +91,31 @@ impl<'a> From<&'a ServicesAuthorServiceVersionDeletePathParams> for FqService<'a
             name: &param.service,
             author: &param.author,
             version: &param.version,
-            url: None,
         }
     }
 }
 
-impl<'a> From<&'a SourcesPostRequest> for FqService<'a> {
-    fn from(value: &'a SourcesPostRequest) -> Self {
+impl<'a> From<&'a ValidatedService> for FqService<'a> {
+    fn from(s: &'a ValidatedService) -> Self {
         FqService {
-            name: &value.name,
-            author: AUTHOR,
-            version: &value.version,
-            url: Some(&value.url),
+            name: &s.0.name,
+            author: &s.0.author,
+            version: &s.0.version,
         }
     }
 }
 
-impl<'a> From<&'a Downloaded> for FqService<'a> {
-    fn from(value: &'a Downloaded) -> Self {
-        FqService {
-            name: &value.name,
-            author: AUTHOR,
-            version: &value.version,
-            url: Some(&value.source),
-        }
-    }
-}
+// TODO:
+// impl<'a> From<&'a FetchPostRequest> for FqService<'a> {
+//     fn from(value: &'a FetchPostRequest) -> Self {
+//         FqService {
+//             name: &value.name,
+//             author: AUTHOR,
+//             version: &value.version,
+//             url: Some(&value.url),
+//         }
+//     }
+// }
 
 impl<'a> PartialEq for FqService<'a> {
     fn eq(&self, other: &Self) -> bool {
@@ -188,20 +168,7 @@ impl Services {
         let delete_fq = FqService::from(path_params);
 
         // Get the current configuration from disk
-        let mut config = state.sources.get().await?.0;
-
-        if !FqVec::from(&config.downloaded).0.contains(&delete_fq) {
-            return Err(Error::ServiceNotFound);
-        }
-
-        // Remove the "download" entry from config data structure
-        let delete_download_index = config
-            .downloaded
-            .iter()
-            .position(|d| FqService::from(d) == delete_fq);
-        if let Some(i) = delete_download_index {
-            config.downloaded.remove(i);
-        }
+        let mut config = state.config.get().await?.0;
 
         let mut return_bool = false;
         // Return whether or not the service was enabled and if it was,

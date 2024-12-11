@@ -1,11 +1,11 @@
 use openapi::models::DaemonStatus;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tracing::{info, warn};
+use tracing::warn;
 
+pub mod config;
 pub mod rover;
 pub mod services;
-pub mod sources;
 
 /// Start-up information and system clock
 pub mod info;
@@ -20,8 +20,7 @@ pub struct State {
     /// Handle for querying and modifying services
     pub services: services::Services,
 
-    /// Handle for querying and modifying services
-    pub sources: sources::Sources,
+    pub config: config::Config,
 }
 
 /// The main struct that implements functions called from the api and holds all objects
@@ -38,15 +37,12 @@ pub struct Roverd {
 
 impl Roverd {
     pub async fn new() -> Result<Self, Error> {
-        // Initialize sources, download if necessary
-        sources::Sources.install_missing_sources().await?;
-
         let roverd = Self {
             info: info::Info::new(),
             state: Arc::from(RwLock::from(State {
                 core: rover::Core::new(),
-                sources: sources::Sources,
                 services: services::Services,
+                config: config::Config,
             })),
         };
 

@@ -12,12 +12,37 @@ use axum_extra::extract::{CookieJar, Multipart};
 
 use tracing::warn;
 
-use crate::services::FqService;
 use crate::state::Roverd;
 use crate::warn_generic;
 
 #[async_trait]
 impl Services for Roverd {
+    /// Fetches the zip file from the given URL and installs the service onto the filesystem.
+    ///
+    /// FetchPost - POST /fetch
+    async fn fetch_post(
+        &self,
+        _method: Method,
+        _host: Host,
+        _cookies: CookieJar,
+        _body: models::FetchPostRequest,
+    ) -> Result<FetchPostResponse, String> {
+        Err("unimplemented".to_string())
+    }
+
+    /// Upload a new service or new version to the rover by uploading a ZIP file.
+    ///
+    /// UploadPost - POST /upload
+    async fn upload_post(
+        &self,
+        _method: Method,
+        _host: Host,
+        _cookies: CookieJar,
+        _body: Multipart,
+    ) -> Result<UploadPostResponse, String> {
+        Err("unimplemented".to_string())
+    }
+
     /// Retrieve the list of parsable service versions for a specific author and service.
     ///
     /// ServicesAuthorServiceGet - GET /services/{author}/{service}
@@ -108,19 +133,16 @@ impl Services for Roverd {
         path_params: ServicesAuthorServiceVersionPostPathParams,
     ) -> Result<ServicesAuthorServiceVersionPostResponse, String> {
         let state = self.state.write().await;
-        let _ = match state.services.build_service(path_params).await {
-            Err(e) => {
-                warn!("{:#?}", e);
-                return Ok(
-                    ServicesAuthorServiceVersionPostResponse::Status400_TheBuildFailed(
-                        ServicesAuthorServiceVersionPost400Response {
-                            build_log: None,             // TODO
-                            message: "todo".to_string(), // TODO
-                        },
-                    ),
-                );
-            }
-            _ => (),
+        let _ = if let Err(e) = state.services.build_service(path_params).await {
+            warn!("{:#?}", e);
+            return Ok(
+                ServicesAuthorServiceVersionPostResponse::Status400_TheBuildFailed(
+                    ServicesAuthorServiceVersionPost400Response {
+                        build_log: None,             // TODO
+                        message: "todo".to_string(), // TODO
+                    },
+                ),
+            );
         };
 
         Ok(ServicesAuthorServiceVersionPostResponse::Status200_TheServiceWasBuiltSuccessfully)
@@ -160,18 +182,5 @@ impl Services for Roverd {
         );
 
         Ok(ServicesAuthorGetResponse::Status200_TheListOfServicesForTheAuthor(services))
-    }
-
-    /// Upload a new service or new version to the rover by uploading a ZIP file.
-    ///
-    /// ServicesPost - POST /services
-    async fn services_post(
-        &self,
-        _method: Method,
-        _host: Host,
-        _cookies: CookieJar,
-        _body: Multipart,
-    ) -> Result<ServicesPostResponse, String> {
-        Ok(ServicesPostResponse::Status401_UnauthorizedAccess)
     }
 }

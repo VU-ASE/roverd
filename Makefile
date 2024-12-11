@@ -22,6 +22,7 @@ dev: build
 clean:
 	@cargo clean
 
-
+loc:
+	@cd roverd/src && find . -name '*.rs' | xargs wc -l
 
 

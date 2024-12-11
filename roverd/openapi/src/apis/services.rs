@@ -10,6 +10,18 @@ use crate::{models, types::*};
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[must_use]
 #[allow(clippy::large_enum_variant)]
+pub enum FetchPostResponse {
+    /// The service was uploaded successfully
+    Status200_TheServiceWasUploadedSuccessfully(models::FetchPost200Response),
+    /// An error occurred
+    Status400_AnErrorOccurred(models::GenericError),
+    /// Unauthorized access (you need to set the Authorization header with a valid username and password)
+    Status401_UnauthorizedAccess,
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[must_use]
+#[allow(clippy::large_enum_variant)]
 pub enum ServicesAuthorGetResponse {
     /// The list of services for the author
     Status200_TheListOfServicesForTheAuthor(Vec<String>),
@@ -94,9 +106,9 @@ pub enum ServicesGetResponse {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[must_use]
 #[allow(clippy::large_enum_variant)]
-pub enum ServicesPostResponse {
+pub enum UploadPostResponse {
     /// The service was uploaded successfully
-    Status200_TheServiceWasUploadedSuccessfully(models::ServicesPost200Response),
+    Status200_TheServiceWasUploadedSuccessfully(models::FetchPost200Response),
     /// An error occurred
     Status400_AnErrorOccurred(models::GenericError),
     /// Unauthorized access (you need to set the Authorization header with a valid username and password)
@@ -107,6 +119,17 @@ pub enum ServicesPostResponse {
 #[async_trait]
 #[allow(clippy::ptr_arg)]
 pub trait Services {
+    /// Fetches the zip file from the given URL and installs the service onto the filesystem.
+    ///
+    /// FetchPost - POST /fetch
+    async fn fetch_post(
+        &self,
+        method: Method,
+        host: Host,
+        cookies: CookieJar,
+        body: models::FetchPostRequest,
+    ) -> Result<FetchPostResponse, String>;
+
     /// Retrieve the list of parsable services for a specific author.
     ///
     /// ServicesAuthorGet - GET /services/{author}
@@ -174,12 +197,12 @@ pub trait Services {
 
     /// Upload a new service or new version to the rover by uploading a ZIP file.
     ///
-    /// ServicesPost - POST /services
-    async fn services_post(
+    /// UploadPost - POST /upload
+    async fn upload_post(
         &self,
         method: Method,
         host: Host,
         cookies: CookieJar,
         body: Multipart,
-    ) -> Result<ServicesPostResponse, String>;
+    ) -> Result<UploadPostResponse, String>;
 }
