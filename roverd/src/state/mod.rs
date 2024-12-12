@@ -1,14 +1,20 @@
 use axum_extra::extract::Multipart;
 use openapi::models::{
-    DaemonStatus, FetchPostRequest, ServicesAuthorGetPathParams,
+    DaemonStatus, FetchPostRequest, PipelinePostRequestInner, ServicesAuthorGetPathParams,
     ServicesAuthorServiceGetPathParams, ServicesAuthorServiceVersionDeletePathParams,
     ServicesAuthorServiceVersionGetPathParams, ServicesAuthorServiceVersionPostPathParams,
 };
 use process::ProcessManager;
+
+
+
+
+
 use rovervalidate::config::{Configuration, ValidatedConfiguration};
+use rovervalidate::pipeline::interface::Pipeline;
 use rovervalidate::service::{Service, ValidatedService};
 use rovervalidate::validate::Validate;
-use service::{FqService, FqServiceBuf, FqVec};
+use service::{Fq, FqBuf, FqBufVec, FqVec};
 use std::fs::{self, remove_dir_all, remove_file};
 use std::io::Write;
 use std::path::Path;
@@ -21,6 +27,8 @@ use crate::util::*;
 
 pub mod process;
 pub mod service;
+// pub mod types;
+
 
 /// Start-up information and system clock
 pub mod info;
@@ -73,7 +81,7 @@ pub struct State {
 
 impl State {
     /// Retrieves rover.yaml file from disk, performs validation and returns object.
-    pub async fn get_config(&self) -> Result<rovervalidate::config::ValidatedConfiguration, Error> {
+    pub async fn get_config(&self) -> Result<Configuration, Error> {
         if !Path::new(ROVER_CONFIG_FILE).exists() {
             // If there is no existing config, create a new file and write
             // an empty config to it.
@@ -88,26 +96,23 @@ impl State {
         let config: ValidatedConfiguration =
             serde_yaml::from_str::<Configuration>(&file_content)?.validate()?;
 
-        Ok(config)
+        Ok(config.0)
     }
 
-    pub async fn should_invalidate(&self, fq_buf: &FqServiceBuf) -> Result<bool, Error> {
+    pub async fn should_invalidate(&self, fq_buf: &FqBuf) -> Result<bool, Error> {
         let conf = self.get_config().await?;
-        let enabled_fq = FqVec::try_from(&conf.0.enabled)?;
-        let pipeline_invalidated = enabled_fq.0.contains(&FqService::from(fq_buf));
+        let enabled_fq = FqVec::try_from(&conf.enabled)?;
+        let pipeline_invalidated = enabled_fq.0.contains(&Fq::from(fq_buf));
         Ok(pipeline_invalidated)
     }
 
-    pub async fn fetch_service(
-        &self,
-        body: &FetchPostRequest,
-    ) -> Result<(FqServiceBuf, bool), Error> {
+    pub async fn fetch_service(&self, body: &FetchPostRequest) -> Result<(FqBuf, bool), Error> {
         let fq_buf = download_and_install_service(&body.url).await?;
         let invalidate_pipline = self.should_invalidate(&fq_buf).await?;
         Ok((fq_buf, invalidate_pipline))
     }
 
-    pub async fn receive_upload(&self, mut body: Multipart) -> Result<(FqServiceBuf, bool), Error> {
+    pub async fn receive_upload(&self, mut body: Multipart) -> Result<(FqBuf, bool), Error> {
         if let Some(field) = body
             .next_field()
             .await
@@ -129,7 +134,7 @@ impl State {
 
             let fq_buf = extract_fq().await?;
 
-            if service_exists(&FqService::from(&fq_buf))? {
+            if service_exists(&Fq::from(&fq_buf))? {
                 return Err(Error::ServiceAlreadyExists);
             }
 
@@ -180,10 +185,10 @@ impl State {
         &self,
         path_params: &ServicesAuthorServiceVersionDeletePathParams,
     ) -> Result<bool, Error> {
-        let delete_fq = FqService::from(path_params);
+        let delete_fq = Fq::from(path_params);
 
         // Get the current configuration from disk
-        let mut config = self.get_config().await?.0;
+        let mut config = self.get_config().await?;
 
         let mut return_bool = false;
         // Return whether or not the service was enabled and if it was,
@@ -210,6 +215,37 @@ impl State {
         _params: ServicesAuthorServiceVersionPostPathParams,
     ) -> Result<(), Error> {
         Err(Error::Unimplemented)
+    }
+
+    pub async fn set_pipeline(
+        &self,
+        incoming_pipeline: Vec<PipelinePostRequestInner>,
+    ) -> Result<(), Error> {
+        let services = FqBufVec::from(incoming_pipeline).0;
+        let mut valid_services = vec![];
+
+        for enabled in &services {
+            let service_file = std::fs::read_to_string(format!("{}/service.yaml", enabled.path()))?;
+            let service: Service = serde_yaml::from_str(&service_file)?;
+            valid_services.push(service.validate()?);
+
+        }
+
+
+        let _ = Pipeline::new(valid_services).validate()?;
+
+        // If we got here, config can be overwritten
+        let mut config = self.get_config().await?;
+        config.enabled.clear();
+
+        // Services are valid since we didn't return earlier
+        for service in services {
+            config.enabled.push(service.path())
+        }
+
+        update_config(&config)?;
+
+        Ok(())
     }
 
     pub async fn get_pipeline(&self) -> Result<(), Error> {
@@ -254,10 +290,8 @@ impl State {
         Err(Error::Unimplemented)
     }
 
-    async fn validate(&mut self) -> Result<(), Error> {
-        let config = self.get_config().await?.0;
-        info!("config: {:?}", config);
-
+    pub async fn get_valid_pipeline(&mut self) -> Result<(), Error> {
+        let config = self.get_config().await?;
         let mut enabled_services: Vec<ValidatedService> = vec![];
 
         for enabled in config.enabled {
@@ -266,8 +300,9 @@ impl State {
             let validated = service.validate()?;
             enabled_services.push(validated);
         }
-        // let p = Pipeline::new(enabled_services).validate()?;
-        // info!("{:#?}", p);
+
+        let p = Pipeline::new(enabled_services).validate()?;
+
         Err(Error::Unimplemented)
     }
 }

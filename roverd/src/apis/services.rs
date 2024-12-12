@@ -12,7 +12,7 @@ use axum_extra::extract::{CookieJar, Multipart};
 
 use tracing::warn;
 
-use crate::service::{FqService, FqVec};
+use crate::service::{Fq, FqVec};
 use crate::state::Roverd;
 use crate::warn_generic;
 

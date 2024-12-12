@@ -118,7 +118,7 @@ impl std::str::FromStr for DaemonStatus {
 /// DuplicateServiceError
 #[derive(Debug, Clone, PartialEq, PartialOrd, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "conversion", derive(frunk::LabelledGeneric))]
-pub struct DuplicateServiceError(String);
+pub struct DuplicateServiceError(pub String);
 
 impl validator::Validate for DuplicateServiceError {
     fn validate(&self) -> std::result::Result<(), validator::ValidationErrors> {

@@ -8,7 +8,9 @@ use openapi::models::*;
 
 use tracing::{info, warn};
 
-use crate::{state::Roverd, warn_generic};
+use crate::{state::Roverd, warn_generic, Error};
+
+use rovervalidate::error::{PipelineValidationError, UnmetDependencyError};
 
 #[async_trait]
 impl Pipeline for Roverd {
@@ -59,9 +61,116 @@ impl Pipeline for Roverd {
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
-        _body: Vec<PipelinePostRequestInner>,
+        body: Vec<PipelinePostRequestInner>,
     ) -> Result<PipelinePostResponse, String> {
-        Ok(PipelinePostResponse::Status401_UnauthorizedAccess)
+        let state = self.state.write().await;
+
+        let _ = match state.set_pipeline(body).await {
+            Ok(a) => a,
+            Err(e) => {
+                match e {
+                    Error::ConfigValidation(val_errors) => {
+                        let mut pipeline_errors = vec![];
+                        let mut string_errors = vec![];
+
+                        for val_error in val_errors {
+                            match val_error {
+                                rovervalidate::error::Error::PipelineValidationError(
+                                    pipeline_validation_error,
+                                ) => pipeline_errors.push(pipeline_validation_error),
+                                e => string_errors.push(e.to_string()),
+                            }
+                        }
+
+                        let mut unmet_streams = vec![];
+                        let mut unmet_services = vec![];
+                        let mut duplicate_service = vec![];
+
+                        for i in pipeline_errors {
+                            match i {
+                                rovervalidate::error::PipelineValidationError::UnmetDependencyError(unmet_dependency_error) => {
+                                    match unmet_dependency_error {
+                                        rovervalidate::error::UnmetDependencyError::UnmetStream(unmet_stream_error) => {
+                                            unmet_streams.push(
+                                                UnmetStreamError {
+                                                    source: Some(unmet_stream_error.source),
+                                                    target: Some(unmet_stream_error.target),
+                                                    stream: Some(unmet_stream_error.stream),
+                                                }
+                                            );
+                                        },
+                                        rovervalidate::error::UnmetDependencyError::UnmetService(unmet_service_error) => {
+                                            unmet_services.push(
+                                                UnmetServiceError {
+                                                    source: Some(unmet_service_error.source),
+                                                    target: Some(unmet_service_error.target)
+                                                }
+                                            )
+                                        },
+                                    }
+                                },
+                                rovervalidate::error::PipelineValidationError::DuplicateServiceError(s) => {
+                                    duplicate_service.push(DuplicateServiceError(s));
+                                },
+                            }
+                        }
+
+                        let string_errors = if string_errors.len() > 0 {
+                            Some(string_errors.concat().to_string())
+                        } else {
+                            None
+                        };
+
+                        let unmet_streams = if unmet_streams.len() > 0 {
+                            Some(unmet_streams)
+                        } else {
+                            None
+                        };
+
+                        let unmet_services = if unmet_services.len() > 0 {
+                            Some(unmet_services)
+                        } else {
+                            None
+                        };
+
+                        let duplicate_service = if duplicate_service.len() > 0 {
+                            Some(duplicate_service)
+                        } else {
+                            None
+                        };
+
+                        return Ok(
+                            PipelinePostResponse::Status400_ThePipelineWasNotValidAndCouldNotBeSet(
+                                PipelinePost400Response {
+                                    message: string_errors,
+                                    validation_errors: PipelinePost400ResponseValidationErrors {
+                                        unmet_streams,
+                                        unmet_services,
+                                        duplicate_service,
+                                    },
+                                },
+                            ),
+                        );
+                    }
+                    all_other_errors => {
+                        return Ok(
+                            PipelinePostResponse::Status400_ThePipelineWasNotValidAndCouldNotBeSet(
+                                PipelinePost400Response {
+                                    message: Some(format!("{:?}", all_other_errors)),
+                                    validation_errors: PipelinePost400ResponseValidationErrors {
+                                        unmet_streams: None,
+                                        unmet_services: None,
+                                        duplicate_service: None,
+                                    },
+                                },
+                            ),
+                        );
+                    },
+                }
+            }
+        };
+
+        Ok(PipelinePostResponse::Status200_ThePipelineWasUpdatedSuccessfully)
     }
 
     /// Start the pipeline.

@@ -15,9 +15,9 @@ use rovervalidate::service::Service;
 use tracing::{error, info};
 
 use crate::error::Error;
-use crate::service::FqServiceBuf;
+use crate::service::FqBuf;
 
-use super::state::service::FqService;
+use super::state::service::Fq;
 
 use crate::constants::*;
 
@@ -59,7 +59,7 @@ pub fn extract_zip(zip_file: &str, destination_dir: &str) -> Result<(), Error> {
 /// existing service at a given path it will delete it and prepare it such
 /// that the new service can be safely moved in place.
 // fn prepare_dirs(author: &str, name: &str, version: &str) -> Result<String, Error> {
-fn prepare_dirs(fq: &FqServiceBuf) -> Result<String, Error> {
+fn prepare_dirs(fq: &FqBuf) -> Result<String, Error> {
     // Construct the full path
     let full_path_string = format!("{}/{}/{}/{}", ROVER_DIR, fq.author, fq.name, fq.version);
     let full_path = PathBuf::from(full_path_string.clone());
@@ -101,14 +101,14 @@ pub async fn download_service(url: &String) -> Result<(), Error> {
 /// Downloads a service to /tmp and moves it into the correct place on disk.
 /// There shouldn't be any directories or files in the unique path of the service,
 /// however if there are, they will get deleted to make space.
-pub async fn download_and_install_service(url: &String) -> Result<FqServiceBuf, Error> {
+pub async fn download_and_install_service(url: &String) -> Result<FqBuf, Error> {
     download_service(url).await?;
     let fq = extract_fq().await?;
     install_service(&fq).await?;
     Ok(fq)
 }
 
-pub async fn extract_fq() -> Result<FqServiceBuf, Error> {
+pub async fn extract_fq() -> Result<FqBuf, Error> {
     // Clear the destination directory, no matter if it fails
     let _ = std::fs::remove_dir_all(UNZIPPED_DIR);
 
@@ -124,13 +124,13 @@ pub async fn extract_fq() -> Result<FqServiceBuf, Error> {
     let service =
         serde_yaml::from_str::<rovervalidate::service::Service>(&service_contents)?.validate()?;
 
-    let fq = FqServiceBuf::from(service);
+    let fq = FqBuf::from(service);
     Ok(fq)
 }
 
 /// Expects a zipfile to be ready at ZIP_FILE, extract it and install it. Parses the service.yaml
 /// and install contents into the correct location on disk.
-pub async fn install_service(fq: &FqServiceBuf) -> Result<(), Error> {
+pub async fn install_service(fq: &FqBuf) -> Result<(), Error> {
     info!("Installing: {}", fq);
 
     // Deletes any existing files/dirs that are on the /author/name/version path
@@ -143,7 +143,7 @@ pub async fn install_service(fq: &FqServiceBuf) -> Result<(), Error> {
     Ok(())
 }
 
-pub fn service_exists(fq: &FqService<'_>) -> Result<bool, Error> {
+pub fn service_exists(fq: &Fq<'_>) -> Result<bool, Error> {
     match Path::new(fq.path().as_str()).try_exists() {
         Ok(a) => Ok(a),
         Err(e) => Err(Error::Io(e)),

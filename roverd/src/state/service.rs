@@ -14,11 +14,13 @@ use crate::constants::*;
 
 use openapi::models::*;
 
-pub struct FqVec<'a>(pub Vec<FqService<'a>>);
+pub struct FqVec<'a>(pub Vec<Fq<'a>>);
+
+pub struct FqBufVec(pub Vec<FqBuf>);
 
 /// Internal representation of a service, whether as a source or user service.
 #[derive(Debug)]
-pub struct FqService<'a> {
+pub struct Fq<'a> {
     pub author: &'a str,
     pub name: &'a str,
     pub version: &'a str,
@@ -26,15 +28,15 @@ pub struct FqService<'a> {
 
 /// Same as FqService but with Strings instead of &str.
 #[derive(Debug)]
-pub struct FqServiceBuf {
+pub struct FqBuf {
     pub author: String,
     pub name: String,
     pub version: String,
 }
 
-impl From<ValidatedService> for FqServiceBuf {
+impl From<ValidatedService> for FqBuf {
     fn from(service: ValidatedService) -> Self {
-        FqServiceBuf {
+        FqBuf {
             name: service.0.name,
             author: service.0.author,
             version: service.0.version,
@@ -42,14 +44,33 @@ impl From<ValidatedService> for FqServiceBuf {
     }
 }
 
-impl Display for FqServiceBuf {
+impl From<&PipelinePostRequestInner> for FqBuf {
+    fn from(service: &PipelinePostRequestInner) -> Self {
+        FqBuf {
+            name: service.name.clone(),
+            author: service.author.clone(),
+            version: service.version.clone(),
+        }
+    }
+}
+
+impl FqBuf {
+    pub fn path(&self) -> String {
+        format!(
+            "{}/{}/{}/{}",
+            ROVER_DIR, self.author, self.name, self.version
+        )
+    }
+}
+
+impl Display for FqBuf {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}/{}/{}", self.author, self.name, self.version)?;
         Ok(())
     }
 }
 
-impl<'a> TryFrom<&'a String> for FqService<'a> {
+impl<'a> TryFrom<&'a String> for Fq<'a> {
     type Error = error::Error;
     fn try_from(path_string: &'a String) -> Result<Self, Self::Error> {
         let path = Path::new(path_string.as_str());
@@ -70,7 +91,7 @@ impl<'a> TryFrom<&'a String> for FqService<'a> {
             })
             .collect::<Result<Vec<&str>, Error>>()?;
 
-        Ok(FqService {
+        Ok(Fq {
             author: values.first().ok_or(Error::StringToFqServiceConversion)?,
             name: values.get(1).ok_or(Error::StringToFqServiceConversion)?,
             version: values.get(2).ok_or(Error::StringToFqServiceConversion)?,
@@ -81,15 +102,30 @@ impl<'a> TryFrom<&'a String> for FqService<'a> {
 impl<'a> TryFrom<&'a Vec<String>> for FqVec<'a> {
     type Error = error::Error;
     fn try_from(string_vec: &'a Vec<String>) -> Result<Self, Self::Error> {
-        let fq_services: Vec<FqService<'a>> = string_vec
+        let fq_services: Vec<Fq<'a>> = string_vec
             .iter()
-            .map(FqService::try_from)
+            .map(Fq::try_from)
             .collect::<Result<Vec<_>, _>>()?;
         Ok(FqVec(fq_services))
     }
 }
 
-impl<'a> FqService<'a> {
+impl<'a> From<&'a Vec<PipelinePostRequestInner>> for FqVec<'a> {
+    fn from(vec: &'a Vec<PipelinePostRequestInner>) -> Self {
+        let fq_services = vec.iter().map(|p| Fq::from(p)).collect::<Vec<_>>();
+        FqVec(fq_services)
+    }
+}
+
+impl From<Vec<PipelinePostRequestInner>> for FqBufVec {
+    fn from(vec: Vec<PipelinePostRequestInner>) -> Self {
+        let fq_services = vec.iter().map(|p| FqBuf::from(p)).collect::<Vec<_>>();
+
+        FqBufVec(fq_services)
+    }
+}
+
+impl<'a> Fq<'a> {
     pub fn path(&self) -> String {
         format!(
             "{}/{}/{}/{}",
@@ -98,16 +134,26 @@ impl<'a> FqService<'a> {
     }
 }
 
-impl<'a> Display for FqService<'a> {
+impl<'a> Display for Fq<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}/{}/{}", self.author, self.name, self.version)?;
         Ok(())
     }
 }
 
-impl<'a> From<&'a ServicesAuthorServiceVersionDeletePathParams> for FqService<'a> {
+impl<'a> From<&'a PipelinePostRequestInner> for Fq<'a> {
+    fn from(p: &'a PipelinePostRequestInner) -> Self {
+        Fq {
+            name: &p.name,
+            author: &p.author,
+            version: &p.version,
+        }
+    }
+}
+
+impl<'a> From<&'a ServicesAuthorServiceVersionDeletePathParams> for Fq<'a> {
     fn from(param: &'a ServicesAuthorServiceVersionDeletePathParams) -> Self {
-        FqService {
+        Fq {
             name: &param.service,
             author: &param.author,
             version: &param.version,
@@ -115,9 +161,9 @@ impl<'a> From<&'a ServicesAuthorServiceVersionDeletePathParams> for FqService<'a
     }
 }
 
-impl<'a> From<&'a FqServiceBuf> for FqService<'a> {
-    fn from(param: &'a FqServiceBuf) -> Self {
-        FqService {
+impl<'a> From<&'a FqBuf> for Fq<'a> {
+    fn from(param: &'a FqBuf) -> Self {
+        Fq {
             name: &param.name,
             author: &param.author,
             version: &param.version,
@@ -137,7 +183,7 @@ impl<'a> From<&'a FqServiceBuf> for FqService<'a> {
 //     }
 // }
 
-impl<'a> PartialEq for FqService<'a> {
+impl<'a> PartialEq for Fq<'a> {
     fn eq(&self, other: &Self) -> bool {
         self.name.to_lowercase() == other.name.to_lowercase()
             && self.author.to_lowercase() == other.author.to_lowercase()
