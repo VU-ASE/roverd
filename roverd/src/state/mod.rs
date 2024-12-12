@@ -1,14 +1,6 @@
 use axum_extra::extract::Multipart;
-use openapi::models::{
-    DaemonStatus, FetchPostRequest, PipelinePostRequestInner, ServicesAuthorGetPathParams,
-    ServicesAuthorServiceGetPathParams, ServicesAuthorServiceVersionDeletePathParams,
-    ServicesAuthorServiceVersionGetPathParams, ServicesAuthorServiceVersionPostPathParams,
-};
+use openapi::models::*;
 use process::ProcessManager;
-
-
-
-
 
 use rovervalidate::config::{Configuration, ValidatedConfiguration};
 use rovervalidate::pipeline::interface::Pipeline;
@@ -28,7 +20,6 @@ use crate::util::*;
 pub mod process;
 pub mod service;
 // pub mod types;
-
 
 /// Start-up information and system clock
 pub mod info;
@@ -228,9 +219,7 @@ impl State {
             let service_file = std::fs::read_to_string(format!("{}/service.yaml", enabled.path()))?;
             let service: Service = serde_yaml::from_str(&service_file)?;
             valid_services.push(service.validate()?);
-
         }
-
 
         let _ = Pipeline::new(valid_services).validate()?;
 
@@ -248,8 +237,9 @@ impl State {
         Ok(())
     }
 
-    pub async fn get_pipeline(&self) -> Result<(), Error> {
-        Ok(())
+    pub async fn get_pipeline(&self) -> Result<Vec<PipelineGet200ResponseEnabledInner>, Error> {
+        
+        Err(Error::Unimplemented)
     }
 
     pub async fn start(&mut self) -> Result<(), Error> {

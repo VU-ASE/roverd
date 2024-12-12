@@ -38,7 +38,7 @@ impl Pipeline for Roverd {
         _cookies: CookieJar,
     ) -> Result<PipelineGetResponse, String> {
         let state = self.state.write().await;
-        let _ = warn_generic!(state.get_pipeline().await, PipelineGetResponse);
+        let enable: Vec<PipelineGet200ResponseEnabledInner> = warn_generic!(state.get_pipeline().await, PipelineGetResponse);
 
         Ok(
             PipelineGetResponse::Status200_PipelineStatusAndAnArrayOfProcesses(
