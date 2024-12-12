@@ -103,12 +103,12 @@ pub async fn download_service(url: &String) -> Result<(), Error> {
 /// however if there are, they will get deleted to make space.
 pub async fn download_and_install_service(url: &String) -> Result<FqServiceBuf, Error> {
     download_service(url).await?;
-    Ok(install_service().await?)
+    let fq = extract_fq().await?;
+    install_service(&fq).await?;
+    Ok(fq)
 }
 
-/// Given the path of a zipfile, extract it and install it, parse the service.yaml
-/// and install it into the correct location on disk.
-pub async fn install_service() -> Result<FqServiceBuf, Error> {
+pub async fn extract_fq() -> Result<FqServiceBuf, Error> {
     // Clear the destination directory, no matter if it fails
     let _ = std::fs::remove_dir_all(UNZIPPED_DIR);
 
@@ -125,17 +125,22 @@ pub async fn install_service() -> Result<FqServiceBuf, Error> {
         serde_yaml::from_str::<rovervalidate::service::Service>(&service_contents)?.validate()?;
 
     let fq = FqServiceBuf::from(service);
+    Ok(fq)
+}
 
+/// Expects a zipfile to be ready at ZIP_FILE, extract it and install it. Parses the service.yaml
+/// and install contents into the correct location on disk.
+pub async fn install_service(fq: &FqServiceBuf) -> Result<(), Error> {
     info!("Installing: {}", fq);
 
     // Deletes any existing files/dirs that are on the /author/name/version path
     // Makes sure the directories exist.
-    let full_path = prepare_dirs(&fq)?;
+    let full_path = prepare_dirs(fq)?;
 
     // Copy contents into place
     copy_recursively(UNZIPPED_DIR, full_path)?;
 
-    Ok(fq)
+    Ok(())
 }
 
 pub fn service_exists(fq: &FqService<'_>) -> Result<bool, Error> {
@@ -143,13 +148,6 @@ pub fn service_exists(fq: &FqService<'_>) -> Result<bool, Error> {
         Ok(a) => Ok(a),
         Err(e) => Err(Error::Io(e)),
     }
-}
-
-pub fn delete_service_from_disk(fq: &FqService<'_>) -> Result<(), Error> {
-    if service_exists(fq)? {
-        std::fs::remove_dir_all(fq.path())?;
-    }
-    Ok(())
 }
 
 pub fn list_dir_contents(added_path: &str) -> Result<Vec<String>, Error> {

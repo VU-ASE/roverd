@@ -23,7 +23,7 @@ configuration:
     type: string
     tunable: false
     value: "v4l2src device=/dev/video2 ! image/jpeg, width=%d, height=%d, framerate=%d/1 ! jpegdec ! videoconvert n-threads=4 ! appsink caps=video/x-raw,format=GRAY8 name=appsink"
-# options for the gstreamer pipeline
+  # options for the gstreamer pipeline
   - name: img-width
     tunable: false
     value: 640

@@ -3,7 +3,6 @@ use axum::extract::Host;
 use axum::http::Method;
 use axum_extra::extract::CookieJar;
 
-
 use openapi::apis::pipeline::*;
 use openapi::models::*;
 
@@ -39,14 +38,17 @@ impl Pipeline for Roverd {
         let state = self.state.write().await;
         let _ = warn_generic!(state.get_pipeline().await, PipelineGetResponse);
 
-        Ok(PipelineGetResponse::Status200_PipelineStatusAndAnArrayOfProcesses(PipelineGet200Response {
-            status: PipelineStatus::Startable,
-            last_start: None,
-            last_stop: None,
-            last_restart: None,
-            enabled: vec![],
-            
-        }))
+        Ok(
+            PipelineGetResponse::Status200_PipelineStatusAndAnArrayOfProcesses(
+                PipelineGet200Response {
+                    status: PipelineStatus::Startable,
+                    last_start: None,
+                    last_stop: None,
+                    last_restart: None,
+                    enabled: vec![],
+                },
+            ),
+        )
     }
 
     /// Set the services that are enabled in this pipeline, by specifying the fully qualified services.

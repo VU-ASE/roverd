@@ -11,8 +11,6 @@ use tower_http::cors::CorsLayer;
 
 use axum::middleware::{self, Next};
 
-use constants::*;
-
 mod error;
 use error::Error::*;
 use error::*;
@@ -28,7 +26,7 @@ mod util;
 
 mod constants;
 
-const LISTEN_ADDRESS: &str = "0.0.0.0:80";
+use constants::*;
 
 /// TODO: this is not ideal, since middleware::from_fn_with_state expects
 /// Result<Response, StatusCode>. But ideally, we want to use custom Error to
@@ -40,10 +38,13 @@ async fn auth_wrapper(
 ) -> Result<Response, StatusCode> {
     match auth(state, req, next).await {
         Ok(response) => Ok(response),
-        Err(e) => match e {
-            Http(status_code) => Err(status_code),
-            _ => Err(StatusCode::BAD_REQUEST),
-        },
+        Err(e) => {
+            warn!(">>> Unauthorized or bad request");
+            match e {
+                Http(status_code) => Err(status_code),
+                _ => Err(StatusCode::BAD_REQUEST),
+            }
+        }
     }
 }
 

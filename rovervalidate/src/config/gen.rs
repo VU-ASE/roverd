@@ -20,5 +20,3 @@ pub struct Configuration {
     /// service.yaml file.
     pub enabled: Vec<String>,
 }
-
-

@@ -1,7 +1,9 @@
+#!/bin/bash
 
-
-curl -X POST \
+curl -u debix:debix \
+  -X POST \
   -H "Content-Type: multipart/form-data" \
-  -F "content=@/opt/data.zip" \
+  -F "content=@/workspaces/roverd/roverd/examples/imaging2.zip" \
   http://localhost/upload
 
+echo

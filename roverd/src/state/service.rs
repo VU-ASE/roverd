@@ -14,8 +14,6 @@ use crate::constants::*;
 
 use openapi::models::*;
 
-
-
 pub struct FqVec<'a>(pub Vec<FqService<'a>>);
 
 /// Internal representation of a service, whether as a source or user service.
@@ -146,5 +144,3 @@ impl<'a> PartialEq for FqService<'a> {
             && self.version.to_lowercase() == other.version.to_lowercase()
     }
 }
-
-

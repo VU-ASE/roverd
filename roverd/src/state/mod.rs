@@ -9,7 +9,8 @@ use rovervalidate::config::{Configuration, ValidatedConfiguration};
 use rovervalidate::service::{Service, ValidatedService};
 use rovervalidate::validate::Validate;
 use service::{FqService, FqServiceBuf, FqVec};
-use std::fs;
+use std::fs::{self, remove_dir_all, remove_file};
+use std::io::Write;
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::{broadcast, RwLock};
@@ -90,28 +91,55 @@ impl State {
         Ok(config)
     }
 
+    pub async fn should_invalidate(&self, fq_buf: &FqServiceBuf) -> Result<bool, Error> {
+        let conf = self.get_config().await?;
+        let enabled_fq = FqVec::try_from(&conf.0.enabled)?;
+        let pipeline_invalidated = enabled_fq.0.contains(&FqService::from(fq_buf));
+        Ok(pipeline_invalidated)
+    }
+
     pub async fn fetch_service(
         &self,
         body: &FetchPostRequest,
     ) -> Result<(FqServiceBuf, bool), Error> {
-        let conf = self.get_config().await?;
         let fq_buf = download_and_install_service(&body.url).await?;
-        let enabled_fq = FqVec::try_from(&conf.0.enabled)?;
-        let pipeline_invalidated = enabled_fq.0.contains(&FqService::from(&fq_buf));
-
-        Ok((fq_buf, pipeline_invalidated))
+        let invalidate_pipline = self.should_invalidate(&fq_buf).await?;
+        Ok((fq_buf, invalidate_pipline))
     }
 
     pub async fn receive_upload(&self, mut body: Multipart) -> Result<(FqServiceBuf, bool), Error> {
-        while let Some(field) = body.next_field().await.map_err(|_| Error::ServiceUploadData)? {
-            let data = field.bytes().await.unwrap();
-            info!(
-                ">>> Received {} bytes",
-                data.len()
-            );
-        }
+        if let Some(field) = body
+            .next_field()
+            .await
+            .map_err(|_| Error::ServiceUploadData)?
+        {
+            let data = field.bytes().await.map_err(|_| Error::IncorrectPayload)?;
 
-        Err(Error::Unimplemented)
+            // Ignore errors, since filesystem can be in any state
+            let _ = remove_file(ZIP_FILE);
+            let _ = remove_dir_all(UNZIPPED_DIR);
+
+            let mut file = fs::OpenOptions::new()
+                .create(true)
+                .truncate(true)
+                .write(true)
+                .open(ZIP_FILE)?;
+
+            file.write_all(&data)?;
+
+            let fq_buf = extract_fq().await?;
+
+            if service_exists(&FqService::from(&fq_buf))? {
+                return Err(Error::ServiceAlreadyExists);
+            }
+
+            install_service(&fq_buf).await?;
+
+            let invalidate_pipline = self.should_invalidate(&fq_buf).await?;
+
+            return Ok((fq_buf, invalidate_pipline));
+        }
+        Err(Error::IncorrectPayload)
     }
 
     pub async fn get_authors(&self) -> Result<Vec<String>, Error> {
@@ -141,8 +169,7 @@ impl State {
             "{}/{}/{}/{}/service.yaml",
             ROVER_DIR, path_params.author, path_params.service, path_params.version
         );
-        let contents =
-            fs::read_to_string(service_file_path).map_err(|_| Error::ServiceNotFound)?;
+        let contents = fs::read_to_string(service_file_path).map_err(|_| Error::ServiceNotFound)?;
         let service =
             serde_yaml::from_str::<rovervalidate::service::Service>(&contents)?.validate()?;
 
@@ -172,7 +199,7 @@ impl State {
         if Path::new(&delete_fq.path()).exists() {
             std::fs::remove_dir_all(delete_fq.path())?;
         } else {
-            return Err(Error::ServiceNotFound)
+            return Err(Error::ServiceNotFound);
         }
 
         Ok(return_bool)
@@ -185,16 +212,9 @@ impl State {
         Err(Error::Unimplemented)
     }
 
-
     pub async fn get_pipeline(&self) -> Result<(), Error> {
-
         Ok(())
     }
-
-
-
-
-
 
     pub async fn start(&mut self) -> Result<(), Error> {
         // TODO run verification, check

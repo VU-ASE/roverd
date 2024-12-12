@@ -8,7 +8,6 @@ use axum::extract::Host;
 use axum::http::Method;
 use axum_extra::extract::CookieJar;
 
-
 use openapi::models::GenericError;
 use tracing::warn;
 

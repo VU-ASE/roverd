@@ -42,9 +42,8 @@ pub enum Error {
     EnabledPathInvalid,
     EnabledPathNotFound,
 
+    IncorrectPayload,
 
-
-    // ---
     MissingUrl,
 
     PathConversion,
@@ -76,6 +75,9 @@ pub enum Error {
 
     #[from]
     Broadcast(tokio::sync::broadcast::error::SendError<()>),
+
+    #[from]
+    Multipart(axum_extra::extract::Multipart),
 
     Synchronization,
 
