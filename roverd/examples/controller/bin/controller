@@ -1,0 +1,12 @@
+#!/bin/bash
+
+echo "Starting Mock Controller"
+
+sleep 1
+
+COUNTER=0
+while true; do
+    echo "compute... $COUNTER"
+    ((COUNTER=++))
+    sleep 1
+done;
