@@ -51,9 +51,20 @@ impl Services for Roverd {
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
-        _body: Multipart,
+        body: Multipart,
     ) -> Result<UploadPostResponse, String> {
-        Err("unimplemented".to_string())
+        let state = self.state.write().await;
+        let (fq_buf, invalidated_pipeline) =
+            warn_generic!(state.receive_upload(body).await, UploadPostResponse);
+
+        Ok(
+            UploadPostResponse::Status200_TheServiceWasUploadedSuccessfully(FetchPost200Response {
+                name: fq_buf.name,
+                author: fq_buf.author,
+                version: fq_buf.version,
+                invalidated_pipeline,
+            }),
+        )
     }
 
     /// Retrieve the list of parsable service versions for a specific author and service.

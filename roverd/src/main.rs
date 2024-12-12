@@ -1,4 +1,4 @@
-use axum::extract::{Request, State};
+use axum::extract::{DefaultBodyLimit, Request, State};
 use axum::http::{self, StatusCode};
 use axum::response::Response;
 use base64::Engine;
@@ -73,6 +73,8 @@ fn check_auth(state: &Roverd, auth_str: &str) -> Result<(), Error> {
 }
 
 async fn auth(State(state): State<Roverd>, req: Request, next: Next) -> Result<Response, Error> {
+    info!(">>> {}: {}", req.method(), *req.uri());
+
     // the /status endpoint does not require authentication, all others do.
     if *req.uri() != *"/status" {
         let auth_header = req

@@ -3,12 +3,13 @@ use axum::extract::Host;
 use axum::http::Method;
 use axum_extra::extract::CookieJar;
 
+
 use openapi::apis::pipeline::*;
-use openapi::models;
+use openapi::models::*;
 
 use tracing::{info, warn};
 
-use crate::state::Roverd;
+use crate::{state::Roverd, warn_generic};
 
 #[async_trait]
 impl Pipeline for Roverd {
@@ -20,8 +21,8 @@ impl Pipeline for Roverd {
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
-        _path_params: models::LogsNameGetPathParams,
-        _query_params: models::LogsNameGetQueryParams,
+        _path_params: LogsNameGetPathParams,
+        _query_params: LogsNameGetQueryParams,
     ) -> Result<LogsNameGetResponse, String> {
         Ok(LogsNameGetResponse::Status401_UnauthorizedAccess)
     }
@@ -35,7 +36,17 @@ impl Pipeline for Roverd {
         _host: Host,
         _cookies: CookieJar,
     ) -> Result<PipelineGetResponse, String> {
-        Ok(PipelineGetResponse::Status401_UnauthorizedAccess)
+        let state = self.state.write().await;
+        let _ = warn_generic!(state.get_pipeline().await, PipelineGetResponse);
+
+        Ok(PipelineGetResponse::Status200_PipelineStatusAndAnArrayOfProcesses(PipelineGet200Response {
+            status: PipelineStatus::Startable,
+            last_start: None,
+            last_stop: None,
+            last_restart: None,
+            enabled: vec![],
+            
+        }))
     }
 
     /// Set the services that are enabled in this pipeline, by specifying the fully qualified services.
@@ -46,7 +57,7 @@ impl Pipeline for Roverd {
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
-        _body: Vec<models::PipelinePostRequestInner>,
+        _body: Vec<PipelinePostRequestInner>,
     ) -> Result<PipelinePostResponse, String> {
         Ok(PipelinePostResponse::Status401_UnauthorizedAccess)
     }
@@ -67,7 +78,7 @@ impl Pipeline for Roverd {
             Err(e) => {
                 warn!("{:#?}", e);
                 return Ok(PipelineStartPostResponse::Status400_AnErrorOccurred(
-                    models::GenericError {
+                    GenericError {
                         message: Some(format!("{:?}", e)),
                         code: Some(1),
                     },
@@ -97,7 +108,7 @@ impl Pipeline for Roverd {
             Err(e) => {
                 warn!("{:#?}", e);
                 return Ok(PipelineStopPostResponse::Status400_AnErrorOccurred(
-                    models::GenericError {
+                    GenericError {
                         message: Some(format!("{:?}", e)),
                         code: Some(1),
                     },

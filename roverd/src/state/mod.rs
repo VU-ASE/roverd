@@ -1,3 +1,4 @@
+use axum_extra::extract::Multipart;
 use openapi::models::{
     DaemonStatus, FetchPostRequest, ServicesAuthorGetPathParams,
     ServicesAuthorServiceGetPathParams, ServicesAuthorServiceVersionDeletePathParams,
@@ -101,6 +102,18 @@ impl State {
         Ok((fq_buf, pipeline_invalidated))
     }
 
+    pub async fn receive_upload(&self, mut body: Multipart) -> Result<(FqServiceBuf, bool), Error> {
+        while let Some(field) = body.next_field().await.map_err(|_| Error::ServiceUploadData)? {
+            let data = field.bytes().await.unwrap();
+            info!(
+                ">>> Received {} bytes",
+                data.len()
+            );
+        }
+
+        Err(Error::Unimplemented)
+    }
+
     pub async fn get_authors(&self) -> Result<Vec<String>, Error> {
         list_dir_contents("")
     }
@@ -171,6 +184,17 @@ impl State {
     ) -> Result<(), Error> {
         Err(Error::Unimplemented)
     }
+
+
+    pub async fn get_pipeline(&self) -> Result<(), Error> {
+
+        Ok(())
+    }
+
+
+
+
+
 
     pub async fn start(&mut self) -> Result<(), Error> {
         // TODO run verification, check

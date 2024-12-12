@@ -22,8 +22,6 @@ pub enum Error {
     CouldNotCreateConfigFile,
     CouldNotWriteToConfigFile,
 
-    // --- Downloads ---
-
     // --- Installation ---
     ServiceYamlNotInZip,
 
@@ -38,10 +36,13 @@ pub enum Error {
     ServiceParseIncorrect,
     ServiceDownloadFailed,
     ServiceMissingUrl,
+    ServiceUploadData,
 
     // --- Validation ----
     EnabledPathInvalid,
     EnabledPathNotFound,
+
+
 
     // ---
     MissingUrl,
