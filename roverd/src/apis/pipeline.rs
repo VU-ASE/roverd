@@ -38,7 +38,8 @@ impl Pipeline for Roverd {
         _cookies: CookieJar,
     ) -> Result<PipelineGetResponse, String> {
         let state = self.state.write().await;
-        let enable: Vec<PipelineGet200ResponseEnabledInner> = warn_generic!(state.get_pipeline().await, PipelineGetResponse);
+        let enabled: Vec<PipelineGet200ResponseEnabledInner> =
+            warn_generic!(state.get_pipeline().await, PipelineGetResponse);
 
         Ok(
             PipelineGetResponse::Status200_PipelineStatusAndAnArrayOfProcesses(
@@ -47,7 +48,7 @@ impl Pipeline for Roverd {
                     last_start: None,
                     last_stop: None,
                     last_restart: None,
-                    enabled: vec![],
+                    enabled,
                 },
             ),
         )
@@ -67,27 +68,26 @@ impl Pipeline for Roverd {
 
         let _ = match state.set_pipeline(body).await {
             Ok(a) => a,
-            Err(e) => {
-                match e {
-                    Error::ConfigValidation(val_errors) => {
-                        let mut pipeline_errors = vec![];
-                        let mut string_errors = vec![];
+            Err(e) => match e {
+                Error::ConfigValidation(val_errors) => {
+                    let mut pipeline_errors = vec![];
+                    let mut string_errors = vec![];
 
-                        for val_error in val_errors {
-                            match val_error {
-                                rovervalidate::error::Error::PipelineValidationError(
-                                    pipeline_validation_error,
-                                ) => pipeline_errors.push(pipeline_validation_error),
-                                e => string_errors.push(e.to_string()),
-                            }
+                    for val_error in val_errors {
+                        match val_error {
+                            rovervalidate::error::Error::PipelineValidationError(
+                                pipeline_validation_error,
+                            ) => pipeline_errors.push(pipeline_validation_error),
+                            e => string_errors.push(e.to_string()),
                         }
+                    }
 
-                        let mut unmet_streams = vec![];
-                        let mut unmet_services = vec![];
-                        let mut duplicate_service = vec![];
+                    let mut unmet_streams = vec![];
+                    let mut unmet_services = vec![];
+                    let mut duplicate_service = vec![];
 
-                        for i in pipeline_errors {
-                            match i {
+                    for i in pipeline_errors {
+                        match i {
                                 rovervalidate::error::PipelineValidationError::UnmetDependencyError(unmet_dependency_error) => {
                                     match unmet_dependency_error {
                                         rovervalidate::error::UnmetDependencyError::UnmetStream(unmet_stream_error) => {
@@ -113,61 +113,60 @@ impl Pipeline for Roverd {
                                     duplicate_service.push(DuplicateServiceError(s));
                                 },
                             }
-                        }
-
-                        let string_errors = if string_errors.len() > 0 {
-                            Some(string_errors.concat().to_string())
-                        } else {
-                            None
-                        };
-
-                        let unmet_streams = if unmet_streams.len() > 0 {
-                            Some(unmet_streams)
-                        } else {
-                            None
-                        };
-
-                        let unmet_services = if unmet_services.len() > 0 {
-                            Some(unmet_services)
-                        } else {
-                            None
-                        };
-
-                        let duplicate_service = if duplicate_service.len() > 0 {
-                            Some(duplicate_service)
-                        } else {
-                            None
-                        };
-
-                        return Ok(
-                            PipelinePostResponse::Status400_ThePipelineWasNotValidAndCouldNotBeSet(
-                                PipelinePost400Response {
-                                    message: string_errors,
-                                    validation_errors: PipelinePost400ResponseValidationErrors {
-                                        unmet_streams,
-                                        unmet_services,
-                                        duplicate_service,
-                                    },
-                                },
-                            ),
-                        );
                     }
-                    all_other_errors => {
-                        return Ok(
-                            PipelinePostResponse::Status400_ThePipelineWasNotValidAndCouldNotBeSet(
-                                PipelinePost400Response {
-                                    message: Some(format!("{:?}", all_other_errors)),
-                                    validation_errors: PipelinePost400ResponseValidationErrors {
-                                        unmet_streams: None,
-                                        unmet_services: None,
-                                        duplicate_service: None,
-                                    },
+
+                    let string_errors = if string_errors.len() > 0 {
+                        Some(string_errors.concat().to_string())
+                    } else {
+                        None
+                    };
+
+                    let unmet_streams = if unmet_streams.len() > 0 {
+                        Some(unmet_streams)
+                    } else {
+                        None
+                    };
+
+                    let unmet_services = if unmet_services.len() > 0 {
+                        Some(unmet_services)
+                    } else {
+                        None
+                    };
+
+                    let duplicate_service = if duplicate_service.len() > 0 {
+                        Some(duplicate_service)
+                    } else {
+                        None
+                    };
+
+                    return Ok(
+                        PipelinePostResponse::Status400_ThePipelineWasNotValidAndCouldNotBeSet(
+                            PipelinePost400Response {
+                                message: string_errors,
+                                validation_errors: PipelinePost400ResponseValidationErrors {
+                                    unmet_streams,
+                                    unmet_services,
+                                    duplicate_service,
                                 },
-                            ),
-                        );
-                    },
+                            },
+                        ),
+                    );
                 }
-            }
+                all_other_errors => {
+                    return Ok(
+                        PipelinePostResponse::Status400_ThePipelineWasNotValidAndCouldNotBeSet(
+                            PipelinePost400Response {
+                                message: Some(format!("{:?}", all_other_errors)),
+                                validation_errors: PipelinePost400ResponseValidationErrors {
+                                    unmet_streams: None,
+                                    unmet_services: None,
+                                    duplicate_service: None,
+                                },
+                            },
+                        ),
+                    );
+                }
+            },
         };
 
         Ok(PipelinePostResponse::Status200_ThePipelineWasUpdatedSuccessfully)

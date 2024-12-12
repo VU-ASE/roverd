@@ -19,6 +19,7 @@ pub enum Error {
     RoverInfoFileNotFound,
 
     // --- Config File /etc/roverd/rover.yaml ---
+    ConfigFileNotFound,
     CouldNotCreateConfigFile,
     CouldNotWriteToConfigFile,
 

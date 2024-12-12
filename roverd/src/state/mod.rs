@@ -216,7 +216,8 @@ impl State {
         let mut valid_services = vec![];
 
         for enabled in &services {
-            let service_file = std::fs::read_to_string(format!("{}/service.yaml", enabled.path()))?;
+            let service_file = std::fs::read_to_string(format!("{}/service.yaml", enabled.path()))
+                .map_err(|_| Error::ServiceNotFound)?;
             let service: Service = serde_yaml::from_str(&service_file)?;
             valid_services.push(service.validate()?);
         }
@@ -238,8 +239,33 @@ impl State {
     }
 
     pub async fn get_pipeline(&self) -> Result<Vec<PipelineGet200ResponseEnabledInner>, Error> {
-        
-        Err(Error::Unimplemented)
+        let conf = self.get_config().await?;
+
+        let responses = conf
+            .enabled
+            .into_iter()
+            .map(|e| {
+                let fq_buf = FqBuf::try_from(e)?;
+
+                Ok::<_, Error>(PipelineGet200ResponseEnabledInner {
+                    process: Some(PipelineGet200ResponseEnabledInnerProcess {
+                        cpu: 69,
+                        pid: 69,
+                        uptime: 69,
+                        memory: 69,
+                        status: ProcessStatus::Stopped,
+                    }),
+                    service: PipelineGet200ResponseEnabledInnerService {
+                        author: fq_buf.author,
+                        name: fq_buf.name,
+                        version: fq_buf.version,
+                        faults: None,
+                    },
+                })
+            })
+            .collect::<Result<Vec<PipelineGet200ResponseEnabledInner>, Error>>()?;
+
+        Ok(responses)
     }
 
     pub async fn start(&mut self) -> Result<(), Error> {
@@ -264,7 +290,8 @@ impl State {
     }
 
     fn get_valid_service(&self) -> Result<Service, Error> {
-        let config_file = std::fs::read_to_string(ROVER_CONFIG_FILE)?;
+        let config_file =
+            std::fs::read_to_string(ROVER_CONFIG_FILE).map_err(|_| Error::ConfigFileNotFound)?;
         let mut config: Configuration = serde_yaml::from_str(&config_file)?;
 
         for e in &mut config.enabled {

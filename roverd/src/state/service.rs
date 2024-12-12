@@ -99,6 +99,39 @@ impl<'a> TryFrom<&'a String> for Fq<'a> {
     }
 }
 
+impl TryFrom<String> for FqBuf {
+    type Error = error::Error;
+    fn try_from(path_string: String) -> Result<Self, Self::Error> {
+        let path = Path::new(path_string.as_str());
+        let path_vec: Vec<_> = path.components().collect();
+
+        let num_directory_levels = path_vec.len();
+        if num_directory_levels < 3 {
+            return Err(Error::EnabledPathInvalid);
+        }
+
+        let values = path_vec[path_vec.len() - 3..path_vec.len()]
+            .iter()
+            .map(|component| Ok(component.as_os_str().to_os_string().into_string()?))
+            .collect::<Result<Vec<String>, Error>>()?;
+
+        Ok(FqBuf {
+            author: values
+                .first()
+                .ok_or(Error::StringToFqServiceConversion)?
+                .clone(),
+            name: values
+                .get(1)
+                .ok_or(Error::StringToFqServiceConversion)?
+                .clone(),
+            version: values
+                .get(2)
+                .ok_or(Error::StringToFqServiceConversion)?
+                .clone(),
+        })
+    }
+}
+
 impl<'a> TryFrom<&'a Vec<String>> for FqVec<'a> {
     type Error = error::Error;
     fn try_from(string_vec: &'a Vec<String>) -> Result<Self, Self::Error> {
