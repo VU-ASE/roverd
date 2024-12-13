@@ -19,6 +19,8 @@ use tokio::{
 
 use crate::error::Error;
 
+use super::service::FqBuf;
+
 const ENV_KEY: &str = "ASE_SERVICE";
 
 #[derive(Debug, Clone)]
@@ -27,22 +29,23 @@ pub struct SpawnedProcess {
     pub child: Arc<Mutex<Child>>,
 }
 
-#[derive(Debug, Clone)]
-pub enum ProcessState {
-    Started,
-    Stopped,
-    Killed,
-}
+// #[derive(Debug, Clone)]
+// pub enum ProcessState {
+//     Started,
+//     Stopped,
+//     Killed,
+// }
 
 /// A Process
 #[derive(Debug, Clone)]
 pub struct Process {
-    pub pid: i32,
+    pub fq: FqBuf,
+    pub last_pid: u32,
     pub last_exit_code: Option<i32>,
     pub name: String,
     pub command: String,
     pub log_file: PathBuf,
-    pub state: ProcessState,
+    pub state: openapi::models::ProcessStatus,
     pub injected_env: String,
 }
 
@@ -86,14 +89,20 @@ impl ProcessManager {
                 .stderr(stderr);
             match command.spawn() {
                 Ok(child) => {
-                    p.pid = 0;
+                    if let Some(id) = child.id() {
+                        p.last_pid = id;
+                    } else {
+                        warn!("Couldn't get process id from '{}'", p.name);
+                        self.shutdown_tx.send(())?;
+                        break;
+                    }
                     self.spawned.push(SpawnedProcess {
                         name: p.name.clone(),
                         child: Arc::from(Mutex::from(child)),
                     });
                 }
                 Err(e) => {
-                    println!("Failed to spawn process {}: {}", p.name, e);
+                    warn!("Failed to spawn process '{}': {}", p.name, e);
                     self.shutdown_tx.send(())?;
                     break;
                 }

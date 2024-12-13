@@ -1,9 +1,9 @@
 use axum_extra::extract::Multipart;
 use openapi::models::*;
-use process::ProcessManager;
+use process::{Process, ProcessManager};
 
 use rovervalidate::config::{Configuration, ValidatedConfiguration};
-use rovervalidate::pipeline::interface::Pipeline;
+use rovervalidate::pipeline::interface::{Pipeline, RunnablePipeline};
 use rovervalidate::service::{Service, ValidatedService};
 use rovervalidate::validate::Validate;
 use service::{Fq, FqBuf, FqBufVec, FqVec};
@@ -205,6 +205,8 @@ impl State {
         &self,
         _params: ServicesAuthorServiceVersionPostPathParams,
     ) -> Result<(), Error> {
+        // Todo build process async with tokio::process::Command
+
         Err(Error::Unimplemented)
     }
 
@@ -253,7 +255,7 @@ impl State {
                         pid: 69,
                         uptime: 69,
                         memory: 69,
-                        status: ProcessStatus::Stopped,
+                        status: ProcessStatus::Terminated,
                     }),
                     service: PipelineGet200ResponseEnabledInnerService {
                         author: fq_buf.author,
@@ -268,18 +270,55 @@ impl State {
         Ok(responses)
     }
 
+    pub async fn construct_managed_services(
+        &mut self,
+        runnable: &RunnablePipeline,
+    ) -> Result<(), Error> {
+
+        // We assign the new processes state each time, so firs
+        // clear the existing processes and re-add them correctly.
+        self.process_manager.processes.clear();
+
+        // On start from scratch:
+            // for each service:
+            //  - make name of log_file
+            //  - generate bootspec (assign port numbers)
+
+        
+        // 
+
+
+
+        // for service in runnable.services() {
+        //     self.process_manager.processes.push(Process {
+        //         command: service.0.commands.run.clone(),
+        //         last_pid: 0,
+        //         last_exit_code: Some(0),
+        //         name: service.0.name,
+        //         state: ProcessStatus::Stopped,
+        //         log_file: get_log_file(&Service),
+        //         injected_env: ,
+        //     })
+        // }
+
+        Ok(())
+    }
+
     pub async fn start(&mut self) -> Result<(), Error> {
-        // TODO run verification, check
+        let enabled_services = self.get_config().await?.enabled;
 
-        // self.validate()?;
+        if enabled_services.is_empty() {
+            return Err(Error::PipelineIsEmpty);
+        }
 
-        // Check on disk pipeline validates
-        // if not: remove it
-        //
+        // Pipeline validation step
+        let runnable = self.get_valid_pipeline().await?;
 
-        // TODO assign ports
+        // After this, self.processes will be ready
+        self.construct_managed_services(&runnable).await?;
 
-        // self.process_manager.start().await?;
+        // Start the processes
+        self.process_manager.start().await?;
 
         Ok(())
     }
@@ -307,12 +346,13 @@ impl State {
         Err(Error::Unimplemented)
     }
 
-    pub async fn get_valid_pipeline(&mut self) -> Result<(), Error> {
+    pub async fn get_valid_pipeline(&mut self) -> Result<RunnablePipeline, Error> {
         let config = self.get_config().await?;
         let mut enabled_services: Vec<ValidatedService> = vec![];
 
         for enabled in config.enabled {
-            let service_file = std::fs::read_to_string(&enabled)?;
+            let service_file =
+                std::fs::read_to_string(&enabled).map_err(|_| Error::ServiceNotFound)?;
             let service: Service = serde_yaml::from_str(&service_file)?;
             let validated = service.validate()?;
             enabled_services.push(validated);
@@ -320,6 +360,6 @@ impl State {
 
         let p = Pipeline::new(enabled_services).validate()?;
 
-        Err(Error::Unimplemented)
+        Ok(p)
     }
 }

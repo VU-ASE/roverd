@@ -195,8 +195,6 @@ impl Pipeline for Roverd {
                 ));
             }
         };
-
-        info!(">> start returning");
         Ok(PipelineStartPostResponse::Status200_ThePipelineWasStartedSuccessfully)
     }
 

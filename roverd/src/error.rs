@@ -43,6 +43,9 @@ pub enum Error {
     EnabledPathInvalid,
     EnabledPathNotFound,
 
+    // --- Build ---
+    BuildLog(Vec<String>),
+
     IncorrectPayload,
 
     MissingUrl,
@@ -51,7 +54,9 @@ pub enum Error {
 
     StringToFqServiceConversion,
 
-    PipielineValidation,
+    // --- Pipeline ---
+    PipelineValidation,
+    PipelineIsEmpty,
 
     #[from]
     Serialization(serde_yaml::Error),

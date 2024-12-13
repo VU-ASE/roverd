@@ -34,6 +34,16 @@ pub struct FqBuf {
     pub version: String,
 }
 
+impl Clone for FqBuf {
+    fn clone(&self) -> Self {
+        Self {
+            author: self.author.clone(),
+            name: self.name.clone(),
+            version: self.version.clone(),
+        }
+    }
+}
+
 impl From<ValidatedService> for FqBuf {
     fn from(service: ValidatedService) -> Self {
         FqBuf {

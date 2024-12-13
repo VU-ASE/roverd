@@ -7,7 +7,6 @@
   "customizations": {
     "vscode": {
       "extensions": [
-        "streetsidesoftware.code-spell-checker",
         "rust-lang.rust-analyzer", // Rust language server
         "tamasfe.even-better-toml", // TOML syntax support
         "ms-vscode.makefile-tools", // Makefile Tools extension
