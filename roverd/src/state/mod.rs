@@ -9,7 +9,7 @@ use rovervalidate::validate::Validate;
 use service::{Fq, FqBuf, FqBufVec, FqVec};
 use std::fs::{self, remove_dir_all, remove_file};
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::sync::{broadcast, RwLock};
 use tracing::{info, warn};
@@ -19,7 +19,8 @@ use crate::util::*;
 
 pub mod process;
 pub mod service;
-// pub mod types;
+
+mod bootspec;
 
 /// Start-up information and system clock
 pub mod info;
@@ -43,6 +44,7 @@ impl Roverd {
         let roverd = Self {
             info: info::Info::new(),
             state: Arc::from(RwLock::from(State {
+                runnable: None,
                 process_manager: ProcessManager {
                     processes: vec![],
                     spawned: vec![],
@@ -67,6 +69,7 @@ impl AsRef<Roverd> for Roverd {
 
 #[derive(Debug, Clone)]
 pub struct State {
+    pub runnable: Option<RunnablePipeline>,
     pub process_manager: ProcessManager,
 }
 
@@ -192,8 +195,8 @@ impl State {
         }
 
         // Remove the service to delete from the filesystem
-        if Path::new(&delete_fq.path()).exists() {
-            std::fs::remove_dir_all(delete_fq.path())?;
+        if Path::new(&delete_fq.dir()).exists() {
+            std::fs::remove_dir_all(delete_fq.dir())?;
         } else {
             return Err(Error::ServiceNotFound);
         }
@@ -218,8 +221,8 @@ impl State {
         let mut valid_services = vec![];
 
         for enabled in &services {
-            let service_file = std::fs::read_to_string(format!("{}/service.yaml", enabled.path()))
-                .map_err(|_| Error::ServiceNotFound)?;
+            let service_file =
+                std::fs::read_to_string(enabled.path()).map_err(|_| Error::ServiceNotFound)?;
             let service: Service = serde_yaml::from_str(&service_file)?;
             valid_services.push(service.validate()?);
         }
@@ -270,24 +273,66 @@ impl State {
         Ok(responses)
     }
 
-    pub async fn construct_managed_services(
-        &mut self,
-        runnable: &RunnablePipeline,
-    ) -> Result<(), Error> {
-
-        // We assign the new processes state each time, so firs
-        // clear the existing processes and re-add them correctly.
+    pub async fn construct_managed_services(&mut self) -> Result<(), Error> {
+        // Assign the new processes state each time, so first
+        // clear the existing processes and then add them again
         self.process_manager.processes.clear();
 
+        let mut start_port = START_PORT;
+
+        if let Some(runnable) = &self.runnable {
+            // Create bootspecs with missing inputs, since the first step is to hand out
+            // ports. After knowing the ports of all outputs, we can fill in the inputs.
+            // Since we are valid, a given input will _always_ have an output.
+            let mut bootspecs = runnable
+                .services()
+                .iter()
+                .map(|s| bootspec::BootSpec::new(&mut start_port, s))
+                .collect::<Vec<_>>();
+
+            // Now, for all services we can fill in the missing inputs.
+            // for b in bootspecs.iter_mut() {
+            //     b.fill_dependencies(runnable);
+            // }
+
+            
+            // bootspec::BootSpec::fill_dependencies(runnable, bootspecs);
+
+            // for (service_index, service) in runnable.services().iter().enumerate() {
+            //     info!("first zmq: {}", start_port);
+
+            //     let indicies = runnable.dependencies.get(&service_index);
+
+            //     if let Some(is) = indicies {
+            //         let a = is.iter().map(|f| f);
+            //     }
+
+            //     // .iter().map(|i| runnable.services()[i]);
+
+            //     // let mut p = Process::new();
+
+            //     // let fq = FqBuf::from(service);
+            //     // let last_pid = 0;
+            //     // let last_exit_code: Option<i32> = None;
+            //     // let name = service.0.name.clone();
+            //     // let command = service.0.commands.run.clone();
+            //     // let log_file = PathBuf::from("asdf");
+            //     // let state = openapi::models::ProcessStatus::Stopped;
+
+            //     // let injected_env = bootspec::BootSpec::new(&mut zmq_start, service.0)?;
+
+            //     info!("injected_env: {}, {}", "asd", zmq_start);
+            // }
+        } else {
+            return Err(Error::NoRunnableServices);
+        }
+
         // On start from scratch:
-            // for each service:
-            //  - make name of log_file
-            //  - generate bootspec (assign port numbers)
+        // for each service:
+        //  - make name of log_file
+        //  - generate bootspec (assign port numbers)
 
-        
-        // 
-
-
+        //
 
         // for service in runnable.services() {
         //     self.process_manager.processes.push(Process {
@@ -312,13 +357,13 @@ impl State {
         }
 
         // Pipeline validation step
-        let runnable = self.get_valid_pipeline().await?;
+        self.get_valid_pipeline().await?;
 
         // After this, self.processes will be ready
-        self.construct_managed_services(&runnable).await?;
+        self.construct_managed_services().await?;
 
         // Start the processes
-        self.process_manager.start().await?;
+        // self.process_manager.start().await?;
 
         Ok(())
     }

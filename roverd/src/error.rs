@@ -30,6 +30,10 @@ pub enum Error {
     SourceAlreadyExists,
     SourceNotFound,
 
+    // --- Downlaod Errors ---
+    RemoteServiceNotFound,
+
+
     // --- Service Errors ---
     ServiceValidation,
     ServiceNotFound,
@@ -42,6 +46,7 @@ pub enum Error {
     // --- Validation ----
     EnabledPathInvalid,
     EnabledPathNotFound,
+    NoRunnableServices,
 
     // --- Build ---
     BuildLog(Vec<String>),

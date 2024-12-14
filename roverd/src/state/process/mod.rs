@@ -4,6 +4,9 @@ use std::{fs::OpenOptions, time::Duration};
 
 use std::io::Write;
 
+use rovervalidate::pipeline::interface::RunnablePipeline;
+use schemars::{schema_for, JsonSchema};
+use serde::{Deserialize, Serialize};
 use tracing::{error, info, warn};
 
 use chrono;
@@ -18,10 +21,9 @@ use tokio::{
 };
 
 use crate::error::Error;
+use crate::constants::*;
 
 use super::service::FqBuf;
-
-const ENV_KEY: &str = "ASE_SERVICE";
 
 #[derive(Debug, Clone)]
 pub struct SpawnedProcess {
@@ -29,12 +31,6 @@ pub struct SpawnedProcess {
     pub child: Arc<Mutex<Child>>,
 }
 
-// #[derive(Debug, Clone)]
-// pub enum ProcessState {
-//     Started,
-//     Stopped,
-//     Killed,
-// }
 
 /// A Process
 #[derive(Debug, Clone)]

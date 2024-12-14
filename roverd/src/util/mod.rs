@@ -82,9 +82,9 @@ pub async fn download_service(url: &String) -> Result<(), Error> {
     if response.status() != StatusCode::OK {
         let resp: axum::http::StatusCode = response.status();
         match response.status() {
-            StatusCode::NOT_FOUND => return Err(Error::ServiceNotFound),
+            StatusCode::NOT_FOUND => return Err(Error::RemoteServiceNotFound),
             StatusCode::BAD_REQUEST => return Err(Error::ServiceDownloadFailed),
-            StatusCode::FORBIDDEN => return Err(Error::ServiceNotFound),
+            StatusCode::FORBIDDEN => return Err(Error::RemoteServiceNotFound),
             _ => return Err(Error::Http(resp)),
         }
     }

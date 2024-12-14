@@ -54,6 +54,16 @@ impl From<ValidatedService> for FqBuf {
     }
 }
 
+impl From<&ValidatedService> for FqBuf {
+    fn from(service: &ValidatedService) -> Self {
+        FqBuf {
+            name: service.0.name.clone(),
+            author: service.0.author.clone(),
+            version: service.0.version.clone(),
+        }
+    }
+}
+
 impl From<&PipelinePostRequestInner> for FqBuf {
     fn from(service: &PipelinePostRequestInner) -> Self {
         FqBuf {
@@ -67,7 +77,7 @@ impl From<&PipelinePostRequestInner> for FqBuf {
 impl FqBuf {
     pub fn path(&self) -> String {
         format!(
-            "{}/{}/{}/{}",
+            "{}/{}/{}/{}/service.yaml",
             ROVER_DIR, self.author, self.name, self.version
         )
     }
@@ -170,6 +180,15 @@ impl From<Vec<PipelinePostRequestInner>> for FqBufVec {
 
 impl<'a> Fq<'a> {
     pub fn path(&self) -> String {
+        format!(
+            "{}/{}/{}/{}/service.yaml",
+            ROVER_DIR, self.author, self.name, self.version
+        )
+    }
+}
+
+impl<'a> Fq<'a> {
+    pub fn dir(&self) -> String {
         format!(
             "{}/{}/{}/{}",
             ROVER_DIR, self.author, self.name, self.version
