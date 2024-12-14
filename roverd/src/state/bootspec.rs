@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::error::Error;
 
-use rovervalidate::{pipeline::interface::RunnablePipeline, service::ValidatedService};
+use rovervalidate::{pipeline::interface::RunnablePipeline, service::{ValidatedService}};
 use serde::{Deserialize, Serialize};
 
 use super::DATA_ADDRESS;
@@ -42,7 +42,7 @@ pub struct BootSpec {
     version: String,
     inputs: Vec<Input>,
     outputs: Vec<Stream>,
-    configuration: Vec<BootSpecConfig>,
+    configuration: Vec<rovervalidate::service::Configuration>,
 }
 
 impl BootSpec {
@@ -53,7 +53,7 @@ impl BootSpec {
         // and get the assigned address.
         let mut mappings: HashMap<(String, String), String> = HashMap::new();
 
-        // First, for each service assign an address to all of its outputs and 
+        // First, for each service assign an address to all of its outputs and
         // save the resulting address in the mapping.
         let outputs = s
             .outputs
@@ -102,25 +102,7 @@ impl BootSpec {
             version: s.version.clone(),
             inputs,
             outputs,
-            configuration: todo!(),
+            configuration: s.configuration.clone(),
         }
     }
-
-    // pub fn fill_dependencies(&mut self, runnable: &RunnablePipeline) -> &Self {
-
-    //     for (service_index, service) in runnable.services().iter().enumerate() {
-
-    //         if let Some(deps) = runnable.dependencies.get(&service_index) {
-
-    //             // for all deps, get output stream and add to
-    //             for input in service.0.inputs {
-
-    //             }
-
-    //         }
-
-    //     }
-
-    //     self
-    // }
 }

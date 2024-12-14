@@ -243,14 +243,15 @@ impl State {
         Ok(())
     }
 
-    pub async fn get_pipeline(&self) -> Result<Vec<PipelineGet200ResponseEnabledInner>, Error> {
-        let conf = self.get_config().await?;
+    pub async fn get_pipeline(&mut self) -> Result<Vec<PipelineGet200ResponseEnabledInner>, Error> {
+        let conf = self.get_valid_pipeline().await?;
+        // let conf = self.get_config().await?;
 
         let responses = conf
-            .enabled
+            .services()
             .into_iter()
-            .map(|e| {
-                let fq_buf = FqBuf::try_from(e)?;
+            .map(|validated_service| {
+                let fq_buf = FqBuf::from(validated_service);
 
                 Ok::<_, Error>(PipelineGet200ResponseEnabledInner {
                     process: Some(PipelineGet200ResponseEnabledInnerProcess {
@@ -281,71 +282,30 @@ impl State {
         let mut start_port = START_PORT;
 
         if let Some(runnable) = &self.runnable {
-            // Create bootspecs with missing inputs, since the first step is to hand out
-            // ports. After knowing the ports of all outputs, we can fill in the inputs.
-            // Since we are valid, a given input will _always_ have an output.
-            let mut bootspecs = runnable
-                .services()
-                .iter()
-                .map(|s| bootspec::BootSpec::new(&mut start_port, s))
-                .collect::<Vec<_>>();
+            for service in runnable.services() {
+                // Create bootspecs with missing inputs, since the first step is to hand out
+                // ports. After knowing the ports of all outputs, we can fill in the inputs.
+                // Since we are valid, a given input will _always_ have an output.
+                let bootspec = bootspec::BootSpec::new(&mut start_port, service);
 
-            // Now, for all services we can fill in the missing inputs.
-            // for b in bootspecs.iter_mut() {
-            //     b.fill_dependencies(runnable);
-            // }
+                let injected_env = serde_json::to_string(&bootspec)?;
 
-            
-            // bootspec::BootSpec::fill_dependencies(runnable, bootspecs);
+                let fq = FqBuf::from(service);
 
-            // for (service_index, service) in runnable.services().iter().enumerate() {
-            //     info!("first zmq: {}", start_port);
-
-            //     let indicies = runnable.dependencies.get(&service_index);
-
-            //     if let Some(is) = indicies {
-            //         let a = is.iter().map(|f| f);
-            //     }
-
-            //     // .iter().map(|i| runnable.services()[i]);
-
-            //     // let mut p = Process::new();
-
-            //     // let fq = FqBuf::from(service);
-            //     // let last_pid = 0;
-            //     // let last_exit_code: Option<i32> = None;
-            //     // let name = service.0.name.clone();
-            //     // let command = service.0.commands.run.clone();
-            //     // let log_file = PathBuf::from("asdf");
-            //     // let state = openapi::models::ProcessStatus::Stopped;
-
-            //     // let injected_env = bootspec::BootSpec::new(&mut zmq_start, service.0)?;
-
-            //     info!("injected_env: {}, {}", "asd", zmq_start);
-            // }
+                self.process_manager.processes.push(Process {
+                    fq: fq.clone(),
+                    command: service.0.commands.run.clone(),
+                    last_pid: 0,
+                    last_exit_code: Some(0),
+                    name: service.0.name.clone(),
+                    state: ProcessStatus::Stopped,
+                    log_file: PathBuf::from(fq.log_file()),
+                    injected_env,
+                })
+            }
         } else {
             return Err(Error::NoRunnableServices);
         }
-
-        // On start from scratch:
-        // for each service:
-        //  - make name of log_file
-        //  - generate bootspec (assign port numbers)
-
-        //
-
-        // for service in runnable.services() {
-        //     self.process_manager.processes.push(Process {
-        //         command: service.0.commands.run.clone(),
-        //         last_pid: 0,
-        //         last_exit_code: Some(0),
-        //         name: service.0.name,
-        //         state: ProcessStatus::Stopped,
-        //         log_file: get_log_file(&Service),
-        //         injected_env: ,
-        //     })
-        // }
-
         Ok(())
     }
 
@@ -361,6 +321,10 @@ impl State {
 
         // After this, self.processes will be ready
         self.construct_managed_services().await?;
+
+        for p in &self.process_manager.processes {
+            info!(">>> {:?}", p)
+        }
 
         // Start the processes
         // self.process_manager.start().await?;
@@ -392,19 +356,26 @@ impl State {
     }
 
     pub async fn get_valid_pipeline(&mut self) -> Result<RunnablePipeline, Error> {
-        let config = self.get_config().await?;
+        let mut config = self.get_config().await?;
         let mut enabled_services: Vec<ValidatedService> = vec![];
 
-        for enabled in config.enabled {
-            let service_file =
-                std::fs::read_to_string(&enabled).map_err(|_| Error::ServiceNotFound)?;
-            let service: Service = serde_yaml::from_str(&service_file)?;
-            let validated = service.validate()?;
-            enabled_services.push(validated);
+        match {
+            for enabled in &config.enabled {
+                let service_file =
+                    std::fs::read_to_string(enabled).map_err(|_| Error::ServiceNotFound)?;
+                let service: Service = serde_yaml::from_str(&service_file)?;
+                let validated = service.validate()?;
+                enabled_services.push(validated);
+            }
+
+            Pipeline::new(enabled_services).validate()
+        } {
+            Ok(val) => Ok(val),
+            Err(e) => {
+                config.enabled.clear();
+                update_config(&config)?;
+                return Err(Error::ConfigValidation(e));
+            }
         }
-
-        let p = Pipeline::new(enabled_services).validate()?;
-
-        Ok(p)
     }
 }

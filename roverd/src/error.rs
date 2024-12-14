@@ -33,7 +33,6 @@ pub enum Error {
     // --- Downlaod Errors ---
     RemoteServiceNotFound,
 
-
     // --- Service Errors ---
     ServiceValidation,
     ServiceNotFound,
@@ -65,6 +64,9 @@ pub enum Error {
 
     #[from]
     Serialization(serde_yaml::Error),
+
+    #[from]
+    JsonSerialization(serde_json::Error),
 
     #[from]
     OsString(std::ffi::OsString),

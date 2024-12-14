@@ -9,7 +9,7 @@ commands:
   run: ./bin/controller
 
 inputs:
-  - service: imaging
+  - service: imagin
     streams:
       - path
 
