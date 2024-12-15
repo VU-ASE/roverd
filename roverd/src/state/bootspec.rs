@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::error::Error;
 
-use rovervalidate::{pipeline::interface::RunnablePipeline, service::{ValidatedService}};
+use rovervalidate::{pipeline::interface::RunnablePipeline, service::ValidatedService};
 use serde::{Deserialize, Serialize};
 
 use super::DATA_ADDRESS;

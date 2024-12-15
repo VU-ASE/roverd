@@ -5,7 +5,6 @@ use std::{fs::OpenOptions, time::Duration};
 use std::io::Write;
 
 use rovervalidate::pipeline::interface::RunnablePipeline;
-use schemars::{schema_for, JsonSchema};
 use serde::{Deserialize, Serialize};
 use tracing::{error, info, warn};
 
@@ -20,8 +19,8 @@ use tokio::{
     time,
 };
 
-use crate::error::Error;
 use crate::constants::*;
+use crate::error::Error;
 
 use super::service::FqBuf;
 
@@ -30,7 +29,6 @@ pub struct SpawnedProcess {
     pub name: String,
     pub child: Arc<Mutex<Child>>,
 }
-
 
 /// A Process
 #[derive(Debug, Clone)]

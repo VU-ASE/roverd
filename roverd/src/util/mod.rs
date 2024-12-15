@@ -131,8 +131,6 @@ pub async fn extract_fq() -> Result<FqBuf, Error> {
 /// Expects a zipfile to be ready at ZIP_FILE, extract it and install it. Parses the service.yaml
 /// and install contents into the correct location on disk.
 pub async fn install_service(fq: &FqBuf) -> Result<(), Error> {
-    info!("Installing: {}", fq);
-
     // Deletes any existing files/dirs that are on the /author/name/version path
     // Makes sure the directories exist.
     let full_path = prepare_dirs(fq)?;

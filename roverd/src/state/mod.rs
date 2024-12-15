@@ -184,15 +184,27 @@ impl State {
         // Get the current configuration from disk
         let mut config = self.get_config().await?;
 
-        let mut return_bool = false;
+        let mut should_reset = false;
         // Return whether or not the service was enabled and if it was,
         // reset the pipeline
         let enabled_fq_vec = FqVec::try_from(&config.enabled)?.0;
-        if enabled_fq_vec.contains(&delete_fq) {
-            return_bool = true;
+        for enabled in enabled_fq_vec {
+            if enabled == delete_fq {
+                should_reset = true;
+            }
+        }
+
+        if should_reset {
             config.enabled.clear();
             update_config(&config)?;
         }
+
+        // TODO when done, change back to this (cleaner)
+        // if enabled_fq_vec.contains(&delete_fq) {
+        //     should_reset = true;
+        //     config.enabled.clear();
+        //     update_config(&config)?;
+        // }
 
         // Remove the service to delete from the filesystem
         if Path::new(&delete_fq.dir()).exists() {
@@ -201,7 +213,7 @@ impl State {
             return Err(Error::ServiceNotFound);
         }
 
-        Ok(return_bool)
+        Ok(should_reset)
     }
 
     pub async fn build_service(
@@ -229,7 +241,7 @@ impl State {
 
         let _ = Pipeline::new(valid_services).validate()?;
 
-        // If we got here, config can be overwritten
+        // Here we have a valid pipeline, so rover.yaml can be overwritten
         let mut config = self.get_config().await?;
         config.enabled.clear();
 
@@ -244,14 +256,16 @@ impl State {
     }
 
     pub async fn get_pipeline(&mut self) -> Result<Vec<PipelineGet200ResponseEnabledInner>, Error> {
-        let conf = self.get_valid_pipeline().await?;
-        // let conf = self.get_config().await?;
+        // todo: a pipeline can only be valid, meaning that a pipeline enabled on disk is
+        // always valid. if the pipeline from the rover.yaml file is not valid, clear it.
+        // let conf = self.get_valid_pipeline().await?;
+        let conf = self.get_config().await?;
 
         let responses = conf
-            .services()
+            .enabled
             .into_iter()
             .map(|validated_service| {
-                let fq_buf = FqBuf::from(validated_service);
+                let fq_buf = FqBuf::try_from(validated_service)?;
 
                 Ok::<_, Error>(PipelineGet200ResponseEnabledInner {
                     process: Some(PipelineGet200ResponseEnabledInnerProcess {

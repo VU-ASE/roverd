@@ -9,6 +9,7 @@ use crate::error;
 
 use rovervalidate::{config::Validate, service::ValidatedService};
 use tokio::sync::RwLockWriteGuard;
+use tracing::warn;
 
 use crate::constants::*;
 
@@ -118,6 +119,7 @@ impl<'a> TryFrom<&'a String> for Fq<'a> {
             })
             .collect::<Result<Vec<&str>, Error>>()?;
 
+
         Ok(Fq {
             author: values.first().ok_or(Error::StringToFqServiceConversion)?,
             name: values.get(1).ok_or(Error::StringToFqServiceConversion)?,
@@ -142,9 +144,11 @@ impl TryFrom<String> for FqBuf {
             .map(|component| Ok(component.as_os_str().to_os_string().into_string()?))
             .collect::<Result<Vec<String>, Error>>()?;
 
+
+
         Ok(FqBuf {
             author: values
-                .first()
+                .get(0)
                 .ok_or(Error::StringToFqServiceConversion)?
                 .clone(),
             name: values
@@ -254,6 +258,9 @@ impl<'a> From<&'a FqBuf> for Fq<'a> {
 
 impl<'a> PartialEq for Fq<'a> {
     fn eq(&self, other: &Self) -> bool {
+        warn!("testing ==");
+        dbg!(self.name.to_lowercase(), other.name.to_lowercase());
+
         self.name.to_lowercase() == other.name.to_lowercase()
             && self.author.to_lowercase() == other.author.to_lowercase()
             && self.version.to_lowercase() == other.version.to_lowercase()

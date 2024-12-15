@@ -1866,6 +1866,8 @@ impl std::convert::TryFrom<HeaderValue> for header::IntoHeaderValue<PipelinePost
 )]
 #[cfg_attr(feature = "conversion", derive(frunk_enum_derive::LabelledGenericEnum))]
 pub enum PipelineStatus {
+    #[serde(rename = "empty")]
+    Empty,
     #[serde(rename = "startable")]
     Startable,
     #[serde(rename = "started")]
@@ -1877,6 +1879,7 @@ pub enum PipelineStatus {
 impl std::fmt::Display for PipelineStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match *self {
+            PipelineStatus::Empty => write!(f, "empty"),
             PipelineStatus::Startable => write!(f, "startable"),
             PipelineStatus::Started => write!(f, "started"),
             PipelineStatus::Restarting => write!(f, "restarting"),
@@ -1889,6 +1892,7 @@ impl std::str::FromStr for PipelineStatus {
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         match s {
+            "empty" => std::result::Result::Ok(PipelineStatus::Empty),
             "startable" => std::result::Result::Ok(PipelineStatus::Startable),
             "started" => std::result::Result::Ok(PipelineStatus::Started),
             "restarting" => std::result::Result::Ok(PipelineStatus::Restarting),

@@ -12,6 +12,8 @@ use crate::{state::Roverd, warn_generic, Error};
 
 use rovervalidate::error::{PipelineValidationError, UnmetDependencyError};
 
+use crate::apis::pipeline::PipelineValidationError::DuplicateServiceError;
+
 #[async_trait]
 impl Pipeline for Roverd {
     /// Retrieve logs for a pipeline service (this can be logs from multiple processes, if the service was restarted). These logs are still queryable if a process has been terminated or if the pipeline was stopped..
@@ -41,10 +43,16 @@ impl Pipeline for Roverd {
         let enabled: Vec<PipelineGet200ResponseEnabledInner> =
             warn_generic!(state.get_pipeline().await, PipelineGetResponse);
 
+        let status = if enabled.len() > 0 {
+            PipelineStatus::Startable
+        } else {
+            PipelineStatus::Empty
+        };
+
         Ok(
             PipelineGetResponse::Status200_PipelineStatusAndAnArrayOfProcesses(
                 PipelineGet200Response {
-                    status: PipelineStatus::Startable,
+                    status,
                     last_start: None,
                     last_stop: None,
                     last_restart: None,
@@ -110,7 +118,7 @@ impl Pipeline for Roverd {
                                     }
                                 },
                                 rovervalidate::error::PipelineValidationError::DuplicateServiceError(s) => {
-                                    duplicate_service.push(DuplicateServiceError(s));
+                                    duplicate_service.push(openapi::models::DuplicateServiceError(s));
                                 },
                             }
                     }
