@@ -210,19 +210,33 @@ paths:
         "401":
           $ref: "#/components/responses/UnauthorizedError"
 
-  /logs/{name}:
+  /logs/{author}/{name}/{version}:
     get:
       tags:
         - "Pipeline"
-      summary: "Retrieve logs for a pipeline service (this can be logs from multiple processes, if the service was restarted). These logs are still queryable if a process has been terminated or if the pipeline was stopped."
+      summary: "Retrieve logs for any service. Logs from running or previously run services can be viewed and will be kept until rover reboot."
       parameters:
+        - name: author
+          in: path
+          required: true
+          description: "The author of the service."
+          schema:
+            type: string
+          example: "vu-ase"
         - name: name
           in: path
           required: true
-          description: "The name of the service running as a process in the pipeline"
+          description: "The name of the service."
           schema:
             type: string
           example: "imaging"
+        - name: version
+          in: path
+          required: true
+          description: "The version of the service."
+          schema:
+            type: string
+          example: "1.0.0"
         - name: lines
           in: query
           required: false

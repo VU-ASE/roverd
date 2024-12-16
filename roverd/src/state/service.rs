@@ -95,6 +95,16 @@ impl From<&PipelinePostRequestInner> for FqBuf {
     }
 }
 
+impl From<&LogsAuthorNameVersionGetPathParams> for FqBuf {
+    fn from(value: &LogsAuthorNameVersionGetPathParams) -> Self {
+        FqBuf {
+            name: value.name.clone(),
+            author: value.author.clone(),
+            version: value.version.clone(),
+        }
+    }
+}
+
 impl FqBuf {
     pub fn path(&self) -> String {
         format!(

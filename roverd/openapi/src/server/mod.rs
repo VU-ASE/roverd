@@ -21,7 +21,10 @@ where
     // build our application with a route
     Router::new()
         .route("/fetch", post(fetch_post::<I, A>))
-        .route("/logs/:name", get(logs_name_get::<I, A>))
+        .route(
+            "/logs/:author/:name/:version",
+            get(logs_author_name_version_get::<I, A>),
+        )
         .route(
             "/pipeline",
             get(pipeline_get::<I, A>).post(pipeline_post::<I, A>),
@@ -241,13 +244,13 @@ where
 }
 
 #[tracing::instrument(skip_all)]
-fn logs_name_get_validation(
-    path_params: models::LogsNameGetPathParams,
-    query_params: models::LogsNameGetQueryParams,
+fn logs_author_name_version_get_validation(
+    path_params: models::LogsAuthorNameVersionGetPathParams,
+    query_params: models::LogsAuthorNameVersionGetQueryParams,
 ) -> std::result::Result<
     (
-        models::LogsNameGetPathParams,
-        models::LogsNameGetQueryParams,
+        models::LogsAuthorNameVersionGetPathParams,
+        models::LogsAuthorNameVersionGetQueryParams,
     ),
     ValidationErrors,
 > {
@@ -256,14 +259,14 @@ fn logs_name_get_validation(
 
     Ok((path_params, query_params))
 }
-/// LogsNameGet - GET /logs/{name}
+/// LogsAuthorNameVersionGet - GET /logs/{author}/{name}/{version}
 #[tracing::instrument(skip_all)]
-async fn logs_name_get<I, A>(
+async fn logs_author_name_version_get<I, A>(
     method: Method,
     host: Host,
     cookies: CookieJar,
-    Path(path_params): Path<models::LogsNameGetPathParams>,
-    Query(query_params): Query<models::LogsNameGetQueryParams>,
+    Path(path_params): Path<models::LogsAuthorNameVersionGetPathParams>,
+    Query(query_params): Query<models::LogsAuthorNameVersionGetQueryParams>,
     State(api_impl): State<I>,
 ) -> Result<Response, StatusCode>
 where
@@ -271,10 +274,11 @@ where
     A: apis::pipeline::Pipeline,
 {
     #[allow(clippy::redundant_closure)]
-    let validation =
-        tokio::task::spawn_blocking(move || logs_name_get_validation(path_params, query_params))
-            .await
-            .unwrap();
+    let validation = tokio::task::spawn_blocking(move || {
+        logs_author_name_version_get_validation(path_params, query_params)
+    })
+    .await
+    .unwrap();
 
     let Ok((path_params, query_params)) = validation else {
         return Response::builder()
@@ -285,14 +289,16 @@ where
 
     let result = api_impl
         .as_ref()
-        .logs_name_get(method, host, cookies, path_params, query_params)
+        .logs_author_name_version_get(method, host, cookies, path_params, query_params)
         .await;
 
     let mut response = Response::builder();
 
     let resp = match result {
         Ok(rsp) => match rsp {
-            apis::pipeline::LogsNameGetResponse::Status200_TheCollectionOfLogs(body) => {
+            apis::pipeline::LogsAuthorNameVersionGetResponse::Status200_TheCollectionOfLogs(
+                body,
+            ) => {
                 let mut response = response.status(200);
                 {
                     let mut response_headers = response.headers_mut().unwrap();
@@ -315,7 +321,7 @@ where
                 .unwrap()?;
                 response.body(Body::from(body_content))
             }
-            apis::pipeline::LogsNameGetResponse::Status400_AnErrorOccurred(body) => {
+            apis::pipeline::LogsAuthorNameVersionGetResponse::Status400_AnErrorOccurred(body) => {
                 let mut response = response.status(400);
                 {
                     let mut response_headers = response.headers_mut().unwrap();
@@ -338,11 +344,11 @@ where
                 .unwrap()?;
                 response.body(Body::from(body_content))
             }
-            apis::pipeline::LogsNameGetResponse::Status404_EntityNotFound => {
+            apis::pipeline::LogsAuthorNameVersionGetResponse::Status404_EntityNotFound => {
                 let mut response = response.status(404);
                 response.body(Body::empty())
             }
-            apis::pipeline::LogsNameGetResponse::Status401_UnauthorizedAccess => {
+            apis::pipeline::LogsAuthorNameVersionGetResponse::Status401_UnauthorizedAccess => {
                 let mut response = response.status(401);
                 response.body(Body::empty())
             }

@@ -233,8 +233,6 @@ impl State {
         let program = &build_command.program;
         let arguments = &build_command.arguments;
 
-        
-
         match Command::new(program)
             .args(arguments)
             .stdout(stdout)
@@ -247,13 +245,17 @@ impl State {
                     if !exit_status.success() {
                         let file = std::fs::File::open(fq.build_log_file())?;
                         let reader = BufReader::new(file);
-                        let lines: Vec<String> = reader.lines().collect::<Result<Vec<String>, _>>()?;
+                        let lines: Vec<String> =
+                            reader.lines().collect::<Result<Vec<String>, _>>()?;
                         return Err(Error::BuildLog(lines));
                     }
                     Ok(())
-                },
+                }
                 Err(e) => {
-                    error!("failed to wait on build command: {:?} {}", &build_command, e);
+                    error!(
+                        "failed to wait on build command: {:?} {}",
+                        &build_command, e
+                    );
                     return Err(Error::BuildCommandFailed);
                 }
             },
@@ -430,5 +432,22 @@ impl State {
                 return Err(Error::ConfigValidation(e));
             }
         }
+    }
+
+    pub async fn get_service_logs(
+        &self,
+        fq: FqBuf,
+        num_lines: usize,
+    ) -> Result<Vec<String>, Error> {
+        let file = std::fs::File::open(fq.log_file())?;
+        let reader = BufReader::new(file);
+        let log_lines: Vec<String> = reader.lines().collect::<Result<Vec<String>, _>>()?;
+        let min_lines = std::cmp::min(num_lines, log_lines.len());
+
+        info!("min_lines: {}", min_lines);
+
+        let index = log_lines.len() - min_lines;
+
+        Ok(log_lines[index..].to_vec())
     }
 }

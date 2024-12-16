@@ -10,7 +10,7 @@ use crate::{models, types::*};
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[must_use]
 #[allow(clippy::large_enum_variant)]
-pub enum LogsNameGetResponse {
+pub enum LogsAuthorNameVersionGetResponse {
     /// The collection of logs
     Status200_TheCollectionOfLogs(Vec<String>),
     /// An error occurred
@@ -73,17 +73,17 @@ pub enum PipelineStopPostResponse {
 #[async_trait]
 #[allow(clippy::ptr_arg)]
 pub trait Pipeline {
-    /// Retrieve logs for a pipeline service (this can be logs from multiple processes, if the service was restarted). These logs are still queryable if a process has been terminated or if the pipeline was stopped..
+    /// Retrieve logs for any service. Logs from running or previously run services can be viewed and will be kept until rover reboot..
     ///
-    /// LogsNameGet - GET /logs/{name}
-    async fn logs_name_get(
+    /// LogsAuthorNameVersionGet - GET /logs/{author}/{name}/{version}
+    async fn logs_author_name_version_get(
         &self,
         method: Method,
         host: Host,
         cookies: CookieJar,
-        path_params: models::LogsNameGetPathParams,
-        query_params: models::LogsNameGetQueryParams,
-    ) -> Result<LogsNameGetResponse, String>;
+        path_params: models::LogsAuthorNameVersionGetPathParams,
+        query_params: models::LogsAuthorNameVersionGetQueryParams,
+    ) -> Result<LogsAuthorNameVersionGetResponse, String>;
 
     /// Retrieve pipeline status and process execution information.
     ///

@@ -9,14 +9,18 @@ use crate::{models, types::*};
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize, validator::Validate)]
 #[cfg_attr(feature = "conversion", derive(frunk::LabelledGeneric))]
-pub struct LogsNameGetPathParams {
-    /// The name of the service running as a process in the pipeline
+pub struct LogsAuthorNameVersionGetPathParams {
+    /// The author of the service.
+    pub author: String,
+    /// The name of the service.
     pub name: String,
+    /// The version of the service.
+    pub version: String,
 }
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize, validator::Validate)]
 #[cfg_attr(feature = "conversion", derive(frunk::LabelledGeneric))]
-pub struct LogsNameGetQueryParams {
+pub struct LogsAuthorNameVersionGetQueryParams {
     /// The number of log lines to retrieve
     #[serde(rename = "lines")]
     #[validate(range(min = 1, max = 1000))]

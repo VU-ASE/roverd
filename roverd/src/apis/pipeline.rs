@@ -8,7 +8,8 @@ use openapi::models::*;
 
 use tracing::{info, warn};
 
-use crate::{state::Roverd, warn_generic, Error};
+use crate::constants::*;
+use crate::{service::FqBuf, state::Roverd, warn_generic, Error};
 
 use rovervalidate::error::{PipelineValidationError, UnmetDependencyError};
 
@@ -16,18 +17,27 @@ use crate::apis::pipeline::PipelineValidationError::DuplicateServiceError;
 
 #[async_trait]
 impl Pipeline for Roverd {
-    /// Retrieve logs for a pipeline service (this can be logs from multiple processes, if the service was restarted). These logs are still queryable if a process has been terminated or if the pipeline was stopped..
+    /// Retrieve logs for any service. Logs from running or previously run services can be viewed and will be kept until rover reboot..
     ///
-    /// LogsNameGet - GET /logs/{name}
-    async fn logs_name_get(
+    /// LogsAuthorNameVersionGet - GET /logs/{author}/{name}/{version}
+    async fn logs_author_name_version_get(
         &self,
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
-        _path_params: LogsNameGetPathParams,
-        _query_params: LogsNameGetQueryParams,
-    ) -> Result<LogsNameGetResponse, String> {
-        Ok(LogsNameGetResponse::Status401_UnauthorizedAccess)
+        path_params: LogsAuthorNameVersionGetPathParams,
+        query_params: LogsAuthorNameVersionGetQueryParams,
+    ) -> Result<LogsAuthorNameVersionGetResponse, String> {
+        let state = self.state.write().await;
+        let fq = FqBuf::from(&path_params);
+        let lines = query_params.lines.unwrap_or_else(|| DEFAULT_LOG_LINES) as usize;
+
+        let logs = warn_generic!(
+            state.get_service_logs(fq, lines).await,
+            LogsAuthorNameVersionGetResponse
+        );
+
+        Ok(LogsAuthorNameVersionGetResponse::Status200_TheCollectionOfLogs(logs))
     }
 
     /// Retrieve pipeline status and process execution information.

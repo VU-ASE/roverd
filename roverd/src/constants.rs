@@ -21,3 +21,4 @@ pub const ENV_KEY: &str = "ASE_SERVICE";
 pub const START_PORT: u32 = 5700;
 
 pub const DATA_ADDRESS: &str = "tcp://localhost";
+pub const DEFAULT_LOG_LINES: i32 = 50;
