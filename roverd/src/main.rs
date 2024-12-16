@@ -9,6 +9,7 @@ use tracing::{info, warn};
 
 mod apis;
 mod constants;
+mod command;
 mod error;
 mod log;
 mod state;

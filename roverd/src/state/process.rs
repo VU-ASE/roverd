@@ -19,10 +19,10 @@ use tokio::{
     time,
 };
 
+use crate::command::ParsedCommand;
 use crate::constants::*;
 use crate::error::Error;
-
-use super::service::FqBuf;
+use crate::service::FqBuf;
 
 #[derive(Debug, Clone)]
 pub struct SpawnedProcess {
@@ -84,10 +84,11 @@ impl ProcessManager {
             let stdout = Stdio::from(log_file.try_clone()?);
             let stderr = Stdio::from(log_file);
 
-            let mut command = Command::new("sh");
+            let parsed_command = ParsedCommand::try_from(&p.command)?;
+
+            let mut command = Command::new(parsed_command.program);
             command
-                .arg("-c")
-                .arg(p.command.clone())
+                .args(parsed_command.arguments)
                 .env(ENV_KEY, p.injected_env.clone())
                 .stdout(stdout)
                 .stderr(stderr);
@@ -118,7 +119,6 @@ impl ProcessManager {
             let process_shutdown_tx = self.shutdown_tx.clone();
 
             tokio::spawn(async move {
-                info!(">> start: before child lock of {:?}", proc.name);
                 let mut child = proc.child.lock().await;
                 // todo test this make sure the loop doesn't need to be here
                 select! {
@@ -126,12 +126,11 @@ impl ProcessManager {
                     status = child.wait() => {
                         match status {
                             Ok(status) => {
-                                if !status.success() {
-                                    process_shutdown_tx.send(()).ok();
-                                }
+                                info!("child {} exited with status {}", proc.name, status);
+                                process_shutdown_tx.send(()).ok();
                             }
                             Err(e) => {
-                                error!("Error waiting for process {}: {}", proc.name, e);
+                                error!("error waiting for process {}: {}", proc.name, e);
                                 process_shutdown_tx.send(()).ok();
                             }
                         }
@@ -140,29 +139,30 @@ impl ProcessManager {
                     _ = shutdown_rx.recv() => {
                         if let Some(id) = child.id() {
                             unsafe {
-                                info!("Sending kill to {}", proc.name);
-                                libc::kill(id as i32, libc::SIGKILL);
+                                info!("terminating {} pid ({})", proc.name, id);
+                                libc::kill(id as i32, libc::SIGTERM);
                             }
                         }
 
                         // Wait for 1 second before sending KILL signal
-                        // time::sleep(Duration::from_secs(1)).await;
+                        time::sleep(Duration::from_secs(1)).await;
 
-
-                        // match child.try_wait() {
-                        //     Ok(None) => {
-                        //         info!("Force killing process: {}", proc.name);
-                        //         if let Err(e) = child.kill().await {
-                        //             error!("Error killing process {:?}: {:?}", proc.name, e);
-                        //         }
-                        //     },
-                        //     Ok(Some(status)) => {
-                        //         info!("Successfully terminated child: {:?} with {:?}", proc.name, status)
-                        //     },
-                        //     Err(e) => {
-                        //         error!("Error: {:?}", e);
-                        //     }
-                        // }
+                        match child.try_wait() {
+                            Ok(None) => {
+                                info!("child {} did not terminate", proc.name);
+                                warn!("killing {}", proc.name);
+                                if let Err(e) = child.kill().await {
+                                    error!("error killing process {:?}: {:?}", proc.name, e);
+                                }
+                            },
+                            Ok(Some(_)) => {},
+                            Err(e) => {
+                                error!("Error: {:?}", e);
+                                if let Err(e) = child.kill().await {
+                                    error!("error killing process {:?}: {:?}", proc.name, e);
+                                }
+                            }
+                        }
                     }
                 }
             });

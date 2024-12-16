@@ -50,7 +50,12 @@ pub enum Error {
     // --- Build ---
     BuildLog(Vec<String>),
 
+    // --- Runtie ---
+    NoRunningServices,
+
     IncorrectPayload,
+
+    RunCommandNotParsed,
 
     MissingUrl,
 

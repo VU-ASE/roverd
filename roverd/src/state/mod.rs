@@ -347,6 +347,10 @@ impl State {
     }
 
     pub async fn stop(&mut self) -> Result<(), Error> {
+        if self.process_manager.spawned.is_empty() {
+            warn!("tried stopping, however no spawned processes exist");
+            return Err(Error::NoRunningServices)
+        }
         self.process_manager.stop().await?;
         Ok(())
     }
