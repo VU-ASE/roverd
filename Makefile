@@ -23,6 +23,16 @@ clean:
 	@cargo clean
 
 loc:
+	@echo roverd:
 	@cd roverd/src && find . -name '*.rs' | xargs wc -l
+	@echo 
+
+	@echo openapi:
+	@cd roverd/openapi/src && find . -name '*.rs' | xargs wc -l
+	@echo 
+
+	@echo rovervalidate
+	@cd rovervalidate/src && find . -name '*.rs' | xargs wc -l
+	@echo 
 
 

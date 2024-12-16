@@ -61,18 +61,28 @@ impl ProcessManager {
         self.spawned.clear();
 
         for p in &mut self.processes {
-            let mut file = OpenOptions::new()
-                .create(true)
+            let path = std::path::Path::new(&p.log_file);
+            if let Some(parent_dir) = path.parent() {
+                if !parent_dir.exists() {
+                    info!("creating parent dir of logfile: {:?}", &parent_dir);
+                    std::fs::create_dir_all(parent_dir)?;
+                }
+            }
+
+            let mut log_file = OpenOptions::new()
+                .read(true)
+                .write(true)
                 .append(true)
+                .create(true)
                 .open(p.log_file.clone())?;
 
             let cur_time = chrono::Local::now().format("%H:%M:%S");
-            if writeln!(file, "[{}] roverd spawned {}", cur_time, p.name).is_err() {
+            if writeln!(log_file, "[{}] roverd spawned {}", cur_time, p.name).is_err() {
                 warn!("Could not write log_line to file: {:?}", p.log_file)
             };
 
-            let stdout = Stdio::from(file.try_clone()?);
-            let stderr = Stdio::from(file);
+            let stdout = Stdio::from(log_file.try_clone()?);
+            let stderr = Stdio::from(log_file);
 
             let mut command = Command::new("sh");
             command
@@ -130,29 +140,29 @@ impl ProcessManager {
                     _ = shutdown_rx.recv() => {
                         if let Some(id) = child.id() {
                             unsafe {
-                                info!("Sending terminate to {}", proc.name);
-                                libc::kill(id as i32, libc::SIGTERM);
+                                info!("Sending kill to {}", proc.name);
+                                libc::kill(id as i32, libc::SIGKILL);
                             }
                         }
 
                         // Wait for 1 second before sending KILL signal
-                        time::sleep(Duration::from_secs(1)).await;
+                        // time::sleep(Duration::from_secs(1)).await;
 
 
-                        match child.try_wait() {
-                            Ok(None) => {
-                                info!("Force killing process: {}", proc.name);
-                                if let Err(e) = child.kill().await {
-                                    error!("Error killing process {:?}: {:?}", proc.name, e);
-                                }
-                            },
-                            Ok(Some(status)) => {
-                                info!("Successfully terminated child: {:?} with {:?}", child, status)
-                            },
-                            Err(e) => {
-                                error!("Error: {:?}", e);
-                            }
-                        }
+                        // match child.try_wait() {
+                        //     Ok(None) => {
+                        //         info!("Force killing process: {}", proc.name);
+                        //         if let Err(e) = child.kill().await {
+                        //             error!("Error killing process {:?}: {:?}", proc.name, e);
+                        //         }
+                        //     },
+                        //     Ok(Some(status)) => {
+                        //         info!("Successfully terminated child: {:?} with {:?}", proc.name, status)
+                        //     },
+                        //     Err(e) => {
+                        //         error!("Error: {:?}", e);
+                        //     }
+                        // }
                     }
                 }
             });

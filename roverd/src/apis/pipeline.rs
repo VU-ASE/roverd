@@ -215,10 +215,8 @@ impl Pipeline for Roverd {
         _host: Host,
         _cookies: CookieJar,
     ) -> Result<PipelineStopPostResponse, String> {
-        info!(">> before lock");
         let mut state = self.state.write().await;
 
-        info!(">> calling stop");
         let _ = match state.stop().await {
             Ok(data) => data,
             Err(e) => {

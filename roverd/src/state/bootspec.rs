@@ -69,9 +69,6 @@ impl BootSpecs {
                 let stream_name = out_stream.clone();
                 mappings.insert((s.name.clone(), stream_name.clone()), address.clone());
             }
-
-            info!("mappings:");
-            dbg!(&mappings);
         }
 
         // Now that we know the mappings we can iterate over all service again

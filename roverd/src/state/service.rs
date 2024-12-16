@@ -89,6 +89,13 @@ impl FqBuf {
             LOG_DIR, self.author, self.name, self.version
         )
     }
+
+    pub fn dir(&self) -> String {
+        format!(
+            "{}/{}/{}/{}",
+            ROVER_DIR, self.author, self.name, self.version
+        )
+    }
 }
 
 impl Display for FqBuf {

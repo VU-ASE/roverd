@@ -314,7 +314,7 @@ impl State {
 
             self.process_manager.processes.push(Process {
                 fq: fq.clone(),
-                command: service.0.commands.run.clone(),
+                command: format!("{}/{}", fq.dir(), service.0.commands.run.clone()),
                 last_pid: 0,
                 last_exit_code: Some(0),
                 name: service.0.name.clone(),
@@ -340,18 +340,14 @@ impl State {
         // After this, self.processes will be ready
         self.construct_managed_services().await?;
 
-        for p in &self.process_manager.processes {
-            info!(">>> {:#?}", p)
-        }
-
-        // Start the processes
-        // self.process_manager.start().await?;
+        // Start the actual processes
+        self.process_manager.start().await?;
 
         Ok(())
     }
 
     pub async fn stop(&mut self) -> Result<(), Error> {
-        // self.process_manager.stop().await?;
+        self.process_manager.stop().await?;
         Ok(())
     }
 
