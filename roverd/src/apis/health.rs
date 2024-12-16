@@ -11,6 +11,8 @@ use axum_extra::extract::CookieJar;
 use openapi::models::GenericError;
 use tracing::warn;
 
+use sysinfo::System;
+
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::state::Roverd;
@@ -47,6 +49,25 @@ impl Health for Roverd {
             DaemonStatus::Operational => None,
         };
 
+        let mut sys = System::new_all();
+        sys.refresh_cpu_usage();
+        sys.refresh_memory();
+
+        let mut cpus = vec![];
+
+        for (i, c) in sys.cpus().iter().enumerate() {
+            cpus.push(StatusGet200ResponseCpuInner {
+                core: i as i32,
+                total: 100,
+                used: (c.cpu_usage() * 100.0) as i32,
+            })
+        }
+
+        let memory = StatusGet200ResponseMemory {
+            total: (sys.total_memory() / (1000 as u64)) as i32,
+            used: (sys.used_memory() / (1000 as u64)) as i32,
+        };
+
         Ok(
             StatusGetResponse::Status200_TheHealthAndVersioningInformation(
                 models::StatusGet200Response {
@@ -58,12 +79,8 @@ impl Health for Roverd {
                     uptime,
                     version: self.info.version.clone(),
                     systime: time_now,
-                    cpu: vec![StatusGet200ResponseCpuInner {
-                        core: 0,
-                        total: 0,
-                        used: 0,
-                    }],
-                    memory: StatusGet200ResponseMemory { total: 0, used: 0 },
+                    cpu: cpus,
+                    memory,
                 },
             ),
         )
