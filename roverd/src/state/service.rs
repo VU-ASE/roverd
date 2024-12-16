@@ -28,7 +28,7 @@ pub struct Fq<'a> {
 }
 
 /// Same as FqService but with Strings instead of &str.
-#[derive(Debug)]
+#[derive(Debug, Eq, Hash, PartialEq)]
 pub struct FqBuf {
     pub author: String,
     pub name: String,
@@ -109,7 +109,7 @@ impl<'a> TryFrom<&'a String> for Fq<'a> {
             return Err(Error::EnabledPathInvalid);
         }
 
-        let values = path_vec[path_vec.len() - 3..path_vec.len()]
+        let values = path_vec[(path_vec.len() - 4)..(path_vec.len() - 1)]
             .iter()
             .map(|component| {
                 component
@@ -118,7 +118,6 @@ impl<'a> TryFrom<&'a String> for Fq<'a> {
                     .ok_or(Error::StringToFqServiceConversion)
             })
             .collect::<Result<Vec<&str>, Error>>()?;
-
 
         Ok(Fq {
             author: values.first().ok_or(Error::StringToFqServiceConversion)?,
@@ -139,12 +138,11 @@ impl TryFrom<String> for FqBuf {
             return Err(Error::EnabledPathInvalid);
         }
 
-        let values = path_vec[path_vec.len() - 3..path_vec.len()]
+        // TODO this is error prone since we extracting the author, name, version from the path
+        let values = path_vec[(path_vec.len() - 4)..(path_vec.len() - 1)]
             .iter()
             .map(|component| Ok(component.as_os_str().to_os_string().into_string()?))
             .collect::<Result<Vec<String>, Error>>()?;
-
-
 
         Ok(FqBuf {
             author: values
@@ -184,7 +182,6 @@ impl<'a> From<&'a Vec<PipelinePostRequestInner>> for FqVec<'a> {
 impl From<Vec<PipelinePostRequestInner>> for FqBufVec {
     fn from(vec: Vec<PipelinePostRequestInner>) -> Self {
         let fq_services = vec.iter().map(|p| FqBuf::from(p)).collect::<Vec<_>>();
-
         FqBufVec(fq_services)
     }
 }
@@ -258,9 +255,6 @@ impl<'a> From<&'a FqBuf> for Fq<'a> {
 
 impl<'a> PartialEq for Fq<'a> {
     fn eq(&self, other: &Self) -> bool {
-        warn!("testing ==");
-        dbg!(self.name.to_lowercase(), other.name.to_lowercase());
-
         self.name.to_lowercase() == other.name.to_lowercase()
             && self.author.to_lowercase() == other.author.to_lowercase()
             && self.version.to_lowercase() == other.version.to_lowercase()

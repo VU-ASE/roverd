@@ -44,7 +44,6 @@ impl Roverd {
         let roverd = Self {
             info: info::Info::new(),
             state: Arc::from(RwLock::from(State {
-                runnable: None,
                 process_manager: ProcessManager {
                     processes: vec![],
                     spawned: vec![],
@@ -69,7 +68,6 @@ impl AsRef<Roverd> for Roverd {
 
 #[derive(Debug, Clone)]
 pub struct State {
-    pub runnable: Option<RunnablePipeline>,
     pub process_manager: ProcessManager,
 }
 
@@ -94,9 +92,15 @@ impl State {
     }
 
     pub async fn should_invalidate(&self, fq_buf: &FqBuf) -> Result<bool, Error> {
-        let conf = self.get_config().await?;
-        let enabled_fq = FqVec::try_from(&conf.enabled)?;
+        let mut config = self.get_config().await?;
+        let enabled_fq = FqVec::try_from(&config.enabled)?;
         let pipeline_invalidated = enabled_fq.0.contains(&Fq::from(fq_buf));
+
+        if pipeline_invalidated {
+            config.enabled.clear();
+            update_config(&config)?;
+        }
+
         Ok(pipeline_invalidated)
     }
 
@@ -230,6 +234,7 @@ impl State {
         incoming_pipeline: Vec<PipelinePostRequestInner>,
     ) -> Result<(), Error> {
         let services = FqBufVec::from(incoming_pipeline).0;
+
         let mut valid_services = vec![];
 
         for enabled in &services {
@@ -293,33 +298,32 @@ impl State {
         // clear the existing processes and then add them again
         self.process_manager.processes.clear();
 
-        let mut start_port = START_PORT;
+        let runnable = self.get_valid_pipeline().await?;
 
-        if let Some(runnable) = &self.runnable {
-            for service in runnable.services() {
-                // Create bootspecs with missing inputs, since the first step is to hand out
-                // ports. After knowing the ports of all outputs, we can fill in the inputs.
-                // Since we are valid, a given input will _always_ have an output.
-                let bootspec = bootspec::BootSpec::new(&mut start_port, service);
+        let bootspecs = bootspec::BootSpecs::new(runnable.services()).0;
 
-                let injected_env = serde_json::to_string(&bootspec)?;
+        for service in runnable.services() {
+            // Create bootspecs with missing inputs, since the first step is to hand out
+            // ports. After knowing the ports of all outputs, we can fill in the inputs.
+            // Since we are valid, a given input will _always_ have an output.
 
-                let fq = FqBuf::from(service);
+            let fq = FqBuf::from(service);
 
-                self.process_manager.processes.push(Process {
-                    fq: fq.clone(),
-                    command: service.0.commands.run.clone(),
-                    last_pid: 0,
-                    last_exit_code: Some(0),
-                    name: service.0.name.clone(),
-                    state: ProcessStatus::Stopped,
-                    log_file: PathBuf::from(fq.log_file()),
-                    injected_env,
-                })
-            }
-        } else {
-            return Err(Error::NoRunnableServices);
+            let bootspec = bootspecs.get(&fq);
+            let injected_env = serde_json::to_string(&bootspec)?;
+
+            self.process_manager.processes.push(Process {
+                fq: fq.clone(),
+                command: service.0.commands.run.clone(),
+                last_pid: 0,
+                last_exit_code: Some(0),
+                name: service.0.name.clone(),
+                state: ProcessStatus::Stopped,
+                log_file: PathBuf::from(fq.log_file()),
+                injected_env,
+            })
         }
+
         Ok(())
     }
 
@@ -337,7 +341,7 @@ impl State {
         self.construct_managed_services().await?;
 
         for p in &self.process_manager.processes {
-            info!(">>> {:?}", p)
+            info!(">>> {:#?}", p)
         }
 
         // Start the processes
