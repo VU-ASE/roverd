@@ -1,4 +1,4 @@
-use std::fs::{remove_dir, OpenOptions};
+use std::fs::{remove_dir, File, OpenOptions};
 
 use std::{
     fs,
@@ -179,6 +179,25 @@ pub fn update_config(config: &Configuration) -> Result<(), Error> {
         .map_err(|_| Error::CouldNotWriteToConfigFile)?;
 
     Ok(())
+}
+
+pub fn create_log_file(log_path: &PathBuf) -> Result<File, Error> {
+    let path = std::path::Path::new(log_path);
+    if let Some(parent_dir) = path.parent() {
+        if !parent_dir.exists() {
+            info!("creating parent dir of logfile: {:?}", &parent_dir);
+            std::fs::create_dir_all(parent_dir)?;
+        }
+    }
+
+    let log_file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .append(true)
+        .create(true)
+        .open(log_path.clone())?;
+
+    Ok(log_file)
 }
 
 #[macro_export]

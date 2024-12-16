@@ -127,6 +127,3 @@ impl BootSpecs {
         Self(result)
     }
 }
-
-
-

@@ -8,12 +8,15 @@ use rovervalidate::service::{Service, ValidatedService};
 use rovervalidate::validate::Validate;
 use service::{Fq, FqBuf, FqBufVec, FqVec};
 use std::fs::{self, remove_dir_all, remove_file};
-use std::io::Write;
+use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
+use std::process::Stdio;
 use std::sync::Arc;
+use tokio::process::Command;
 use tokio::sync::{broadcast, RwLock};
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 
+use crate::command::ParsedCommand;
 use crate::constants::*;
 use crate::util::*;
 
@@ -163,16 +166,8 @@ impl State {
         list_dir_contents(format!("{}/{}", path_params.author, path_params.service).as_str())
     }
 
-    pub async fn get_service(
-        &self,
-        path_params: ServicesAuthorServiceVersionGetPathParams,
-    ) -> Result<ValidatedService, Error> {
-        // Load config from file on disk
-        let service_file_path = format!(
-            "{}/{}/{}/{}/service.yaml",
-            ROVER_DIR, path_params.author, path_params.service, path_params.version
-        );
-        let contents = fs::read_to_string(service_file_path).map_err(|_| Error::ServiceNotFound)?;
+    pub async fn get_service(&self, fq: FqBuf) -> Result<ValidatedService, Error> {
+        let contents = fs::read_to_string(fq.path()).map_err(|_| Error::ServiceNotFound)?;
         let service =
             serde_yaml::from_str::<rovervalidate::service::Service>(&contents)?.validate()?;
 
@@ -222,11 +217,51 @@ impl State {
 
     pub async fn build_service(
         &self,
-        _params: ServicesAuthorServiceVersionPostPathParams,
+        params: ServicesAuthorServiceVersionPostPathParams,
     ) -> Result<(), Error> {
-        // Todo build process async with tokio::process::Command
+        let fq = FqBuf::from(&params);
+        let service = self.get_service(fq.clone()).await?.0;
 
-        Err(Error::Unimplemented)
+        let build_string = &service
+            .commands
+            .build
+            .ok_or_else(|| Error::BuildCommandMissing)?;
+        let build_command = ParsedCommand::try_from(build_string)?;
+        let log_file = create_log_file(&PathBuf::from(fq.build_log_file()))?;
+        let stdout = Stdio::from(log_file.try_clone()?);
+        let stderr = Stdio::from(log_file);
+        let program = &build_command.program;
+        let arguments = &build_command.arguments;
+
+        
+
+        match Command::new(program)
+            .args(arguments)
+            .stdout(stdout)
+            .stderr(stderr)
+            .current_dir(fq.dir())
+            .spawn()
+        {
+            Ok(mut child) => match child.wait().await {
+                Ok(exit_status) => {
+                    if !exit_status.success() {
+                        let file = std::fs::File::open(fq.build_log_file())?;
+                        let reader = BufReader::new(file);
+                        let lines: Vec<String> = reader.lines().collect::<Result<Vec<String>, _>>()?;
+                        return Err(Error::BuildLog(lines));
+                    }
+                    Ok(())
+                },
+                Err(e) => {
+                    error!("failed to wait on build command: {:?} {}", &build_command, e);
+                    return Err(Error::BuildCommandFailed);
+                }
+            },
+            Err(e) => {
+                error!("failed to spawn build command: {:?} {}", &build_command, e);
+                return Err(Error::BuildCommandFailed);
+            }
+        }
     }
 
     pub async fn set_pipeline(
@@ -349,7 +384,7 @@ impl State {
     pub async fn stop(&mut self) -> Result<(), Error> {
         if self.process_manager.spawned.is_empty() {
             warn!("tried stopping, however no spawned processes exist");
-            return Err(Error::NoRunningServices)
+            return Err(Error::NoRunningServices);
         }
         self.process_manager.stop().await?;
         Ok(())

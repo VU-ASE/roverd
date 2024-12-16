@@ -13,7 +13,7 @@ for dir in *; do
     cd ..
 
     cd imaging
-    zip -r ../imaging.zip bin/imaging service.yaml
+    zip -r ../imaging.zip bin/imaging service.yaml Makefile
     cd ..
 
     cd controller

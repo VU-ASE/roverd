@@ -8,8 +8,8 @@ use rovervalidate::pipeline::interface::RunnablePipeline;
 use serde::{Deserialize, Serialize};
 use tracing::{error, info, warn};
 
+use crate::util::*;
 use chrono;
-
 use std::sync::Arc;
 
 use tokio::{
@@ -61,20 +61,7 @@ impl ProcessManager {
         self.spawned.clear();
 
         for p in &mut self.processes {
-            let path = std::path::Path::new(&p.log_file);
-            if let Some(parent_dir) = path.parent() {
-                if !parent_dir.exists() {
-                    info!("creating parent dir of logfile: {:?}", &parent_dir);
-                    std::fs::create_dir_all(parent_dir)?;
-                }
-            }
-
-            let mut log_file = OpenOptions::new()
-                .read(true)
-                .write(true)
-                .append(true)
-                .create(true)
-                .open(p.log_file.clone())?;
+            let mut log_file = create_log_file(&p.log_file)?;
 
             let cur_time = chrono::Local::now().format("%H:%M:%S");
             if writeln!(log_file, "[{}] roverd spawned {}", cur_time, p.name).is_err() {

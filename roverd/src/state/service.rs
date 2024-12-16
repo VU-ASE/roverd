@@ -65,6 +65,26 @@ impl From<&ValidatedService> for FqBuf {
     }
 }
 
+impl From<&ServicesAuthorServiceVersionPostPathParams> for FqBuf {
+    fn from(value: &ServicesAuthorServiceVersionPostPathParams) -> Self {
+        FqBuf {
+            name: value.service.clone(),
+            author: value.author.clone(),
+            version: value.version.clone(),
+        }
+    }
+}
+
+impl From<&ServicesAuthorServiceVersionGetPathParams> for FqBuf {
+    fn from(value: &ServicesAuthorServiceVersionGetPathParams) -> Self {
+        FqBuf {
+            name: value.service.clone(),
+            author: value.author.clone(),
+            version: value.version.clone(),
+        }
+    }
+}
+
 impl From<&PipelinePostRequestInner> for FqBuf {
     fn from(service: &PipelinePostRequestInner) -> Self {
         FqBuf {
@@ -87,6 +107,13 @@ impl FqBuf {
         format!(
             "{}/{}-{}-{}.log",
             LOG_DIR, self.author, self.name, self.version
+        )
+    }
+
+    pub fn build_log_file(&self) -> String {
+        format!(
+            "{}/build-{}-{}-{}.log",
+            BUILD_LOG_DIR, self.author, self.name, self.version
         )
     }
 

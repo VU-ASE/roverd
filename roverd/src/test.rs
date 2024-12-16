@@ -1,8 +1,8 @@
 use std::path::Path;
 
 use once_cell::sync::Lazy;
-use tokio::sync::OnceCell;
 use serde_json::json;
+use tokio::sync::OnceCell;
 
 use openapi::models::*;
 use reqwest::multipart;
@@ -173,7 +173,7 @@ async fn all() -> Result<(), Error> {
     assert!(r.status().is_success());
     let s = r.text().await?;
     let data: ServicesAuthorServiceVersionDelete200Response = serde_json::from_str(&s)?;
-    
+
     // No pipeline has been set, must be false
     assert_eq!(data.invalidated_pipeline, false);
 
@@ -195,7 +195,6 @@ async fn all() -> Result<(), Error> {
     assert!(r.status().is_success());
 
     // Make pipeline
-
 
     Ok(())
 }

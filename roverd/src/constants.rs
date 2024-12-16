@@ -8,6 +8,7 @@ pub const ROVER_CONFIG_FILE: &str = "/etc/roverd/rover.yaml";
 pub const ROVER_USER: &str = "debix";
 pub const ROVER_DIR: &str = "/home/debix/.rover";
 pub const LOG_DIR: &str = "/tmp/roverlog";
+pub const BUILD_LOG_DIR: &str = "/tmp/roverbuildlog";
 
 pub const ZIP_FILE: &str = "/tmp/incoming-service.zip";
 pub const UNZIPPED_DIR: &str = "/tmp/incoming-service";

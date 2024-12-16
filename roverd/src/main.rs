@@ -8,8 +8,8 @@ use tower_http::cors::CorsLayer;
 use tracing::{info, warn};
 
 mod apis;
-mod constants;
 mod command;
+mod constants;
 mod error;
 mod log;
 mod state;
@@ -123,5 +123,3 @@ async fn main() -> Result<(), Error> {
 
     Ok(())
 }
-
-

@@ -6,15 +6,16 @@ use openapi::{apis::services::*, models};
 
 use openapi::models::*;
 
-use axum::extract::Host;
+use axum::extract::{path, Host};
 use axum::http::Method;
 use axum_extra::extract::{CookieJar, Multipart};
 
 use tracing::warn;
 
-use crate::service::{Fq, FqVec};
+use crate::service::{Fq, FqBuf, FqVec};
 use crate::state::Roverd;
 use crate::warn_generic;
+use crate::Error;
 
 #[async_trait]
 impl Services for Roverd {
@@ -98,14 +99,14 @@ impl Services for Roverd {
     ) -> Result<ServicesAuthorServiceVersionDeleteResponse, String> {
         let state = self.state.write().await;
 
-        let rebuild_pipeline = warn_generic!(
+        let invalidated_pipeline = warn_generic!(
             state.delete_service(&path_params).await,
             ServicesAuthorServiceVersionDeleteResponse
         );
 
         Ok(ServicesAuthorServiceVersionDeleteResponse::Status200_TheServiceVersionWasDeletedSuccessfully(
             ServicesAuthorServiceVersionDelete200Response {
-                invalidated_pipeline: rebuild_pipeline
+                invalidated_pipeline
             }
         ))
     }
@@ -122,8 +123,10 @@ impl Services for Roverd {
     ) -> Result<ServicesAuthorServiceVersionGetResponse, String> {
         let state = self.state.read().await;
 
+        let fq = FqBuf::from(&path_params);
+
         let service = warn_generic!(
-            state.get_service(path_params).await,
+            state.get_service(fq).await,
             ServicesAuthorServiceVersionGetResponse
         );
 
@@ -158,15 +161,29 @@ impl Services for Roverd {
     ) -> Result<ServicesAuthorServiceVersionPostResponse, String> {
         let state = self.state.write().await;
         let _ = if let Err(e) = state.build_service(path_params).await {
-            warn!("{:#?}", e);
-            return Ok(
-                ServicesAuthorServiceVersionPostResponse::Status400_TheBuildFailed(
-                    ServicesAuthorServiceVersionPost400Response {
-                        build_log: None,             // TODO
-                        message: "todo".to_string(), // TODO
-                    },
-                ),
-            );
+            warn!("{:#?}", &e);
+            match e {
+                Error::BuildLog(build_log) => {
+                    return Ok(
+                        ServicesAuthorServiceVersionPostResponse::Status400_TheBuildFailed(
+                            ServicesAuthorServiceVersionPost400Response {
+                                build_log,
+                                message: "A build error occured".to_string(),
+                            },
+                        ),
+                    );
+                }
+                _ => {
+                    return Ok(
+                        ServicesAuthorServiceVersionPostResponse::Status400_TheBuildFailed(
+                            ServicesAuthorServiceVersionPost400Response {
+                                build_log: vec![],
+                                message: format!("{:?}", e),
+                            },
+                        ),
+                    );
+                }
+            }
         };
 
         Ok(ServicesAuthorServiceVersionPostResponse::Status200_TheServiceWasBuiltSuccessfully)

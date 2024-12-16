@@ -2577,17 +2577,16 @@ pub struct ServicesAuthorServiceVersionPost400Response {
 
     /// The build log (one log line per item)
     #[serde(rename = "build_log")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub build_log: Option<Vec<String>>,
+    pub build_log: Vec<String>,
 }
 
 impl ServicesAuthorServiceVersionPost400Response {
     #[allow(clippy::new_without_default, clippy::too_many_arguments)]
-    pub fn new(message: String) -> ServicesAuthorServiceVersionPost400Response {
-        ServicesAuthorServiceVersionPost400Response {
-            message,
-            build_log: None,
-        }
+    pub fn new(
+        message: String,
+        build_log: Vec<String>,
+    ) -> ServicesAuthorServiceVersionPost400Response {
+        ServicesAuthorServiceVersionPost400Response { message, build_log }
     }
 }
 
@@ -2599,17 +2598,14 @@ impl std::fmt::Display for ServicesAuthorServiceVersionPost400Response {
         let params: Vec<Option<String>> = vec![
             Some("message".to_string()),
             Some(self.message.to_string()),
-            self.build_log.as_ref().map(|build_log| {
-                [
-                    "build_log".to_string(),
-                    build_log
-                        .iter()
-                        .map(|x| x.to_string())
-                        .collect::<Vec<_>>()
-                        .join(","),
-                ]
-                .join(",")
-            }),
+            Some("build_log".to_string()),
+            Some(
+                self.build_log
+                    .iter()
+                    .map(|x| x.to_string())
+                    .collect::<Vec<_>>()
+                    .join(","),
+            ),
         ];
 
         write!(
@@ -2670,7 +2666,13 @@ impl std::str::FromStr for ServicesAuthorServiceVersionPost400Response {
             message: intermediate_rep.message.into_iter().next().ok_or_else(|| {
                 "message missing in ServicesAuthorServiceVersionPost400Response".to_string()
             })?,
-            build_log: intermediate_rep.build_log.into_iter().next(),
+            build_log: intermediate_rep
+                .build_log
+                .into_iter()
+                .next()
+                .ok_or_else(|| {
+                    "build_log missing in ServicesAuthorServiceVersionPost400Response".to_string()
+                })?,
         })
     }
 }

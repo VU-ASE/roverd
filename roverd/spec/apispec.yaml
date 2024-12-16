@@ -577,6 +577,7 @@ paths:
                 type: object
                 required:
                   - "message"
+                  - "build_log"
                 properties:
                   message:
                     type: string
