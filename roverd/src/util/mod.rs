@@ -231,3 +231,13 @@ macro_rules! error_generic {
         }
     }};
 }
+
+#[macro_export]
+macro_rules! time_now {
+    () => {
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_millis()
+    };
+}

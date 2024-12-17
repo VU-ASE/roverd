@@ -75,6 +75,16 @@ impl From<&ServicesAuthorServiceVersionPostPathParams> for FqBuf {
     }
 }
 
+impl From<&ServicesAuthorServiceVersionDeletePathParams> for FqBuf {
+    fn from(value: &ServicesAuthorServiceVersionDeletePathParams) -> Self {
+        FqBuf {
+            name: value.service.clone(),
+            author: value.author.clone(),
+            version: value.version.clone(),
+        }
+    }
+}
+
 impl From<&ServicesAuthorServiceVersionGetPathParams> for FqBuf {
     fn from(value: &ServicesAuthorServiceVersionGetPathParams) -> Self {
         FqBuf {
@@ -205,6 +215,40 @@ impl TryFrom<String> for FqBuf {
     }
 }
 
+impl TryFrom<&String> for FqBuf {
+    type Error = error::Error;
+    fn try_from(path_string: &String) -> Result<Self, Self::Error> {
+        let path = Path::new(path_string.as_str());
+        let path_vec: Vec<_> = path.components().collect();
+
+        let num_directory_levels = path_vec.len();
+        if num_directory_levels < 3 {
+            return Err(Error::EnabledPathInvalid);
+        }
+
+        // TODO this is error prone since we extracting the author, name, version from the path
+        let values = path_vec[(path_vec.len() - 4)..(path_vec.len() - 1)]
+            .iter()
+            .map(|component| Ok(component.as_os_str().to_os_string().into_string()?))
+            .collect::<Result<Vec<String>, Error>>()?;
+
+        Ok(FqBuf {
+            author: values
+                .get(0)
+                .ok_or(Error::StringToFqServiceConversion)?
+                .clone(),
+            name: values
+                .get(1)
+                .ok_or(Error::StringToFqServiceConversion)?
+                .clone(),
+            version: values
+                .get(2)
+                .ok_or(Error::StringToFqServiceConversion)?
+                .clone(),
+        })
+    }
+}
+
 impl<'a> TryFrom<&'a Vec<String>> for FqVec<'a> {
     type Error = error::Error;
     fn try_from(string_vec: &'a Vec<String>) -> Result<Self, Self::Error> {
@@ -213,6 +257,28 @@ impl<'a> TryFrom<&'a Vec<String>> for FqVec<'a> {
             .map(Fq::try_from)
             .collect::<Result<Vec<_>, _>>()?;
         Ok(FqVec(fq_services))
+    }
+}
+
+impl TryFrom<Vec<String>> for FqBufVec<> {
+    type Error = error::Error;
+    fn try_from(string_vec: Vec<String>) -> Result<Self, Self::Error> {
+        let fq_services: Vec<FqBuf> = string_vec
+            .iter()
+            .map(FqBuf::try_from)
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(FqBufVec(fq_services))
+    }
+}
+
+impl TryFrom<&Vec<String>> for FqBufVec<> {
+    type Error = error::Error;
+    fn try_from(string_vec: &Vec<String>) -> Result<Self, Self::Error> {
+        let fq_services: Vec<FqBuf> = string_vec
+            .iter()
+            .map(FqBuf::try_from)
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(FqBufVec(fq_services))
     }
 }
 

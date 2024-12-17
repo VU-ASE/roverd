@@ -16,7 +16,7 @@ use sysinfo::System;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::state::Roverd;
-use crate::warn_generic;
+use crate::{time_now, warn_generic};
 
 use crate::error::Error;
 
@@ -35,10 +35,8 @@ impl Health for Roverd {
             .duration_since(self.info.start_time)
             .unwrap()
             .as_millis() as i64;
-        let time_now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_millis() as i64;
+
+        let time_now = time_now!() as i64;
 
         let error_message = match self.info.status {
             DaemonStatus::Unrecoverable => Some("❌ check logs and restart roverd".to_string()),

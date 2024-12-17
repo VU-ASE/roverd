@@ -7,17 +7,19 @@ use rovervalidate::pipeline::interface::{Pipeline, RunnablePipeline};
 use rovervalidate::service::{Service, ValidatedService};
 use rovervalidate::validate::Validate;
 use service::{Fq, FqBuf, FqBufVec, FqVec};
+use std::collections::HashMap;
 use std::fs::{self, remove_dir_all, remove_file};
 use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::process::Command;
 use tokio::sync::{broadcast, RwLock};
 use tracing::{error, info, warn};
 
 use crate::command::ParsedCommand;
-use crate::constants::*;
+use crate::{constants::*, time_now};
 use crate::util::*;
 
 pub mod process;
@@ -52,6 +54,7 @@ impl Roverd {
                     spawned: vec![],
                     shutdown_tx: broadcast::channel::<()>(1).0,
                 },
+                built_services: HashMap::new(),
             })),
         };
 
@@ -71,7 +74,11 @@ impl AsRef<Roverd> for Roverd {
 
 #[derive(Debug, Clone)]
 pub struct State {
+    // Holds all necessary data structures for starting/stopping processes
     pub process_manager: ProcessManager,
+
+    // Look up the last built time of a service on disk.
+    pub built_services: HashMap<FqBuf, i64>,
 }
 
 impl State {
@@ -175,10 +182,10 @@ impl State {
     }
 
     pub async fn delete_service(
-        &self,
+        &mut self,
         path_params: &ServicesAuthorServiceVersionDeletePathParams,
     ) -> Result<bool, Error> {
-        let delete_fq = Fq::from(path_params);
+        let delete_fq = FqBuf::from(path_params);
 
         // Get the current configuration from disk
         let mut config = self.get_config().await?;
@@ -186,24 +193,15 @@ impl State {
         let mut should_reset = false;
         // Return whether or not the service was enabled and if it was,
         // reset the pipeline
-        let enabled_fq_vec = FqVec::try_from(&config.enabled)?.0;
-        for enabled in enabled_fq_vec {
-            if enabled == delete_fq {
-                should_reset = true;
-            }
-        }
+        let enabled_fq_vec = FqBufVec::try_from(&config.enabled)?.0;
 
-        if should_reset {
+        if enabled_fq_vec.contains(&delete_fq) {
+            should_reset = true;
             config.enabled.clear();
             update_config(&config)?;
-        }
 
-        // TODO when done, change back to this (cleaner)
-        // if enabled_fq_vec.contains(&delete_fq) {
-        //     should_reset = true;
-        //     config.enabled.clear();
-        //     update_config(&config)?;
-        // }
+            self.built_services.remove(&delete_fq);
+        }
 
         // Remove the service to delete from the filesystem
         if Path::new(&delete_fq.dir()).exists() {
@@ -216,7 +214,7 @@ impl State {
     }
 
     pub async fn build_service(
-        &self,
+        &mut self,
         params: ServicesAuthorServiceVersionPostPathParams,
     ) -> Result<(), Error> {
         let fq = FqBuf::from(&params);
@@ -243,11 +241,21 @@ impl State {
             Ok(mut child) => match child.wait().await {
                 Ok(exit_status) => {
                     if !exit_status.success() {
+                        // Build was not successful, return logs
                         let file = std::fs::File::open(fq.build_log_file())?;
                         let reader = BufReader::new(file);
                         let lines: Vec<String> =
                             reader.lines().collect::<Result<Vec<String>, _>>()?;
                         return Err(Error::BuildLog(lines));
+                    } else {
+                        // Build was successful, save time it was built at
+                        let time_now = time_now!() as i64;
+
+                        dbg!(&self.built_services);
+
+                        *self.built_services
+                            .entry(fq)
+                            .or_insert_with(|| time_now) = time_now;
                     }
                     Ok(())
                 }
@@ -318,9 +326,8 @@ impl State {
             .map(|validated_service| {
                 let fq = FqBuf::try_from(validated_service)?;
 
-                let proc = self.get_proc(fq.clone());
-
-                
+                // todo get proc and populate cpu, uptime, memory, status
+                // let proc = self.get_proc(fq.clone());
 
                 Ok::<_, Error>(PipelineGet200ResponseEnabledInner {
                     process: Some(PipelineGet200ResponseEnabledInnerProcess {

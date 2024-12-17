@@ -97,7 +97,7 @@ impl Services for Roverd {
         _cookies: CookieJar,
         path_params: ServicesAuthorServiceVersionDeletePathParams,
     ) -> Result<ServicesAuthorServiceVersionDeleteResponse, String> {
-        let state = self.state.write().await;
+        let mut state = self.state.write().await;
 
         let invalidated_pipeline = warn_generic!(
             state.delete_service(&path_params).await,
@@ -126,7 +126,7 @@ impl Services for Roverd {
         let fq = FqBuf::from(&path_params);
 
         let service = warn_generic!(
-            state.get_service(fq).await,
+            state.get_service(fq.clone()).await,
             ServicesAuthorServiceVersionGetResponse
         );
 
@@ -142,7 +142,7 @@ impl Services for Roverd {
                             streams: i.streams.clone(),
                         })
                         .collect::<Vec<_>>(),
-                    built_at: Some(69), // Todo this needs to be kept track of by state
+                    built_at: state.built_services.get(&fq).copied(),
                     outputs: service.0.outputs,
                 },
             ),
@@ -159,7 +159,7 @@ impl Services for Roverd {
         _cookies: CookieJar,
         path_params: ServicesAuthorServiceVersionPostPathParams,
     ) -> Result<ServicesAuthorServiceVersionPostResponse, String> {
-        let state = self.state.write().await;
+        let mut state = self.state.write().await;
         let _ = if let Err(e) = state.build_service(path_params).await {
             warn!("{:#?}", &e);
             match e {
