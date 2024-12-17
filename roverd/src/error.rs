@@ -52,10 +52,15 @@ pub enum Error {
     BuildCommandFailed,
     BuildCommandMissing,
 
+    // --- Logs ---
+    NoLogsFound,
+
     // --- Runtie ---
     NoRunningServices,
 
     IncorrectPayload,
+
+    ProcessNotFound,
 
     RunCommandNotParsed,
 

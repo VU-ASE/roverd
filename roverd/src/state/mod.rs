@@ -297,6 +297,15 @@ impl State {
         Ok(())
     }
 
+    pub async fn get_proc(&self, fq: FqBuf) -> Result<&Process, Error> {
+        for p in self.process_manager.processes.iter() {
+            if p.fq == fq {
+                return Ok(p);
+            }
+        }
+        Err(Error::ProcessNotFound)
+    }
+
     pub async fn get_pipeline(&mut self) -> Result<Vec<PipelineGet200ResponseEnabledInner>, Error> {
         // todo: a pipeline can only be valid, meaning that a pipeline enabled on disk is
         // always valid. if the pipeline from the rover.yaml file is not valid, clear it.
@@ -307,7 +316,11 @@ impl State {
             .enabled
             .into_iter()
             .map(|validated_service| {
-                let fq_buf = FqBuf::try_from(validated_service)?;
+                let fq = FqBuf::try_from(validated_service)?;
+
+                let proc = self.get_proc(fq.clone());
+
+                
 
                 Ok::<_, Error>(PipelineGet200ResponseEnabledInner {
                     process: Some(PipelineGet200ResponseEnabledInnerProcess {
@@ -318,9 +331,9 @@ impl State {
                         status: ProcessStatus::Terminated,
                     }),
                     service: PipelineGet200ResponseEnabledInnerService {
-                        author: fq_buf.author,
-                        name: fq_buf.name,
-                        version: fq_buf.version,
+                        author: fq.author,
+                        name: fq.name,
+                        version: fq.version,
                         faults: None,
                     },
                 })
@@ -385,7 +398,6 @@ impl State {
 
     pub async fn stop(&mut self) -> Result<(), Error> {
         if self.process_manager.spawned.is_empty() {
-            warn!("tried stopping, however no spawned processes exist");
             return Err(Error::NoRunningServices);
         }
         self.process_manager.stop().await?;
@@ -439,13 +451,10 @@ impl State {
         fq: FqBuf,
         num_lines: usize,
     ) -> Result<Vec<String>, Error> {
-        let file = std::fs::File::open(fq.log_file())?;
+        let file = std::fs::File::open(fq.log_file()).map_err(|_| Error::NoLogsFound)?;
         let reader = BufReader::new(file);
         let log_lines: Vec<String> = reader.lines().collect::<Result<Vec<String>, _>>()?;
         let min_lines = std::cmp::min(num_lines, log_lines.len());
-
-        info!("min_lines: {}", min_lines);
-
         let index = log_lines.len() - min_lines;
 
         Ok(log_lines[index..].to_vec())

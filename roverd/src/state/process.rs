@@ -105,16 +105,31 @@ impl ProcessManager {
             let mut shutdown_rx = self.shutdown_tx.subscribe();
             let process_shutdown_tx = self.shutdown_tx.clone();
 
+            
+
             tokio::spawn(async move {
                 let mut child = proc.child.lock().await;
                 // todo test this make sure the loop doesn't need to be here
                 select! {
                     // Wait for process completion
-                    status = child.wait() => {
-                        match status {
-                            Ok(status) => {
-                                info!("child {} exited with status {}", proc.name, status);
+                    result_status = child.wait() => {
+                        match result_status {
+                            Ok(exit_status) => {
+                                info!("child {} exited with status {}", proc.name, exit_status);
+
+                                // Todo separate process manager's data structures into concurrent
+                                // data structures, then update the last_exit_code:
+
+                                // for saved_process in self.processes.iter_mut() {
+                                //     if saved_process.name == proc.name {
+                                //         saved_process.last_exit_code = exit_status.code();
+                                //     }
+                                // }
+                                
+
                                 process_shutdown_tx.send(()).ok();
+                                
+                                
                             }
                             Err(e) => {
                                 error!("error waiting for process {}: {}", proc.name, e);
