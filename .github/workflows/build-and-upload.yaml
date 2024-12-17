@@ -1,12 +1,8 @@
 name: build-and-upload
 
 on:
-  workflow_call:
-    secrets:
-      gh_token:
-        required: true
-  # release:
-  #   types: [published]
+  release:
+    types: [published]
 
 permissions:
   contents: write
