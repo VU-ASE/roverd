@@ -1,51 +1,12 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "Rover Configuration Schema",
-    "description": "Configuration file for ASE roverd and friends tooling, defining services for the pipeline and tracking downloaded services.",
+    "description": "Configuration file for ASE roverd and friends tooling, defining the enabled services for the pipeline.",
     "type": "object",
     "required": [
-        "downloaded",
         "enabled"
     ],
     "properties": {
-        "downloaded": {
-            "type": "array",
-            "description": "List of services downloaded from remote repositories, allowing easy replication of a pipeline.",
-            "items": {
-                "type": "object",
-                "required": [
-                    "name",
-                    "source",
-                    "version"
-                ],
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "description": "The name of the downloaded service.",
-                        "example": "imaging",
-                        "pattern": "^[a-z]+(-[a-z]+)*$"
-                    },
-                    "source": {
-                        "type": "string",
-                        "description": "The URL of the remote repository from which the service was downloaded.",
-                        "example": "github.com/vu-ase/imaging",
-                        "pattern": "^(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,}(?::\\d{1,5})?(?:\\/[^\\s]*)?$"
-                    },
-                    "version": {
-                        "type": "string",
-                        "description": "The version of the downloaded service.",
-                        "example": "1.0.0",
-                        "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-([0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*))?(?:\\+([0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*))?$"
-                    },
-                    "sha": {
-                        "type": "string",
-                        "description": "The SHA-1 hash of the downloaded service, ensuring the correct version is used.",
-                        "pattern": "^[a-fA-F0-9]{40}$",
-                        "example": "1234567890abcdef1234567890abcdef12345678"
-                    }
-                }
-            }
-        },
         "enabled": {
             "type": "array",
             "description": "List of paths to service folders that are enabled. Each folder should contain a service.yaml file.",

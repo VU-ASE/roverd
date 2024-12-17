@@ -22,7 +22,7 @@ pub enum StatusGetResponse {
 #[allow(clippy::large_enum_variant)]
 pub enum UpdatePostResponse {
     /// The roverd daemon process initiated a self-update successfully. You should expect the process to terminate and restart soon.
-    Status200_TheRoverdDaemonProcessInitiatedASelf,
+    Status200_TheRoverdDaemonProcessInitiatedASelf(models::UpdatePost200Response),
     /// An error occurred
     Status400_AnErrorOccurred(models::GenericError),
     /// Unauthorized access (you need to set the Authorization header with a valid username and password)

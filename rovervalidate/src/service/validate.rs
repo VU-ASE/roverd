@@ -44,21 +44,6 @@ impl Validate<ValidatedService> for gen::Service {
             None
         });
 
-        validate_field!(self.source, &mut errors, |source| {
-            if source.is_empty() {
-                return Some("must not be empty");
-            }
-
-            let pattern =
-                Regex::new(r"^([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})(/[a-zA-Z0-9._~%!$&'()*+,;=:@-]*)*$")
-                    .unwrap();
-            if !pattern.is_match(source) {
-                return Some("must be a valid URL, without a scheme (no http:// or https://)");
-            }
-
-            None
-        });
-
         validate_field!(self.version, &mut errors, |version| {
             if version.is_empty() {
                 return Some("must not be empty");
@@ -278,11 +263,8 @@ impl Validate<bool> for gen::Configuration {
                         return Some("must not be empty");
                     }
                     // Does this correspond with self.configuration_type?
-                    match self.configuration_type {
-                        Some(gen::Type::Float) => {
-                            return Some("is parsed as a string, but was specified as a float, make sure to use float syntax")
-                        }
-                        _ => (),
+                    if let Some(gen::Type::Float) = &self.configuration_type {
+                        return Some("is parsed as a string, but was specified as a float, make sure to use float syntax");
                     }
                 }
                 gen::Value::Double(f) => {
@@ -290,11 +272,8 @@ impl Validate<bool> for gen::Configuration {
                         return Some("must be a valid float");
                     }
                     // Does this correspond with self.configuration_type?
-                    match self.configuration_type {
-                        Some(gen::Type::String) => {
-                            return Some("is parsed as a float, but was specified as a string, make sure to encapsulate your string in quotes")
-                        }
-                        _ => (),
+                    if let Some(gen::Type::String) = self.configuration_type {
+                        return Some("is parsed as a float, but was specified as a string, make sure to encapsulate your string in quotes");
                     }
                 }
             }

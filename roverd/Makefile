@@ -18,8 +18,8 @@ build: build-open-api lint
 run: build
 	@sudo ./target/release/roverd
 
-test: lint
-	@cargo test
+test:
+	@cargo test -- --show-output --test-threads 1
 
 clean:
 	rm -rf openapi/

@@ -10,7 +10,14 @@ Roverd looks for some information stored in files on disk. The following are the
 | `/home/debix/.rover/` | Directory | Main configuration directory containing all services and source code. More detailed information below. |
 
 
-### The `~/.rover` Directory
+
+## The `/etc/roverd/roverd.yaml` File
+
+Contains the main run-time configuration of the rover. 
+
+
+
+## The `~/.rover` Directory
 
 We assume by default all rovers are used with the default `debix` user which means that the placing the `.rover` directory into the home directory of this user will never change. This directory contains all services on the system, regardless of whether they are enabled or not. Each service is fully qualified through the following directory hierarchy:
 
@@ -23,7 +30,7 @@ We assume by default all rovers are used with the default `debix` user which mea
 * **version** - The SemVer of the service, for example "0.1.0".
 
 
-### Example `/etc/rover` file
+## The `/etc/rover` File
 ```
 12
 zenith
@@ -34,4 +41,6 @@ This static file is created during the ansible setup and never changes. The id a
 The hash is checked by roverd for all web authentication. This file should be read-only and must be protected with elevated privileges. 
 
 > NOTE: The user and password is setup statically "at birth" which means that this file does not reflect any runtime changes made to the password. Thus, the password should not be changed, ever.
+
+
 

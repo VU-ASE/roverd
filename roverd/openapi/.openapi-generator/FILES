@@ -1,12 +1,10 @@
 .gitignore
-.openapi-generator-ignore
 Cargo.toml
 README.md
 src/apis/health.rs
 src/apis/mod.rs
 src/apis/pipeline.rs
 src/apis/services.rs
-src/apis/sources.rs
 src/header.rs
 src/lib.rs
 src/models.rs
