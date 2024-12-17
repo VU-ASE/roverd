@@ -8,6 +8,8 @@ use openapi::models::*;
 use reqwest::multipart;
 use reqwest::{header, Client, Response};
 
+use base64::{engine::general_purpose::STANDARD, Engine as _};
+
 use crate::*;
 
 static SERVER: Lazy<OnceCell<Result<(), Error>>> = Lazy::new(OnceCell::new);
@@ -44,7 +46,7 @@ fn create_authenticated_client() -> Client {
     Client::builder()
         .default_headers({
             let mut headers = header::HeaderMap::new();
-            let auth_value = base64::encode("debix:debix");
+            let auth_value = STANDARD.encode("debix:debix");
             headers.insert(
                 header::AUTHORIZATION,
                 header::HeaderValue::from_str(&format!("Basic {}", auth_value)).unwrap(),

@@ -6,14 +6,10 @@ use axum_extra::extract::CookieJar;
 use openapi::apis::pipeline::*;
 use openapi::models::*;
 
-use tracing::{info, warn};
+use tracing::warn;
 
 use crate::constants::*;
 use crate::{service::FqBuf, state::Roverd, warn_generic, Error};
-
-use rovervalidate::error::{PipelineValidationError, UnmetDependencyError};
-
-use crate::apis::pipeline::PipelineValidationError::DuplicateServiceError;
 
 #[async_trait]
 impl Pipeline for Roverd {
@@ -30,7 +26,7 @@ impl Pipeline for Roverd {
     ) -> Result<LogsAuthorNameVersionGetResponse, String> {
         let state = self.state.write().await;
         let fq = FqBuf::from(&path_params);
-        let lines = query_params.lines.unwrap_or_else(|| DEFAULT_LOG_LINES) as usize;
+        let lines = query_params.lines.unwrap_or(DEFAULT_LOG_LINES) as usize;
 
         let logs = warn_generic!(
             state.get_service_logs(fq, lines).await,
@@ -53,7 +49,7 @@ impl Pipeline for Roverd {
         let enabled: Vec<PipelineGet200ResponseEnabledInner> =
             warn_generic!(state.get_pipeline().await, PipelineGetResponse);
 
-        let status = if enabled.len() > 0 {
+        let status = if !enabled.is_empty() {
             PipelineStatus::Startable
         } else {
             PipelineStatus::Empty
@@ -133,25 +129,25 @@ impl Pipeline for Roverd {
                             }
                     }
 
-                    let string_errors = if string_errors.len() > 0 {
+                    let string_errors = if !string_errors.is_empty() {
                         Some(string_errors.concat().to_string())
                     } else {
                         None
                     };
 
-                    let unmet_streams = if unmet_streams.len() > 0 {
+                    let unmet_streams = if !unmet_streams.is_empty() {
                         Some(unmet_streams)
                     } else {
                         None
                     };
 
-                    let unmet_services = if unmet_services.len() > 0 {
+                    let unmet_services = if !unmet_services.is_empty() {
                         Some(unmet_services)
                     } else {
                         None
                     };
 
-                    let duplicate_service = if duplicate_service.len() > 0 {
+                    let duplicate_service = if !duplicate_service.is_empty() {
                         Some(duplicate_service)
                     } else {
                         None

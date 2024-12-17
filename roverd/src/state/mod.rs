@@ -9,18 +9,18 @@ use rovervalidate::validate::Validate;
 use service::{Fq, FqBuf, FqBufVec, FqVec};
 use std::collections::HashMap;
 use std::fs::{self, remove_dir_all, remove_file};
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::process::Command;
 use tokio::sync::{broadcast, RwLock};
-use tracing::{error, info, warn};
+use tracing::{error, warn};
 
 use crate::command::ParsedCommand;
-use crate::{constants::*, time_now};
 use crate::util::*;
+use crate::{constants::*, time_now};
 
 pub mod process;
 pub mod service;
@@ -253,9 +253,7 @@ impl State {
 
                         dbg!(&self.built_services);
 
-                        *self.built_services
-                            .entry(fq)
-                            .or_insert_with(|| time_now) = time_now;
+                        *self.built_services.entry(fq).or_insert_with(|| time_now) = time_now;
                     }
                     Ok(())
                 }
@@ -264,12 +262,12 @@ impl State {
                         "failed to wait on build command: {:?} {}",
                         &build_command, e
                     );
-                    return Err(Error::BuildCommandFailed);
+                    Err(Error::BuildCommandFailed)
                 }
             },
             Err(e) => {
                 error!("failed to spawn build command: {:?} {}", &build_command, e);
-                return Err(Error::BuildCommandFailed);
+                Err(Error::BuildCommandFailed)
             }
         }
     }
@@ -305,7 +303,8 @@ impl State {
         Ok(())
     }
 
-    pub async fn get_proc(&self, fq: FqBuf) -> Result<&Process, Error> {
+    // todo implement this
+    pub async fn _get_proc(&self, fq: FqBuf) -> Result<&Process, Error> {
         for p in self.process_manager.processes.iter() {
             if p.fq == fq {
                 return Ok(p);
@@ -411,29 +410,11 @@ impl State {
         Ok(())
     }
 
-    fn get_valid_service(&self) -> Result<Service, Error> {
-        let config_file =
-            std::fs::read_to_string(ROVER_CONFIG_FILE).map_err(|_| Error::ConfigFileNotFound)?;
-        let mut config: Configuration = serde_yaml::from_str(&config_file)?;
-
-        for e in &mut config.enabled {
-            if !e.ends_with("/service.yaml") {
-                if e.ends_with("/") {
-                    e.push_str("service.yaml");
-                } else {
-                    e.push_str("/service.yaml");
-                }
-            }
-        }
-
-        Err(Error::Unimplemented)
-    }
-
     pub async fn get_valid_pipeline(&mut self) -> Result<RunnablePipeline, Error> {
         let mut config = self.get_config().await?;
         let mut enabled_services: Vec<ValidatedService> = vec![];
 
-        match {
+        let res = {
             for enabled in &config.enabled {
                 let service_file =
                     std::fs::read_to_string(enabled).map_err(|_| Error::ServiceNotFound)?;
@@ -443,12 +424,13 @@ impl State {
             }
 
             Pipeline::new(enabled_services).validate()
-        } {
+        };
+        match res {
             Ok(val) => Ok(val),
             Err(e) => {
                 config.enabled.clear();
                 update_config(&config)?;
-                return Err(Error::ConfigValidation(e));
+                Err(Error::ConfigValidation(e))
             }
         }
     }

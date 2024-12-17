@@ -1,15 +1,10 @@
-use std::{fmt::Display, fs, path::Path};
+use std::{fmt::Display, path::Path};
 
-use crate::{
-    util::{download_and_install_service, list_dir_contents, update_config},
-    Error,
-};
+use crate::Error;
 
 use crate::error;
 
-use rovervalidate::{config::Validate, service::ValidatedService};
-use tokio::sync::RwLockWriteGuard;
-use tracing::warn;
+use rovervalidate::service::ValidatedService;
 
 use crate::constants::*;
 
@@ -200,7 +195,7 @@ impl TryFrom<String> for FqBuf {
 
         Ok(FqBuf {
             author: values
-                .get(0)
+                .first()
                 .ok_or(Error::StringToFqServiceConversion)?
                 .clone(),
             name: values
@@ -234,7 +229,7 @@ impl TryFrom<&String> for FqBuf {
 
         Ok(FqBuf {
             author: values
-                .get(0)
+                .first()
                 .ok_or(Error::StringToFqServiceConversion)?
                 .clone(),
             name: values
@@ -260,7 +255,7 @@ impl<'a> TryFrom<&'a Vec<String>> for FqVec<'a> {
     }
 }
 
-impl TryFrom<Vec<String>> for FqBufVec<> {
+impl TryFrom<Vec<String>> for FqBufVec {
     type Error = error::Error;
     fn try_from(string_vec: Vec<String>) -> Result<Self, Self::Error> {
         let fq_services: Vec<FqBuf> = string_vec
@@ -271,7 +266,7 @@ impl TryFrom<Vec<String>> for FqBufVec<> {
     }
 }
 
-impl TryFrom<&Vec<String>> for FqBufVec<> {
+impl TryFrom<&Vec<String>> for FqBufVec {
     type Error = error::Error;
     fn try_from(string_vec: &Vec<String>) -> Result<Self, Self::Error> {
         let fq_services: Vec<FqBuf> = string_vec
@@ -284,14 +279,14 @@ impl TryFrom<&Vec<String>> for FqBufVec<> {
 
 impl<'a> From<&'a Vec<PipelinePostRequestInner>> for FqVec<'a> {
     fn from(vec: &'a Vec<PipelinePostRequestInner>) -> Self {
-        let fq_services = vec.iter().map(|p| Fq::from(p)).collect::<Vec<_>>();
+        let fq_services = vec.iter().map(Fq::from).collect::<Vec<_>>();
         FqVec(fq_services)
     }
 }
 
 impl From<Vec<PipelinePostRequestInner>> for FqBufVec {
     fn from(vec: Vec<PipelinePostRequestInner>) -> Self {
-        let fq_services = vec.iter().map(|p| FqBuf::from(p)).collect::<Vec<_>>();
+        let fq_services = vec.iter().map(FqBuf::from).collect::<Vec<_>>();
         FqBufVec(fq_services)
     }
 }
@@ -305,14 +300,6 @@ impl<'a> Fq<'a> {
     }
 }
 
-impl<'a> Fq<'a> {
-    pub fn dir(&self) -> String {
-        format!(
-            "{}/{}/{}/{}",
-            ROVER_DIR, self.author, self.name, self.version
-        )
-    }
-}
 
 impl<'a> Display for Fq<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

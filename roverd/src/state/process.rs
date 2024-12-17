@@ -1,11 +1,9 @@
 use std::path::PathBuf;
 use std::process::Stdio;
-use std::{fs::OpenOptions, time::Duration};
+use std::time::Duration;
 
 use std::io::Write;
 
-use rovervalidate::pipeline::interface::RunnablePipeline;
-use serde::{Deserialize, Serialize};
 use tracing::{error, info, warn};
 
 use crate::util::*;
@@ -32,6 +30,7 @@ pub struct SpawnedProcess {
 
 /// A Process
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct Process {
     pub fq: FqBuf,
     pub last_pid: u32,
@@ -105,8 +104,6 @@ impl ProcessManager {
             let mut shutdown_rx = self.shutdown_tx.subscribe();
             let process_shutdown_tx = self.shutdown_tx.clone();
 
-            
-
             tokio::spawn(async move {
                 let mut child = proc.child.lock().await;
                 // todo test this make sure the loop doesn't need to be here
@@ -125,11 +122,11 @@ impl ProcessManager {
                                 //         saved_process.last_exit_code = exit_status.code();
                                 //     }
                                 // }
-                                
+
 
                                 process_shutdown_tx.send(()).ok();
-                                
-                                
+
+
                             }
                             Err(e) => {
                                 error!("error waiting for process {}: {}", proc.name, e);

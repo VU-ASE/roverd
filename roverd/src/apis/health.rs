@@ -58,12 +58,12 @@ impl Health for Roverd {
                 core: i as i32,
                 total: 100,
                 used: (c.cpu_usage() * 100.0) as i32,
-            })
+            });
         }
 
         let memory = StatusGet200ResponseMemory {
-            total: (sys.total_memory() / (1000 as u64)) as i32,
-            used: (sys.used_memory() / (1000 as u64)) as i32,
+            total: (sys.total_memory() / (1000_u64)) as i32,
+            used: (sys.used_memory() / (1000_u64)) as i32,
         };
 
         Ok(

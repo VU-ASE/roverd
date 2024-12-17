@@ -13,10 +13,6 @@ pub const BUILD_LOG_DIR: &str = "/tmp/roverbuildlog";
 pub const ZIP_FILE: &str = "/tmp/incoming-service.zip";
 pub const UNZIPPED_DIR: &str = "/tmp/incoming-service";
 
-pub const AUTHOR: &str = "vu-ase";
-pub const DOWNLOAD_URL: &str = "https://downloads.ase.vu.nl";
-pub const DOWNLOAD_DESTINATION: &str = "/tmp";
-
 pub const ENV_KEY: &str = "ASE_SERVICE";
 pub const START_PORT: u32 = 5700;
 

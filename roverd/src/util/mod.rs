@@ -1,4 +1,4 @@
-use std::fs::{remove_dir, File, OpenOptions};
+use std::fs::{File, OpenOptions};
 
 use std::{
     fs,
@@ -10,7 +10,6 @@ use std::{
 use axum::http::StatusCode;
 
 use rovervalidate::config::{Configuration, Validate};
-use rovervalidate::service::Service;
 
 use tracing::{error, info};
 
@@ -192,7 +191,6 @@ pub fn create_log_file(log_path: &PathBuf) -> Result<File, Error> {
 
     let log_file = OpenOptions::new()
         .read(true)
-        .write(true)
         .append(true)
         .create(true)
         .open(log_path.clone())?;

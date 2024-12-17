@@ -1,4 +1,4 @@
-use axum::extract::{DefaultBodyLimit, Request, State};
+use axum::extract::{Request, State};
 use axum::http::{self, StatusCode};
 use axum::middleware::{self, Next};
 use axum::response::Response;
@@ -34,7 +34,7 @@ async fn auth_wrapper(
     match auth(state, req, next).await {
         Ok(response) => Ok(response),
         Err(e) => {
-            warn!(">>> Unauthorized or bad request");
+            warn!("Unauthorized or bad request");
             match e {
                 Http(status_code) => Err(status_code),
                 _ => Err(StatusCode::BAD_REQUEST),
@@ -69,7 +69,7 @@ fn check_auth(state: &Roverd, auth_str: &str) -> Result<(), Error> {
 }
 
 async fn auth(State(state): State<Roverd>, req: Request, next: Next) -> Result<Response, Error> {
-    info!("{}: {}", req.method(), *req.uri());
+    info!("incoming {} on {}", req.method(), *req.uri());
 
     // the /status endpoint does not require authentication, all others do.
     if *req.uri() != *"/status" {

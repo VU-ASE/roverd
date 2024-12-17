@@ -1,7 +1,5 @@
 use crate::Error;
 use openapi::models::DaemonStatus;
-use std::fs::OpenOptions;
-use std::io::Read;
 use std::path::Path;
 use std::{fs::read_to_string, time::SystemTime};
 use tracing::error;
