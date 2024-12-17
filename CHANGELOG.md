@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/VU-ASE/roverd/compare/v1.0.0...v1.0.1) (2024-12-17)
+
+
+### Bug Fixes
+
+* selfhosted ([dc749ac](https://github.com/VU-ASE/roverd/commit/dc749acf81358a6845f7ab413499814fdda48f47))
+
 ## 1.0.0 (2024-12-17)
 
 
