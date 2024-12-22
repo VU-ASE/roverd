@@ -3,7 +3,6 @@ use axum::http::{self, StatusCode};
 use axum::middleware::{self, Next};
 use axum::response::Response;
 use base64::Engine;
-use sha256::digest;
 use tower_http::cors::CorsLayer;
 use tracing::{info, warn};
 
@@ -23,9 +22,9 @@ use error::Error::*;
 use error::*;
 use state::*;
 
-/// TODO: this is not ideal, since middleware::from_fn_with_state expects
-/// Result<Response, StatusCode>. But ideally, we want to use custom Error to
-/// utilize ? more.
+/// Not ideal, but an error wrapper work around since middleware::from_fn_with_state expects
+/// Result<Response, StatusCode>. But ideally, we want to use custom Error to propogate our custom
+/// Error type as mmuch as possible.
 async fn auth_wrapper(
     state: State<Roverd>,
     req: Request,
@@ -43,12 +42,13 @@ async fn auth_wrapper(
     }
 }
 
+/// Performs password check to hashed password stored on disk.
 fn check_auth(state: &Roverd, auth_str: &str) -> Result<(), Error> {
     let (user, password) = auth_str
         .split_once(':')
         .ok_or(Http(StatusCode::BAD_REQUEST))?;
 
-    let stored_hash = digest(password);
+    let stored_hash = sha256::digest(password);
 
     if let Some(hash) = &state.info.password {
         if user == state.info.username && hash == &stored_hash {
@@ -68,6 +68,8 @@ fn check_auth(state: &Roverd, auth_str: &str) -> Result<(), Error> {
     Err(Http(StatusCode::UNAUTHORIZED))
 }
 
+/// Main authentication logic requires authenticated requests for all endpoints
+/// except for "/status".
 async fn auth(State(state): State<Roverd>, req: Request, next: Next) -> Result<Response, Error> {
     info!("incoming {} on {}", req.method(), *req.uri());
 
@@ -94,20 +96,25 @@ async fn auth(State(state): State<Roverd>, req: Request, next: Next) -> Result<R
         let auth_str =
             core::str::from_utf8(&raw_bytes).map_err(|_| Http(StatusCode::BAD_REQUEST))?;
 
+        // Returns early if authentication fails
         check_auth(&state, auth_str)?;
     }
 
+    // Pass the request on to the request handlers.
     let response = next.run(req).await;
     Ok(response)
 }
 
+/// Entry of program, initializes logging and constructs app state used by axum router.
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     log::init();
     info!("logging initialized");
 
+    // All app initialization happens in new()
     let rover_state = Roverd::new().await?;
 
+    // Hand-off to axum
     let router = openapi::server::new(rover_state.clone())
         .layer(middleware::from_fn_with_state(
             rover_state.clone(),
