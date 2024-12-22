@@ -1,11 +1,15 @@
-use crate::error;
+use crate::{error, Error};
 
+/// The service defines run and build commands which are encapsulated into this
+/// convenience struct.
 #[derive(Debug)]
 pub struct ParsedCommand {
     pub program: String,
     pub arguments: Vec<String>,
 }
 
+/// Commands are read from the yaml file directly and need to be parsed into
+/// the program name and vector of arguments.
 impl TryFrom<&String> for ParsedCommand {
     type Error = error::Error;
 
@@ -14,9 +18,9 @@ impl TryFrom<&String> for ParsedCommand {
         let separated: Vec<&str> = command.split_whitespace().collect();
         let (program, arguments) = separated
             .split_first()
-            .ok_or_else(|| error::Error::RunCommandNotParsed)?;
+            .ok_or_else(|| Error::ParsingRunCommand)?;
         let program = program.to_string();
-        let arguments: Vec<String> = arguments.iter().map(|a| a.to_string()).collect();
+        let arguments: Vec<String> = arguments.iter().map(|arg| arg.to_string()).collect();
 
         Ok(Self { program, arguments })
     }

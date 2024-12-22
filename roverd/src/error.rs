@@ -1,74 +1,41 @@
 #![allow(unused)]
 
-use tracing::warn;
-
 use derive_more::From;
 
+/// A central definition of all possible errors in roverd. The point of this organization is
+/// to be able to explain at a high level all possible error situations from just this file.
+/// For this reason, we avoid generic errors where the caller specifies further context
+/// about the error, it should all already be clear just based on the enum variant.
 #[derive(Debug, From)]
 pub enum Error {
-    RoverInfoFileIo(String, std::io::Error),
-    RoverInfoFileFormat(String),
+    // --- Rover info file ---
+    RoverFileNotFound,
+    RoverFileFormat,
 
-    #[from]
-    ConfigValidation(Vec<rovervalidate::error::Error>),
-
-    // --- Roverd Generic ---
-    Generic(String),
-
-    // --- Rover info file /etc/rover ---
-    RoverInfoFileNotFound,
-
-    // --- Config File /etc/roverd/rover.yaml ---
-    ConfigFileNotFound,
-    CouldNotCreateConfigFile,
-    CouldNotWriteToConfigFile,
-
-    // --- Installation ---
-    ServiceYamlNotInZip,
-
-    // --- Source Errors ---
-    SourceAlreadyExists,
-    SourceNotFound,
-
-    // --- Downlaod Errors ---
-    RemoteServiceNotFound,
+    // --- Configuration file ---
+    ConfigFileIO,
+    EnabledPathInvalid,
 
     // --- Service Errors ---
-    ServiceValidation,
     ServiceNotFound,
     ServiceAlreadyExists,
-    ServiceParseIncorrect,
     ServiceDownloadFailed,
-    ServiceMissingUrl,
-    ServiceUploadData,
+    ServiceUploadBadPayload,
 
-    // --- Validation ----
-    EnabledPathInvalid,
-    EnabledPathNotFound,
-    NoRunnableServices,
+    // --- Installation ---
+    ServiceYamlNotFoundInDownload,
 
     // --- Build ---
     BuildLog(Vec<String>),
     BuildCommandFailed,
     BuildCommandMissing,
 
-    // --- Logs ---
+    // --- Runtime ---
     NoLogsFound,
-
-    // --- Runtie ---
     NoRunningServices,
-
-    IncorrectPayload,
-
     ProcessNotFound,
-
-    RunCommandNotParsed,
-
-    MissingUrl,
-
-    PathConversion,
-
-    StringToFqServiceConversion,
+    ParsingRunCommand,
+    StringToFqConversion,
 
     // --- Pipeline ---
     PipelineValidation,
@@ -103,6 +70,9 @@ pub enum Error {
 
     #[from]
     Multipart(axum_extra::extract::Multipart),
+
+    #[from]
+    Validation(Vec<rovervalidate::error::Error>),
 
     Synchronization,
 

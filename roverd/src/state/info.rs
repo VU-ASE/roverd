@@ -54,21 +54,16 @@ impl Info {
 /// hash of the user password on the last line.
 fn read_rover_info() -> Result<(i32, String, String), Error> {
     if !Path::new(ROVER_INFO_FILE).exists() {
-        return Err(Error::RoverInfoFileNotFound);
+        return Err(Error::RoverFileNotFound);
     }
 
     let text = read_to_string(ROVER_INFO_FILE)?;
 
     let text = text.split_whitespace().collect::<Vec<&str>>();
     if text.len() < 3 {
-        return Err(Error::RoverInfoFileFormat(format!(
-            "Expected 3 lines, got {}",
-            text.len()
-        )));
+        return Err(Error::RoverFileFormat);
     }
-    let id: i32 = text[0].trim().parse().map_err(|e| {
-        Error::RoverInfoFileFormat(format!("Invalid format of {}, {}", ROVER_INFO_FILE, e))
-    })?;
+    let id: i32 = text[0].trim().parse().map_err(|_| Error::RoverFileFormat)?;
 
     let rover_name: String = text[1].to_string();
 

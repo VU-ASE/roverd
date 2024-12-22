@@ -83,7 +83,7 @@ impl Pipeline for Roverd {
         let _ = match state.set_pipeline(body).await {
             Ok(a) => a,
             Err(e) => match e {
-                Error::ConfigValidation(val_errors) => {
+                Error::Validation(val_errors) => {
                     let mut pipeline_errors = vec![];
                     let mut string_errors = vec![];
 

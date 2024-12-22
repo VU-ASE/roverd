@@ -164,14 +164,14 @@ impl<'a> TryFrom<&'a String> for Fq<'a> {
                 component
                     .as_os_str()
                     .to_str()
-                    .ok_or(Error::StringToFqServiceConversion)
+                    .ok_or(Error::StringToFqConversion)
             })
             .collect::<Result<Vec<&str>, Error>>()?;
 
         Ok(Fq {
-            author: values.first().ok_or(Error::StringToFqServiceConversion)?,
-            name: values.get(1).ok_or(Error::StringToFqServiceConversion)?,
-            version: values.get(2).ok_or(Error::StringToFqServiceConversion)?,
+            author: values.first().ok_or(Error::StringToFqConversion)?,
+            name: values.get(1).ok_or(Error::StringToFqConversion)?,
+            version: values.get(2).ok_or(Error::StringToFqConversion)?,
         })
     }
 }
@@ -194,18 +194,9 @@ impl TryFrom<String> for FqBuf {
             .collect::<Result<Vec<String>, Error>>()?;
 
         Ok(FqBuf {
-            author: values
-                .first()
-                .ok_or(Error::StringToFqServiceConversion)?
-                .clone(),
-            name: values
-                .get(1)
-                .ok_or(Error::StringToFqServiceConversion)?
-                .clone(),
-            version: values
-                .get(2)
-                .ok_or(Error::StringToFqServiceConversion)?
-                .clone(),
+            author: values.first().ok_or(Error::StringToFqConversion)?.clone(),
+            name: values.get(1).ok_or(Error::StringToFqConversion)?.clone(),
+            version: values.get(2).ok_or(Error::StringToFqConversion)?.clone(),
         })
     }
 }
@@ -228,18 +219,9 @@ impl TryFrom<&String> for FqBuf {
             .collect::<Result<Vec<String>, Error>>()?;
 
         Ok(FqBuf {
-            author: values
-                .first()
-                .ok_or(Error::StringToFqServiceConversion)?
-                .clone(),
-            name: values
-                .get(1)
-                .ok_or(Error::StringToFqServiceConversion)?
-                .clone(),
-            version: values
-                .get(2)
-                .ok_or(Error::StringToFqServiceConversion)?
-                .clone(),
+            author: values.first().ok_or(Error::StringToFqConversion)?.clone(),
+            name: values.get(1).ok_or(Error::StringToFqConversion)?.clone(),
+            version: values.get(2).ok_or(Error::StringToFqConversion)?.clone(),
         })
     }
 }
@@ -299,7 +281,6 @@ impl<'a> Fq<'a> {
         )
     }
 }
-
 
 impl<'a> Display for Fq<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
