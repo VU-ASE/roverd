@@ -37,12 +37,15 @@ pub enum Error {
     ParsingRunCommand,
     StringToFqConversion,
 
-    // --- Pipeline ---
-    PipelineValidation,
+    // Since pipeline is *always* in a valid state, the only 
+    // error case is a warning in which it is empty, but valid.
     PipelineIsEmpty,
 
+    // TODO: remove me for prod!
+    Unimplemented,
+
     #[from]
-    Serialization(serde_yaml::Error),
+    YamlSerialization(serde_yaml::Error),
 
     #[from]
     JsonSerialization(serde_json::Error),
@@ -55,9 +58,6 @@ pub enum Error {
 
     #[from]
     Http(axum::http::StatusCode),
-
-    #[from]
-    ParseIntFromStr(String),
 
     #[from]
     Io(std::io::Error),
@@ -73,10 +73,4 @@ pub enum Error {
 
     #[from]
     Validation(Vec<rovervalidate::error::Error>),
-
-    Synchronization,
-
-    Url,
-
-    Unimplemented, // Todo this should be removed for prod!
 }
