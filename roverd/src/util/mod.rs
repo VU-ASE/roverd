@@ -6,12 +6,12 @@ use std::{
     path::{Path, PathBuf},
 };
 
-// use reqwest::StatusCode;
 use axum::http::StatusCode;
 
 use rovervalidate::config::{Configuration, Validate};
 
-use tracing::{error, info};
+use rovervalidate::service::Service;
+use tracing::info;
 
 use crate::error::Error;
 use crate::service::FqBuf;
@@ -35,8 +35,7 @@ pub fn copy_recursively(source: impl AsRef<Path>, destination: impl AsRef<Path>)
     Ok(())
 }
 
-/// Extracts the contents of the zip file into the directory at
-/// destination_dir.
+/// Extracts the contents of the zip file into the directory at destination_dir.
 pub fn extract_zip(zip_file: &str, destination_dir: &str) -> Result<(), Error> {
     std::fs::create_dir_all(destination_dir)?;
 
@@ -46,10 +45,10 @@ pub fn extract_zip(zip_file: &str, destination_dir: &str) -> Result<(), Error> {
 
     let target = PathBuf::from(destination_dir);
 
-    let a = io::Cursor::new(bytes);
-    let mut z = zip::ZipArchive::new(a)?;
+    let data_cursor = io::Cursor::new(bytes);
+    let mut zip = zip::ZipArchive::new(data_cursor)?;
 
-    z.extract(target)?;
+    zip.extract(target)?;
 
     Ok(())
 }
@@ -81,9 +80,9 @@ pub async fn download_service(url: &String) -> Result<(), Error> {
     if response.status() != StatusCode::OK {
         let resp: axum::http::StatusCode = response.status();
         match response.status() {
-            StatusCode::NOT_FOUND => return Err(Error::RemoteServiceNotFound),
+            StatusCode::NOT_FOUND => return Err(Error::ServiceNotFound),
             StatusCode::BAD_REQUEST => return Err(Error::ServiceDownloadFailed),
-            StatusCode::FORBIDDEN => return Err(Error::RemoteServiceNotFound),
+            StatusCode::FORBIDDEN => return Err(Error::Http(StatusCode::FORBIDDEN)),
             _ => return Err(Error::Http(resp)),
         }
     }
@@ -102,12 +101,14 @@ pub async fn download_service(url: &String) -> Result<(), Error> {
 /// however if there are, they will get deleted to make space.
 pub async fn download_and_install_service(url: &String) -> Result<FqBuf, Error> {
     download_service(url).await?;
-    let fq = extract_fq().await?;
+    let fq = extract_fq_from_zip().await?;
     install_service(&fq).await?;
     Ok(fq)
 }
 
-pub async fn extract_fq() -> Result<FqBuf, Error> {
+/// Attempts to unzip and read out the service in the temporary directory
+/// returns the FqBuf on success.
+pub async fn extract_fq_from_zip() -> Result<FqBuf, Error> {
     // Clear the destination directory, no matter if it fails
     let _ = std::fs::remove_dir_all(UNZIPPED_DIR);
 
@@ -117,11 +118,10 @@ pub async fn extract_fq() -> Result<FqBuf, Error> {
     // Unpack the downloaded service and validate it.
     extract_zip(ZIP_FILE, UNZIPPED_DIR)?;
 
+    // Read contents and
     let service_contents = std::fs::read_to_string(format!("{}/service.yaml", UNZIPPED_DIR))
-        .map_err(|_| Error::ServiceYamlNotInZip)?;
-
-    let service =
-        serde_yaml::from_str::<rovervalidate::service::Service>(&service_contents)?.validate()?;
+        .map_err(|_| Error::ServiceYamlNotFoundInDownload)?;
+    let service = serde_yaml::from_str::<Service>(&service_contents)?.validate()?;
 
     let fq = FqBuf::from(service);
     Ok(fq)
@@ -163,19 +163,17 @@ pub fn list_dir_contents(added_path: &str) -> Result<Vec<String>, Error> {
 pub fn update_config(config: &Configuration) -> Result<(), Error> {
     let contents = serde_yaml::to_string(&config)?;
 
-    std::fs::create_dir_all(ROVER_CONFIG_DIR).inspect_err(|f| {
-        error!("Could not create {f}");
-    })?;
+    std::fs::create_dir_all(ROVER_CONFIG_DIR).map_err(|_| Error::ConfigFileIO)?;
 
     let mut file = OpenOptions::new()
         .write(true)
         .create(true)
         .truncate(true)
         .open(ROVER_CONFIG_FILE)
-        .map_err(|_| Error::CouldNotCreateConfigFile)?;
+        .map_err(|_| Error::ConfigFileIO)?;
 
     file.write_all(contents.as_bytes())
-        .map_err(|_| Error::CouldNotWriteToConfigFile)?;
+        .map_err(|_| Error::ConfigFileIO)?;
 
     Ok(())
 }

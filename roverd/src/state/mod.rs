@@ -1,7 +1,6 @@
 use axum_extra::extract::Multipart;
 use openapi::models::*;
 use process::{Process, ProcessManager};
-
 use rovervalidate::config::{Configuration, ValidatedConfiguration};
 use rovervalidate::pipeline::interface::{Pipeline, RunnablePipeline};
 use rovervalidate::service::{Service, ValidatedService};
@@ -19,21 +18,20 @@ use tokio::sync::{broadcast, RwLock};
 use tracing::{error, warn};
 
 use crate::command::ParsedCommand;
+use crate::error::Error;
 use crate::util::*;
 use crate::{constants::*, time_now};
 
 pub mod process;
 pub mod service;
-
 mod bootspec;
 
-/// Start-up information and system clock
+/// Start-up information, system clock and utilization
 pub mod info;
 
-use crate::error::Error;
-
 /// The main struct that implements functions called from the api and holds all objects
-/// in memory necessary for operation.
+/// in memory necessary for operation. Info member holds static information derived mostly
+/// from the
 #[derive(Debug, Clone)]
 pub struct Roverd {
     /// Information related to the roverd daemon, contains status.
@@ -92,8 +90,8 @@ impl State {
             update_config(&empty_config)?;
         }
 
-        let file_content = std::fs::read_to_string(ROVER_CONFIG_FILE)
-            .map_err(|_| Error::CouldNotCreateConfigFile)?;
+        let file_content =
+            std::fs::read_to_string(ROVER_CONFIG_FILE).map_err(|_| Error::ConfigFileIO)?;
 
         let config: ValidatedConfiguration =
             serde_yaml::from_str::<Configuration>(&file_content)?.validate()?;
@@ -124,14 +122,20 @@ impl State {
         if let Some(field) = body
             .next_field()
             .await
-            .map_err(|_| Error::ServiceUploadData)?
+            .map_err(|_| Error::ServiceUploadBadPayload)?
         {
-            let data = field.bytes().await.map_err(|_| Error::IncorrectPayload)?;
+            // Extract bytes from payload
+            let data = field
+                .bytes()
+                .await
+                .map_err(|_| Error::ServiceUploadBadPayload)?;
 
-            // Ignore errors, since filesystem can be in any state
+            // Ignore errors, since filesystem can be in any state and
+            // get a clean slate of the zip file
             let _ = remove_file(ZIP_FILE);
             let _ = remove_dir_all(UNZIPPED_DIR);
 
+            // Create the zip file handle
             let mut file = fs::OpenOptions::new()
                 .create(true)
                 .truncate(true)
@@ -140,7 +144,7 @@ impl State {
 
             file.write_all(&data)?;
 
-            let fq_buf = extract_fq().await?;
+            let fq_buf = extract_fq_from_zip().await?;
 
             if service_exists(&Fq::from(&fq_buf))? {
                 return Err(Error::ServiceAlreadyExists);
@@ -152,7 +156,7 @@ impl State {
 
             return Ok((fq_buf, invalidate_pipline));
         }
-        Err(Error::IncorrectPayload)
+        Err(Error::ServiceUploadBadPayload)
     }
 
     pub async fn get_authors(&self) -> Result<Vec<String>, Error> {
@@ -310,7 +314,7 @@ impl State {
                 return Ok(p);
             }
         }
-        Err(Error::ProcessNotFound)
+        Err(Error::Unimplemented)
     }
 
     pub async fn get_pipeline(&mut self) -> Result<Vec<PipelineGet200ResponseEnabledInner>, Error> {
@@ -430,7 +434,7 @@ impl State {
             Err(e) => {
                 config.enabled.clear();
                 update_config(&config)?;
-                Err(Error::ConfigValidation(e))
+                Err(Error::Validation(e))
             }
         }
     }

@@ -1,81 +1,52 @@
 #![allow(unused)]
 
-use tracing::warn;
-
 use derive_more::From;
 
+/// A central definition of all possible errors in roverd. The point of this organization is
+/// to be able to explain at a high level all possible error situations from just this file.
+/// For this reason, we avoid generic errors where the caller specifies further context
+/// about the error, it should all already be clear just based on the enum variant.
 #[derive(Debug, From)]
 pub enum Error {
-    RoverInfoFileIo(String, std::io::Error),
-    RoverInfoFileFormat(String),
+    // --- Rover info file ---
+    RoverFileNotFound,
+    RoverFileFormat,
 
-    #[from]
-    ConfigValidation(Vec<rovervalidate::error::Error>),
-
-    // --- Roverd Generic ---
-    Generic(String),
-
-    // --- Rover info file /etc/rover ---
-    RoverInfoFileNotFound,
-
-    // --- Config File /etc/roverd/rover.yaml ---
-    ConfigFileNotFound,
-    CouldNotCreateConfigFile,
-    CouldNotWriteToConfigFile,
-
-    // --- Installation ---
-    ServiceYamlNotInZip,
-
-    // --- Source Errors ---
-    SourceAlreadyExists,
-    SourceNotFound,
-
-    // --- Downlaod Errors ---
-    RemoteServiceNotFound,
+    // --- Configuration file ---
+    ConfigFileIO,
+    EnabledPathInvalid,
 
     // --- Service Errors ---
-    ServiceValidation,
     ServiceNotFound,
     ServiceAlreadyExists,
-    ServiceParseIncorrect,
     ServiceDownloadFailed,
-    ServiceMissingUrl,
-    ServiceUploadData,
+    ServiceUploadBadPayload,
 
-    // --- Validation ----
-    EnabledPathInvalid,
-    EnabledPathNotFound,
-    NoRunnableServices,
+    // --- Installation ---
+    ServiceYamlNotFoundInDownload,
 
     // --- Build ---
     BuildLog(Vec<String>),
     BuildCommandFailed,
     BuildCommandMissing,
 
-    // --- Logs ---
+    // --- Runtime ---
     NoLogsFound,
-
-    // --- Runtie ---
     NoRunningServices,
-
-    IncorrectPayload,
-
     ProcessNotFound,
+    ParsingRunCommand,
+    StringToFqConversion,
+    FailedToSpawnProcess(String),
 
-    RunCommandNotParsed,
-
-    MissingUrl,
-
-    PathConversion,
-
-    StringToFqServiceConversion,
-
-    // --- Pipeline ---
-    PipelineValidation,
+    // Since pipeline is *always* in a valid state, the only 
+    // error case is a warning in which it is empty, but valid.
     PipelineIsEmpty,
 
+    // TODO: remove me for prod!
+    Unimplemented,
+
     #[from]
-    Serialization(serde_yaml::Error),
+    YamlSerialization(serde_yaml::Error),
 
     #[from]
     JsonSerialization(serde_json::Error),
@@ -90,9 +61,6 @@ pub enum Error {
     Http(axum::http::StatusCode),
 
     #[from]
-    ParseIntFromStr(String),
-
-    #[from]
     Io(std::io::Error),
 
     #[from]
@@ -104,9 +72,6 @@ pub enum Error {
     #[from]
     Multipart(axum_extra::extract::Multipart),
 
-    Synchronization,
-
-    Url,
-
-    Unimplemented, // Todo this should be removed for prod!
+    #[from]
+    Validation(Vec<rovervalidate::error::Error>),
 }
