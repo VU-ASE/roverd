@@ -93,9 +93,10 @@ impl ProcessManager {
                     });
                 }
                 Err(e) => {
-                    warn!("Failed to spawn process '{}': {}", p.name, e);
-                    self.shutdown_tx.send(())?;
-                    break;
+                    let _ = self.shutdown_tx.send(());
+                    let err_msg = format!("{}", e);
+                    warn!("Failed to spawn process '{}': {}", p.name, &err_msg);
+                    return Err(Error::FailedToSpawnProcess(err_msg));
                 }
             }
         }

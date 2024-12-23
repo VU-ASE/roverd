@@ -1,7 +1,6 @@
 use axum_extra::extract::Multipart;
 use openapi::models::*;
 use process::{Process, ProcessManager};
-
 use rovervalidate::config::{Configuration, ValidatedConfiguration};
 use rovervalidate::pipeline::interface::{Pipeline, RunnablePipeline};
 use rovervalidate::service::{Service, ValidatedService};
@@ -19,21 +18,20 @@ use tokio::sync::{broadcast, RwLock};
 use tracing::{error, warn};
 
 use crate::command::ParsedCommand;
+use crate::error::Error;
 use crate::util::*;
 use crate::{constants::*, time_now};
 
 pub mod process;
 pub mod service;
-
 mod bootspec;
 
-/// Start-up information and system clock
+/// Start-up information, system clock and utilization
 pub mod info;
 
-use crate::error::Error;
-
 /// The main struct that implements functions called from the api and holds all objects
-/// in memory necessary for operation.
+/// in memory necessary for operation. Info member holds static information derived mostly
+/// from the
 #[derive(Debug, Clone)]
 pub struct Roverd {
     /// Information related to the roverd daemon, contains status.
