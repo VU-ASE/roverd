@@ -22,9 +22,9 @@ use crate::error::Error;
 use crate::util::*;
 use crate::{constants::*, time_now};
 
+mod bootspec;
 pub mod process;
 pub mod service;
-mod bootspec;
 
 /// Start-up information, system clock and utilization
 pub mod info;
@@ -309,13 +309,13 @@ impl State {
     }
 
     // todo implement this
-    pub async fn _get_proc(&self, fq: FqBuf) -> Result<&Process, Error> {
+    pub fn get_proc(&self, fq: FqBuf) -> Result<&Process, Error> {
         for p in self.process_manager.processes.iter() {
             if p.fq == fq {
                 return Ok(p);
             }
         }
-        Err(Error::Unimplemented)
+        Err(Error::ProcessNotFound)
     }
 
     pub async fn get_pipeline(&mut self) -> Result<Vec<PipelineGet200ResponseEnabledInner>, Error> {
@@ -331,23 +331,52 @@ impl State {
                 let fq = FqBuf::try_from(validated_service)?;
 
                 // todo get proc and populate cpu, uptime, memory, status
-                // let proc = self.get_proc(fq.clone());
+                let proc = self.get_proc(fq.clone());
+                match proc {
+                    Ok(p) => {
+                        let status = p.state.clone();
+                        let cpu = 32;
+                        let pid = p.last_pid;
+                        let uptime = 32;
+                        let memory = 32;
 
-                Ok::<_, Error>(PipelineGet200ResponseEnabledInner {
-                    process: Some(PipelineGet200ResponseEnabledInnerProcess {
-                        cpu: 69,
-                        pid: 69,
-                        uptime: 69,
-                        memory: 69,
-                        status: ProcessStatus::Terminated,
-                    }),
-                    service: PipelineGet200ResponseEnabledInnerService {
-                        author: fq.author,
-                        name: fq.name,
-                        version: fq.version,
-                        faults: None,
-                    },
-                })
+                        return Ok(PipelineGet200ResponseEnabledInner {
+                            process: Some(PipelineGet200ResponseEnabledInnerProcess {
+                                cpu,
+                                pid: pid as i32,
+                                uptime,
+                                memory,
+                                status,
+                            }),
+                            service: PipelineGet200ResponseEnabledInnerService {
+                                author: fq.author,
+                                name: fq.name,
+                                version: fq.version,
+                                faults: Some(0),
+                            },
+                        });
+                    }
+                    Err(e) => {
+                        warn!("could not find process for service: {:?}: {:?}", fq, e);
+                        return Err(Error::ProcessNotFound);
+                    }
+                }
+
+                // Ok::<_, Error>(PipelineGet200ResponseEnabledInner {
+                //     process: Some(PipelineGet200ResponseEnabledInnerProcess {
+                //         cpu: 69,
+                //         pid: 69,
+                //         uptime: 69,
+                //         memory: 69,
+                //         status: ProcessStatus::Terminated,
+                //     }),
+                //     service: PipelineGet200ResponseEnabledInnerService {
+                //         author: fq.author,
+                //         name: fq.name,
+                //         version: fq.version,
+                //         faults: None,
+                //     },
+                // })
             })
             .collect::<Result<Vec<PipelineGet200ResponseEnabledInner>, Error>>()?;
 
@@ -375,13 +404,14 @@ impl State {
 
             self.process_manager.processes.push(Process {
                 fq: fq.clone(),
-                command: format!("{}/{}", fq.dir(), service.0.commands.run.clone()),
+                command: service.0.commands.run.clone(), // run the command in the service's working directory
                 last_pid: 0,
                 last_exit_code: Some(0),
                 name: service.0.name.clone(),
                 state: ProcessStatus::Stopped,
                 log_file: PathBuf::from(fq.log_file()),
                 injected_env,
+                faults: 0,
             })
         }
 

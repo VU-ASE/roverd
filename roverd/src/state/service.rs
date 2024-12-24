@@ -273,14 +273,14 @@ impl From<Vec<PipelinePostRequestInner>> for FqBufVec {
     }
 }
 
-impl<'a> Fq<'a> {
-    pub fn path(&self) -> String {
-        format!(
-            "{}/{}/{}/{}/service.yaml",
-            ROVER_DIR, self.author, self.name, self.version
-        )
-    }
-}
+// impl<'a> Fq<'a> {
+//     pub fn path(&self) -> String {
+//         format!(
+//             "{}/{}/{}/{}/service.yaml",
+//             ROVER_DIR, self.author, self.name, self.version
+//         )
+//     }
+// }
 
 impl<'a> Display for Fq<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

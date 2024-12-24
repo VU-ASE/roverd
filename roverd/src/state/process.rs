@@ -17,7 +17,6 @@ use tokio::{
     time,
 };
 
-use crate::command::ParsedCommand;
 use crate::constants::*;
 use crate::error::Error;
 use crate::service::FqBuf;
@@ -40,6 +39,7 @@ pub struct Process {
     pub log_file: PathBuf,
     pub state: openapi::models::ProcessStatus,
     pub injected_env: String,
+    pub faults: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -64,34 +64,32 @@ impl ProcessManager {
 
             let cur_time = chrono::Local::now().format("%H:%M:%S");
             if writeln!(log_file, "[{}] roverd spawned {}", cur_time, p.name).is_err() {
-                warn!("Could not write log_line to file: {:?}", p.log_file)
+                warn!("could not write log_line to file: {:?}", p.log_file)
             };
 
             let stdout = Stdio::from(log_file.try_clone()?);
             let stderr = Stdio::from(log_file);
 
-            let parsed_command = ParsedCommand::try_from(&p.command)?;
+            // let parsed_command = ParsedCommand::try_from(&p.command)?;
 
             let cwd = fqn_to_path(&p.fq);
 
             let mut command = Command::new("sh");
-            info!(
-                "Running command: {:?} for service '{:?}'",
-                parsed_command, p.name
-            );
+            info!("running command: {:?} for service {:?}", p.command, p.name);
             command
-                .args(&["-c", "sleep 10"])
+                .args(&["-c", p.command.as_str()])
                 .env(ENV_KEY, p.injected_env.clone())
                 .stdout(stdout)
                 .current_dir(cwd)
                 .stderr(stderr);
             match command.spawn() {
                 Ok(child) => {
+                    p.state = openapi::models::ProcessStatus::Running;
                     if let Some(id) = child.id() {
-                        info!("Spawned process: '{:?}' at {}", p.name, id);
+                        info!("spawned process: {:?} at {}", p.name, id);
                         p.last_pid = id;
                     } else {
-                        warn!("Couldn't get process id from '{}'", p.name);
+                        warn!("couldn't get process id from {}", p.name);
                         self.shutdown_tx.send(())?;
                         break;
                     }
@@ -101,9 +99,11 @@ impl ProcessManager {
                     });
                 }
                 Err(e) => {
+                    p.state = openapi::models::ProcessStatus::Stopped;
+                    p.faults += 1;
                     let _ = self.shutdown_tx.send(());
                     let err_msg = format!("{}", e);
-                    warn!("Failed to spawn process '{}': {}", p.name, &err_msg);
+                    warn!("failed to spawn process '{}': {}", p.name, &err_msg);
                     return Err(Error::FailedToSpawnProcess(err_msg));
                 }
             }
@@ -115,6 +115,7 @@ impl ProcessManager {
 
             tokio::spawn(async move {
                 let mut child = proc.child.lock().await;
+
                 // todo test this make sure the loop doesn't need to be here
                 select! {
                     // Wait for process completion
@@ -132,10 +133,12 @@ impl ProcessManager {
                                 //     }
                                 // }
 
+                                // todo: add exit status to process
+                                // todo: set process state to stopped
+                                // todo: if exit status != 0, increment faults
+                                // todo: on exit, stop all other processes as well
 
                                 process_shutdown_tx.send(()).ok();
-
-
                             }
                             Err(e) => {
                                 error!("error waiting for process {}: {}", proc.name, e);
@@ -146,8 +149,11 @@ impl ProcessManager {
                     // Wait for shutdown signal
                     _ = shutdown_rx.recv() => {
                         if let Some(id) = child.id() {
+                            // todo: add exit status to process
+                            // todo: set process state to terminated
+
+                            info!("terminating {} pid ({})", proc.name, id);
                             unsafe {
-                                info!("terminating {} pid ({})", proc.name, id);
                                 libc::kill(id as i32, libc::SIGTERM);
                             }
                         }
@@ -157,6 +163,9 @@ impl ProcessManager {
 
                         match child.try_wait() {
                             Ok(None) => {
+                                // todo: add exit status to process
+                                // todo: set process state to killed
+
                                 info!("child {} did not terminate", proc.name);
                                 warn!("killing {}", proc.name);
                                 if let Err(e) = child.kill().await {

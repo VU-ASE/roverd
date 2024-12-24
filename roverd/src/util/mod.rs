@@ -16,8 +16,6 @@ use tracing::info;
 use crate::error::Error;
 use crate::service::FqBuf;
 
-use super::state::service::Fq;
-
 use crate::constants::*;
 
 /// Copy files from source to destination recursively.
@@ -140,12 +138,12 @@ pub async fn install_service(fq: &FqBuf) -> Result<(), Error> {
     Ok(())
 }
 
-pub fn service_exists(fq: &Fq<'_>) -> Result<bool, Error> {
-    match Path::new(fq.path().as_str()).try_exists() {
-        Ok(a) => Ok(a),
-        Err(e) => Err(Error::Io(e)),
-    }
-}
+// pub fn service_exists(fq: &Fq<'_>) -> Result<bool, Error> {
+//     match Path::new(fq.path().as_str()).try_exists() {
+//         Ok(a) => Ok(a),
+//         Err(e) => Err(Error::Io(e)),
+//     }
+// }
 
 pub fn list_dir_contents(added_path: &str) -> Result<Vec<String>, Error> {
     let paths = fs::read_dir(format!("{}/{}", ROVER_DIR, added_path))

@@ -49,7 +49,14 @@ impl Pipeline for Roverd {
         let enabled: Vec<PipelineGet200ResponseEnabledInner> =
             warn_generic!(state.get_pipeline().await, PipelineGetResponse);
 
-        let status = if !enabled.is_empty() {
+        let status = if !enabled.is_empty()
+            && enabled.iter().all(|service| {
+                service.process.as_ref().is_some_and(|process| {
+                    process.status == openapi::models::ProcessStatus::Running
+                })
+            }) {
+            PipelineStatus::Started
+        } else if !enabled.is_empty() {
             PipelineStatus::Startable
         } else {
             PipelineStatus::Empty

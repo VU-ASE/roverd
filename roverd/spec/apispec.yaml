@@ -851,7 +851,6 @@ components:
         - recoverable
         - unrecoverable
       description: "The status of the roverd process"
-
     ReferencedService:
       type: object
       properties:
