@@ -72,15 +72,23 @@ impl ProcessManager {
 
             let parsed_command = ParsedCommand::try_from(&p.command)?;
 
-            let mut command = Command::new(parsed_command.program);
+            let cwd = fqn_to_path(&p.fq);
+
+            let mut command = Command::new("sh");
+            info!(
+                "Running command: {:?} for service '{:?}'",
+                parsed_command, p.name
+            );
             command
-                .args(parsed_command.arguments)
+                .args(&["-c", "sleep 10"])
                 .env(ENV_KEY, p.injected_env.clone())
                 .stdout(stdout)
+                .current_dir(cwd)
                 .stderr(stderr);
             match command.spawn() {
                 Ok(child) => {
                     if let Some(id) = child.id() {
+                        info!("Spawned process: '{:?}' at {}", p.name, id);
                         p.last_pid = id;
                     } else {
                         warn!("Couldn't get process id from '{}'", p.name);
