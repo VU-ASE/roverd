@@ -17,7 +17,6 @@ use tokio::process::Command;
 use tokio::sync::{broadcast, RwLock};
 use tracing::{error, warn};
 
-use crate::command::ParsedCommand;
 use crate::error::Error;
 use crate::util::*;
 use crate::{constants::*, time_now};
@@ -229,15 +228,12 @@ impl State {
             .commands
             .build
             .ok_or_else(|| Error::BuildCommandMissing)?;
-        let build_command = ParsedCommand::try_from(build_string)?;
         let log_file = create_log_file(&PathBuf::from(fq.build_log_file()))?;
         let stdout = Stdio::from(log_file.try_clone()?);
         let stderr = Stdio::from(log_file);
-        let program = &build_command.program;
-        let arguments = &build_command.arguments;
 
-        match Command::new(program)
-            .args(arguments)
+        match Command::new("sh")
+            .args(&["-c", build_string.as_str()])
             .stdout(stdout)
             .stderr(stderr)
             .current_dir(fq.dir())
@@ -263,15 +259,12 @@ impl State {
                     Ok(())
                 }
                 Err(e) => {
-                    error!(
-                        "failed to wait on build command: {:?} {}",
-                        &build_command, e
-                    );
+                    error!("failed to wait on build command: {:?} {}", &build_string, e);
                     Err(Error::BuildCommandFailed)
                 }
             },
             Err(e) => {
-                error!("failed to spawn build command: {:?} {}", &build_command, e);
+                error!("failed to spawn build command: {:?} {}", &build_string, e);
                 Err(Error::BuildCommandFailed)
             }
         }
@@ -309,6 +302,7 @@ impl State {
     }
 
     // todo implement this
+    // note from elias: is there anything more to implement?
     pub fn get_proc(&self, fq: FqBuf) -> Result<&Process, Error> {
         for p in self.process_manager.processes.iter() {
             if p.fq == fq {
