@@ -340,7 +340,7 @@ impl State {
                         let uptime = 32;
                         let memory = 32;
 
-                        return Ok(PipelineGet200ResponseEnabledInner {
+                        Ok(PipelineGet200ResponseEnabledInner {
                             process: Some(PipelineGet200ResponseEnabledInnerProcess {
                                 cpu,
                                 pid: pid as i32,
@@ -352,14 +352,19 @@ impl State {
                                 author: fq.author,
                                 name: fq.name,
                                 version: fq.version,
-                                faults: Some(0),
+                                faults: Some(p.faults as i32),
                             },
-                        });
+                        })
                     }
-                    Err(e) => {
-                        warn!("could not find process for service: {:?}: {:?}", fq, e);
-                        return Err(Error::ProcessNotFound);
-                    }
+                    Err(e) => Ok(PipelineGet200ResponseEnabledInner {
+                        process: None,
+                        service: PipelineGet200ResponseEnabledInnerService {
+                            author: fq.author,
+                            name: fq.name,
+                            version: fq.version,
+                            faults: Some(0),
+                        },
+                    }),
                 }
 
                 // Ok::<_, Error>(PipelineGet200ResponseEnabledInner {
