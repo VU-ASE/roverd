@@ -146,9 +146,10 @@ impl State {
 
             let fq_buf = extract_fq_from_zip().await?;
 
-            if service_exists(&Fq::from(&fq_buf))? {
-                return Err(Error::ServiceAlreadyExists);
-            }
+            // syncing can overwrite the current contents
+            // if service_exists(&Fq::from(&fq_buf))? {
+            //     return Err(Error::ServiceAlreadyExists);
+            // }
 
             install_service(&fq_buf).await?;
 

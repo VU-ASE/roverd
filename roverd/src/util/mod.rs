@@ -178,6 +178,10 @@ pub fn update_config(config: &Configuration) -> Result<(), Error> {
     Ok(())
 }
 
+pub fn fqn_to_path(fq: &FqBuf) -> String {
+    format!("{}/{}/{}/{}", ROVER_DIR, fq.author, fq.name, fq.version)
+}
+
 pub fn create_log_file(log_path: &PathBuf) -> Result<File, Error> {
     let path = std::path::Path::new(log_path);
     if let Some(parent_dir) = path.parent() {

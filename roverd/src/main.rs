@@ -84,6 +84,7 @@ async fn auth(State(state): State<Roverd>, req: Request, next: Next) -> Result<R
         let basic_auth: Vec<&str> = auth_header.split(' ').collect();
 
         if basic_auth.len() != 2 || basic_auth[0] != "Basic" {
+            warn!("request is missing basic auth header");
             return Err(Http(StatusCode::BAD_REQUEST));
         }
 
