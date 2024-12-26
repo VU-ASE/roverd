@@ -85,7 +85,7 @@ impl Pipeline for Roverd {
         _cookies: CookieJar,
         body: Vec<PipelinePostRequestInner>,
     ) -> Result<PipelinePostResponse, String> {
-        let state = self.state.write().await;
+        let mut state = self.state.write().await;
 
         let _ = match state.set_pipeline(body).await {
             Ok(a) => a,

@@ -49,6 +49,7 @@ impl Roverd {
                 process_manager: ProcessManager {
                     processes: vec![],
                     spawned: vec![],
+                    status: PipelineStatus::Empty,
                     shutdown_tx: broadcast::channel::<()>(1).0,
                 },
                 built_services: HashMap::new(),
@@ -271,9 +272,14 @@ impl State {
     }
 
     pub async fn set_pipeline(
-        &self,
+        &mut self,
         incoming_pipeline: Vec<PipelinePostRequestInner>,
     ) -> Result<(), Error> {
+        if incoming_pipeline.is_empty() {
+            self.process_manager.status = PipelineStatus::Empty;
+            return Err(Error::PipelineIsEmpty)
+        }
+
         let services = FqBufVec::from(incoming_pipeline).0;
 
         let mut valid_services = vec![];
@@ -297,6 +303,8 @@ impl State {
         }
 
         update_config(&config)?;
+
+        self.process_manager.status = PipelineStatus::Startable;
 
         Ok(())
     }
@@ -327,7 +335,7 @@ impl State {
                 let proc = self.get_proc(fq.clone());
                 match proc {
                     Ok(p) => {
-                        let status = p.state;
+                        let status = p.status;
                         let cpu = 32;
                         let pid = p.last_pid;
                         let uptime = 32;
@@ -390,7 +398,7 @@ impl State {
                 last_pid: 0,
                 last_exit_code: Some(0),
                 name: service.0.name.clone(),
-                state: ProcessStatus::Stopped,
+                status: ProcessStatus::Stopped,
                 log_file: PathBuf::from(fq.log_file()),
                 injected_env,
                 faults: 0,

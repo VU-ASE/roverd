@@ -41,6 +41,7 @@ pub enum Error {
     // Since pipeline is *always* in a valid state, the only 
     // error case is a warning in which it is empty, but valid.
     PipelineIsEmpty,
+    PipelineAlreadyStarted,
 
     // TODO: remove me for prod!
     Unimplemented,

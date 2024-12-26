@@ -40,7 +40,7 @@ pub struct Process {
     pub name: String,
     pub command: String,
     pub log_file: PathBuf,
-    pub state: openapi::models::ProcessStatus,
+    pub status: openapi::models::ProcessStatus,
     pub injected_env: String,
     pub faults: u32,
 }
@@ -51,7 +51,11 @@ pub struct ProcessManager {
     /// runs this vec remains unchanged.
     pub processes: Vec<Process>,
 
+    /// The "runtime" view of all processes, this contains handles to the spawned children.
     pub spawned: Vec<SpawnedProcess>,
+
+    /// Overall status of the pipeline.
+    pub status: PipelineStatus,
 
     /// Broadcast channel to send shutdown command for termination.
     pub shutdown_tx: Sender<()>,
@@ -65,13 +69,19 @@ impl ProcessManager {
             unsafe {
                 libc::kill(p.last_pid as i32, libc::SIGKILL);
             }
-            p.state = ProcessStatus::Killed
+            p.status = ProcessStatus::Killed
         }
 
         self.spawned.clear();
     }
 
+    /// The main starting procedure of all processes.
     pub async fn start(&mut self) -> Result<(), Error> {
+        if self.status == PipelineStatus::Started {
+            return Err(Error::PipelineAlreadyStarted)
+        }
+
+
         self.spawned.clear();
 
         for p in &mut self.processes {
@@ -95,7 +105,7 @@ impl ProcessManager {
                 .stderr(stderr);
             match command.spawn() {
                 Ok(child) => {
-                    p.state = ProcessStatus::Running;
+                    p.status = ProcessStatus::Running;
                     if let Some(id) = child.id() {
                         info!("spawned process: {:?} at {}", p.name, id);
                         p.last_pid = id;
