@@ -66,9 +66,9 @@ impl Pipeline for Roverd {
             PipelineGetResponse::Status200_PipelineStatusAndAnArrayOfProcesses(
                 PipelineGet200Response {
                     status,
-                    last_start: None,
-                    last_stop: None,
-                    last_restart: None,
+                    last_start: None, // todo
+                    last_stop: None, // todo
+                    last_restart: None, // todo
                     enabled,
                 },
             ),

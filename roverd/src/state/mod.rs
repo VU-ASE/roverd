@@ -315,7 +315,6 @@ impl State {
     pub async fn get_pipeline(&mut self) -> Result<Vec<PipelineGet200ResponseEnabledInner>, Error> {
         // todo: a pipeline can only be valid, meaning that a pipeline enabled on disk is
         // always valid. if the pipeline from the rover.yaml file is not valid, clear it.
-        // let conf = self.get_valid_pipeline().await?;
         let conf = self.get_config().await?;
 
         let responses = conf
@@ -328,7 +327,7 @@ impl State {
                 let proc = self.get_proc(fq.clone());
                 match proc {
                     Ok(p) => {
-                        let status = p.state.clone();
+                        let status = p.state;
                         let cpu = 32;
                         let pid = p.last_pid;
                         let uptime = 32;
@@ -350,7 +349,7 @@ impl State {
                             },
                         })
                     }
-                    Err(e) => Ok(PipelineGet200ResponseEnabledInner {
+                    Err(_) => Ok(PipelineGet200ResponseEnabledInner {
                         process: None,
                         service: PipelineGet200ResponseEnabledInnerService {
                             author: fq.author,
@@ -360,22 +359,6 @@ impl State {
                         },
                     }),
                 }
-
-                // Ok::<_, Error>(PipelineGet200ResponseEnabledInner {
-                //     process: Some(PipelineGet200ResponseEnabledInnerProcess {
-                //         cpu: 69,
-                //         pid: 69,
-                //         uptime: 69,
-                //         memory: 69,
-                //         status: ProcessStatus::Terminated,
-                //     }),
-                //     service: PipelineGet200ResponseEnabledInnerService {
-                //         author: fq.author,
-                //         name: fq.name,
-                //         version: fq.version,
-                //         faults: None,
-                //     },
-                // })
             })
             .collect::<Result<Vec<PipelineGet200ResponseEnabledInner>, Error>>()?;
 

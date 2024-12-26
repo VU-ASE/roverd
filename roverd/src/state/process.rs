@@ -17,12 +17,15 @@ use tokio::{
     time,
 };
 
+use openapi::models::*;
+
 use crate::constants::*;
 use crate::error::Error;
 use crate::service::FqBuf;
 
 #[derive(Debug, Clone)]
 pub struct SpawnedProcess {
+    pub fq: FqBuf,
     pub name: String,
     pub child: Arc<Mutex<Child>>,
 }
@@ -48,7 +51,6 @@ pub struct ProcessManager {
     /// runs this vec remains unchanged.
     pub processes: Vec<Process>,
 
-    /// The strictly "running" processes, can be thought of as spawned children.
     pub spawned: Vec<SpawnedProcess>,
 
     /// Broadcast channel to send shutdown command for termination.
@@ -56,6 +58,19 @@ pub struct ProcessManager {
 }
 
 impl ProcessManager {
+    /// If one process fails during the beginning of the starting procedure, we need to
+    /// kill all started children manually, set their states and clear the spawned vec.
+    fn cancel_start(&mut self) {
+        for p in &mut self.processes {
+            unsafe {
+                libc::kill(p.last_pid as i32, libc::SIGKILL);
+            }
+            p.state = ProcessStatus::Killed
+        }
+
+        self.spawned.clear();
+    }
+
     pub async fn start(&mut self) -> Result<(), Error> {
         self.spawned.clear();
 
@@ -70,44 +85,45 @@ impl ProcessManager {
             let stdout = Stdio::from(log_file.try_clone()?);
             let stderr = Stdio::from(log_file);
 
-            // let parsed_command = ParsedCommand::try_from(&p.command)?;
-
-            let cwd = fqn_to_path(&p.fq);
-
             let mut command = Command::new("sh");
             info!("running command: {:?} for service {:?}", p.command, p.name);
             command
                 .args(&["-c", p.command.as_str()])
                 .env(ENV_KEY, p.injected_env.clone())
                 .stdout(stdout)
-                .current_dir(cwd)
+                .current_dir(p.fq.dir())
                 .stderr(stderr);
             match command.spawn() {
                 Ok(child) => {
-                    p.state = openapi::models::ProcessStatus::Running;
+                    p.state = ProcessStatus::Running;
                     if let Some(id) = child.id() {
                         info!("spawned process: {:?} at {}", p.name, id);
                         p.last_pid = id;
                     } else {
-                        warn!("couldn't get process id from {}", p.name);
-                        self.shutdown_tx.send(())?;
+                        warn!("process: {} exited immediately", p.name);
+                        p.faults += 1;
+                        p.last_exit_code = Some(1);
+                        self.cancel_start();
                         break;
                     }
                     self.spawned.push(SpawnedProcess {
+                        fq: p.fq.clone(),
                         name: p.name.clone(),
                         child: Arc::from(Mutex::from(child)),
                     });
                 }
                 Err(e) => {
-                    p.state = openapi::models::ProcessStatus::Stopped;
-                    p.faults += 1;
-                    let _ = self.shutdown_tx.send(());
                     let err_msg = format!("{}", e);
                     warn!("failed to spawn process '{}': {}", p.name, &err_msg);
+                    p.faults += 1;
+                    p.last_exit_code = Some(1);
+                    self.cancel_start();
                     return Err(Error::FailedToSpawnProcess(err_msg));
                 }
             }
         }
+
+
 
         for proc in self.spawned.clone() {
             let mut shutdown_rx = self.shutdown_tx.subscribe();
@@ -115,15 +131,13 @@ impl ProcessManager {
 
             tokio::spawn(async move {
                 let mut child = proc.child.lock().await;
-
-                // todo test this make sure the loop doesn't need to be here
                 select! {
                     // Wait for process completion
                     result_status = child.wait() => {
                         match result_status {
                             Ok(exit_status) => {
                                 info!("child {} exited with status {}", proc.name, exit_status);
-
+                                // let a = self.processes.get(0);
                                 // Todo separate process manager's data structures into concurrent
                                 // data structures, then update the last_exit_code:
 
