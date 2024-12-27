@@ -503,7 +503,7 @@ paths:
           example: "1.0.0"
       responses:
         "200":
-          description: "The service configuration"
+          description: "A full description of the service at this version, with inputs, outputs and configuration"
           content:
             application/json:
               schema:
@@ -511,6 +511,7 @@ paths:
                 required:
                   - "inputs"
                   - "outputs"
+                  - "configuration"
                 properties:
                   built_at:
                     type: integer
@@ -547,6 +548,42 @@ paths:
                     items:
                       type: string
                     example: ["image"]
+                  configuration:
+                    type: array
+                    description: "All configuration values of this service version and their tunability"
+                    items:
+                      type: object
+                      required:
+                        - "name"
+                        - "type"
+                        - "value"
+                        - "tunable"
+                      properties:
+                        name:
+                          type: string
+                          description: "The name of the configuration value"
+                        type:
+                          type: enum
+                          enum:
+                            - string
+                            - number
+                          description: "The type of the configuration value"
+                        value:
+                          oneOf:
+                            - type: string
+                            - type: number
+                          description: "The value of the configuration"
+                        tunable:
+                          type: boolean
+                          description: "Whether this configuration value is tunable"
+                    example: [
+                      {
+                        "name": "threshold",
+                        "type": "number",
+                        "value": 0.5,
+                        "tunable": true,
+                      },
+                    ]
         "400":
           $ref: "#/components/responses/Error"
         "404":
