@@ -13,8 +13,8 @@ use crate::{service::FqBuf, state::Roverd, warn_generic, Error};
 
 #[async_trait]
 impl Pipeline for Roverd {
-    /// Retrieve logs for any service. Logs from running or previously run services can be viewed and will be kept until rover reboot..
-    ///
+    /// Retrieve logs for any service. Logs from running or previously run services can be
+    /// viewed and will be kept until rover reboot..
     /// LogsAuthorNameVersionGet - GET /logs/{author}/{name}/{version}
     async fn logs_author_name_version_get(
         &self,
@@ -24,12 +24,11 @@ impl Pipeline for Roverd {
         path_params: LogsAuthorNameVersionGetPathParams,
         query_params: LogsAuthorNameVersionGetQueryParams,
     ) -> Result<LogsAuthorNameVersionGetResponse, String> {
-        let state = self.state.write().await;
         let fq = FqBuf::from(&path_params);
         let lines = query_params.lines.unwrap_or(DEFAULT_LOG_LINES) as usize;
 
         let logs = warn_generic!(
-            state.get_service_logs(fq, lines).await,
+            self.state.get_service_logs(fq, lines).await,
             LogsAuthorNameVersionGetResponse
         );
 
@@ -45,29 +44,15 @@ impl Pipeline for Roverd {
         _host: Host,
         _cookies: CookieJar,
     ) -> Result<PipelineGetResponse, String> {
-        let mut state = self.state.write().await;
         let enabled: Vec<PipelineGet200ResponseEnabledInner> =
-            warn_generic!(state.get_pipeline().await, PipelineGetResponse);
-
-        let status = if !enabled.is_empty()
-            && enabled.iter().all(|service| {
-                service.process.as_ref().is_some_and(|process| {
-                    process.status == openapi::models::ProcessStatus::Running
-                })
-            }) {
-            PipelineStatus::Started
-        } else if !enabled.is_empty() {
-            PipelineStatus::Startable
-        } else {
-            PipelineStatus::Empty
-        };
-
+            warn_generic!(self.state.get_pipeline().await, PipelineGetResponse);
+        let status = self.state.process_manager.status.read().await;
         Ok(
             PipelineGetResponse::Status200_PipelineStatusAndAnArrayOfProcesses(
                 PipelineGet200Response {
-                    status,
-                    last_start: None, // todo
-                    last_stop: None, // todo
+                    status: *status,
+                    last_start: None,   // todo
+                    last_stop: None,    // todo
                     last_restart: None, // todo
                     enabled,
                 },
@@ -75,8 +60,8 @@ impl Pipeline for Roverd {
         )
     }
 
-    /// Set the services that are enabled in this pipeline, by specifying the fully qualified services.
-    ///
+    /// Set the services that are enabled in this pipeline,
+    /// by specifying the fully qualified services.
     /// PipelinePost - POST /pipeline
     async fn pipeline_post(
         &self,
@@ -85,9 +70,7 @@ impl Pipeline for Roverd {
         _cookies: CookieJar,
         body: Vec<PipelinePostRequestInner>,
     ) -> Result<PipelinePostResponse, String> {
-        let mut state = self.state.write().await;
-
-        let _ = match state.set_pipeline(body).await {
+        let _ = match self.state.set_pipeline(body).await {
             Ok(a) => a,
             Err(e) => match e {
                 Error::Validation(val_errors) => {
@@ -202,9 +185,7 @@ impl Pipeline for Roverd {
         _host: Host,
         _cookies: CookieJar,
     ) -> Result<PipelineStartPostResponse, String> {
-        let mut state = self.state.write().await;
-
-        let _ = match state.start().await {
+        let _ = match self.state.start().await {
             Ok(data) => data,
             Err(e) => {
                 warn!("{:#?}", e);
@@ -228,9 +209,7 @@ impl Pipeline for Roverd {
         _host: Host,
         _cookies: CookieJar,
     ) -> Result<PipelineStopPostResponse, String> {
-        let mut state = self.state.write().await;
-
-        let _ = match state.stop().await {
+        let _ = match self.state.stop().await {
             Ok(data) => data,
             Err(e) => {
                 warn!("{:#?}", e);

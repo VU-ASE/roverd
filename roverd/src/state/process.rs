@@ -6,14 +6,14 @@ use std::io::Write;
 
 use tracing::{error, info, warn};
 
-use crate::util::*;
+use crate::{command::ParsedCommand, util::*};
 use chrono;
 use std::sync::Arc;
 
 use tokio::{
     process::{Child, Command},
     select,
-    sync::{broadcast::Sender, Mutex},
+    sync::{broadcast::Sender, Mutex, RwLock},
     time,
 };
 
@@ -22,6 +22,8 @@ use openapi::models::*;
 use crate::constants::*;
 use crate::error::Error;
 use crate::service::FqBuf;
+
+use super::get_proc;
 
 #[derive(Debug, Clone)]
 pub struct SpawnedProcess {
@@ -43,48 +45,42 @@ pub struct Process {
     pub status: openapi::models::ProcessStatus,
     pub injected_env: String,
     pub faults: u32,
+    // pub child: Option<Arc<Mutex<Child>>>
 }
 
 #[derive(Debug, Clone)]
 pub struct ProcessManager {
     /// Contains the "application view" of process after validation. In-between start / stop
     /// runs this vec remains unchanged.
-    pub processes: Vec<Process>,
+    pub processes: Arc<RwLock<Vec<Process>>>,
 
     /// The "runtime" view of all processes, this contains handles to the spawned children.
-    pub spawned: Vec<SpawnedProcess>,
+    pub spawned: Arc<RwLock<Vec<SpawnedProcess>>>,
 
     /// Overall status of the pipeline.
-    pub status: PipelineStatus,
+    pub status: Arc<RwLock<PipelineStatus>>,
 
     /// Broadcast channel to send shutdown command for termination.
     pub shutdown_tx: Sender<()>,
 }
 
 impl ProcessManager {
-    /// If one process fails during the beginning of the starting procedure, we need to
-    /// kill all started children manually, set their states and clear the spawned vec.
-    fn cancel_start(&mut self) {
-        for p in &mut self.processes {
-            unsafe {
-                libc::kill(p.last_pid as i32, libc::SIGKILL);
-            }
-            p.status = ProcessStatus::Killed
-        }
-
-        self.spawned.clear();
-    }
-
     /// The main starting procedure of all processes.
-    pub async fn start(&mut self) -> Result<(), Error> {
-        if self.status == PipelineStatus::Started {
-            return Err(Error::PipelineAlreadyStarted)
+    pub async fn start(&self) -> Result<(), Error> {
+        let mut status = self.status.write().await;
+
+        if *status == PipelineStatus::Started {
+            return Err(Error::PipelineAlreadyStarted);
+        } else if *status == PipelineStatus::Empty {
+            return Err(Error::PipelineIsEmpty);
         }
 
+        let mut spawned_procs = self.spawned.write().await;
+        let mut procs = self.processes.write().await;
 
-        self.spawned.clear();
+        spawned_procs.clear();
 
-        for p in &mut self.processes {
+        for p in &mut *procs {
             let mut log_file = create_log_file(&p.log_file)?;
 
             let cur_time = chrono::Local::now().format("%H:%M:%S");
@@ -95,13 +91,14 @@ impl ProcessManager {
             let stdout = Stdio::from(log_file.try_clone()?);
             let stderr = Stdio::from(log_file);
 
-            let mut command = Command::new("sh");
-            info!("running command: {:?} for service {:?}", p.command, p.name);
+            let parsed_command = ParsedCommand::try_from(&p.command)?;
+
+            let mut command = Command::new(parsed_command.program);
             command
-                .args(&["-c", p.command.as_str()])
+                .args(parsed_command.arguments)
                 .env(ENV_KEY, p.injected_env.clone())
-                .stdout(stdout)
                 .current_dir(p.fq.dir())
+                .stdout(stdout)
                 .stderr(stderr);
             match command.spawn() {
                 Ok(child) => {
@@ -110,97 +107,109 @@ impl ProcessManager {
                         info!("spawned process: {:?} at {}", p.name, id);
                         p.last_pid = id;
                     } else {
-                        warn!("process: {} exited immediately", p.name);
+                        let err_msg = format!("process: {} exited immediately", p.name);
+                        warn!(err_msg);
                         p.faults += 1;
                         p.last_exit_code = Some(1);
-                        self.cancel_start();
-                        break;
+                        cancel_start(&mut *status, &mut *procs, &mut *spawned_procs);
+                        return Err(Error::FailedToSpawnProcess(err_msg));
                     }
-                    self.spawned.push(SpawnedProcess {
+                    spawned_procs.push(SpawnedProcess {
                         fq: p.fq.clone(),
                         name: p.name.clone(),
                         child: Arc::from(Mutex::from(child)),
                     });
+
+                    // p.child = Some(Arc::from(Mutex::from(child)));
+                    // let mut shutdown_rx = self.shutdown_tx.subscribe();
+                    // let process_shutdown_tx = self.shutdown_tx.clone();
                 }
                 Err(e) => {
                     let err_msg = format!("{}", e);
                     warn!("failed to spawn process '{}': {}", p.name, &err_msg);
                     p.faults += 1;
                     p.last_exit_code = Some(1);
-                    self.cancel_start();
+                    cancel_start(&mut *status, &mut *procs, &mut *spawned_procs);
                     return Err(Error::FailedToSpawnProcess(err_msg));
                 }
             }
         }
 
+        *status = PipelineStatus::Started;
 
-
-        for proc in self.spawned.clone() {
+        for spawned in spawned_procs.clone() {
             let mut shutdown_rx = self.shutdown_tx.subscribe();
             let process_shutdown_tx = self.shutdown_tx.clone();
 
+            let procs_clone = Arc::clone(&self.processes);
+            let status_clone = Arc::clone(&self.status);
+
             tokio::spawn(async move {
-                let mut child = proc.child.lock().await;
+                let mut child = spawned.child.lock().await;
                 select! {
                     // Wait for process completion
                     result_status = child.wait() => {
                         match result_status {
                             Ok(exit_status) => {
-                                info!("child {} exited with status {}", proc.name, exit_status);
-                                // let a = self.processes.get(0);
-                                // Todo separate process manager's data structures into concurrent
-                                // data structures, then update the last_exit_code:
+                                // Update the pipeline's status.
+                                let mut status = status_clone.write().await;
+                                *status = PipelineStatus::Startable;
 
-                                // for saved_process in self.processes.iter_mut() {
-                                //     if saved_process.name == proc.name {
-                                //         saved_process.last_exit_code = exit_status.code();
-                                //     }
-                                // }
+                                info!("child {} exited with status {}", spawned.name, exit_status);
+                                let exit_code = exit_status.code();
+                                let mut procs_guard = procs_clone.write().await;
 
-                                // todo: add exit status to process
-                                // todo: set process state to stopped
-                                // todo: if exit status != 0, increment faults
-                                // todo: on exit, stop all other processes as well
-
+                                if let Some(proc) = procs_guard.iter_mut().find(|p| p.fq == spawned.fq) {
+                                    proc.status = ProcessStatus::Stopped;
+                                    proc.last_exit_code = exit_code;
+                                    if !exit_status.success() {
+                                        proc.faults += 1
+                                    }
+                                }
                                 process_shutdown_tx.send(()).ok();
                             }
                             Err(e) => {
-                                error!("error waiting for process {}: {}", proc.name, e);
+                                error!("error waiting for process {}: {}", spawned.name, e);
                                 process_shutdown_tx.send(()).ok();
                             }
                         }
                     }
-                    // Wait for shutdown signal
                     _ = shutdown_rx.recv() => {
-                        if let Some(id) = child.id() {
-                            // todo: add exit status to process
-                            // todo: set process state to terminated
+                        // We have been sent a terminate signal, so end the process
 
-                            info!("terminating {} pid ({})", proc.name, id);
+                        // Update the pipeline's status.
+                        let mut status = status_clone.write().await;
+                        *status = PipelineStatus::Startable;
+
+                        let mut procs_guard = procs_clone.write().await;
+                        if let Some(proc) = procs_guard.iter_mut().find(|p| p.fq == spawned.fq) {
+                            proc.status = ProcessStatus::Terminated;
+                            proc.last_exit_code = None;
+                        }
+
+                        if let Some(id) = child.id() {
+                            info!("terminating {} pid ({})", spawned.name, id);
                             unsafe {
                                 libc::kill(id as i32, libc::SIGTERM);
                             }
                         }
 
-                        // Wait for 1 second before sending KILL signal
-                        time::sleep(Duration::from_secs(1)).await;
+                        // Wait a short while before checking if child still exists
+                        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
 
+                        // If the child has not terminated, kill it.
                         match child.try_wait() {
                             Ok(None) => {
-                                // todo: add exit status to process
-                                // todo: set process state to killed
-
-                                info!("child {} did not terminate", proc.name);
-                                warn!("killing {}", proc.name);
+                                info!("process {} did not terminate, killing", spawned.name);
                                 if let Err(e) = child.kill().await {
-                                    error!("error killing process {:?}: {:?}", proc.name, e);
+                                    error!("error killing process {:?}: {:?}", spawned.name, e);
                                 }
                             },
                             Ok(Some(_)) => {},
                             Err(e) => {
                                 error!("Error: {:?}", e);
                                 if let Err(e) = child.kill().await {
-                                    error!("error killing process {:?}: {:?}", proc.name, e);
+                                    error!("error killing process {:?}: {:?}", spawned.name, e);
                                 }
                             }
                         }
@@ -211,10 +220,22 @@ impl ProcessManager {
 
         Ok(())
     }
+}
 
-    pub async fn stop(&mut self) -> Result<(), Error> {
-        self.shutdown_tx.send(()).ok();
-        self.spawned.clear();
-        Ok(())
+/// If one process fails during the beginning of the starting procedure, we need to
+/// kill all started children manually, set their states and clear the spawned vec.
+fn cancel_start(
+    status: &mut PipelineStatus,
+    processes: &mut Vec<Process>,
+    spawned_procs: &mut Vec<SpawnedProcess>,
+) {
+    *status = PipelineStatus::Startable;
+    for p in &mut *processes {
+        unsafe {
+            libc::kill(p.last_pid as i32, libc::SIGKILL);
+        }
+        p.status = ProcessStatus::Killed
     }
+
+    spawned_procs.clear();
 }
