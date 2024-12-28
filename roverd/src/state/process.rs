@@ -41,7 +41,7 @@ pub struct Process {
     pub status: openapi::models::ProcessStatus,
     pub injected_env: String,
     pub faults: u32,
-    // pub child: Option<Arc<Mutex<Child>>>
+    pub start_time: i64,
 }
 
 #[derive(Debug)]

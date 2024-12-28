@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{service::FqBuf, DATA_ADDRESS};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 struct Stream {
     name: String,
     address: String,
@@ -50,15 +50,23 @@ pub struct BootSpec {
 pub struct BootSpecs(pub HashMap<FqBuf, BootSpec>);
 
 impl BootSpecs {
-    pub fn new(services: &Vec<ValidatedService>) -> Self {
+    pub fn new(mut services: Vec<ValidatedService>) -> Self {
+        // Transceiver outputs to START_PORT
         let mut tuning = BootSpecTuning {
             enabled: false,
             address: format!("{}:{}", DATA_ADDRESS, START_PORT),
         };
 
-        if services.iter().any(|s| s.0.name == "transceiver") {
-            tuning.enabled = true;
-        }
+        let transeiver_service = (0..services.len()).find_map(|i| {
+            if services[i].0.name == "transceiver" {
+                tuning.enabled = true;
+                Some(services.swap_remove(i))
+            } else {
+                None
+            }
+        });
+
+        let mut transceiver_inputs = vec![];
 
         let mut start_port = START_PORT + 1;
 
@@ -68,21 +76,21 @@ impl BootSpecs {
         // and get the assigned address.
         let mut mappings: HashMap<(String, String), String> = HashMap::new();
 
-        for validated in services {
+        for validated in &services {
             let s = &validated.0;
             // For each service assign an address to all of its outputs and
             // save the resulting address in the mapping.
             for out_stream in &s.outputs {
-                start_port += 1;
                 let address = format!("{}:{}", DATA_ADDRESS, start_port);
                 let stream_name = out_stream.clone();
                 mappings.insert((s.name.clone(), stream_name.clone()), address.clone());
+                start_port += 1;
             }
         }
 
         // Now that we know the mappings we can iterate over all service again
         // and set each output and input field
-        for validated in services {
+        for validated in &services {
             let s = &validated.0;
             let service_name = &s.name;
             let fq = FqBuf::from(validated);
@@ -116,10 +124,18 @@ impl BootSpecs {
                     }
                 }
 
+                // If we have a transceiver, it gets all inputs
+                if let Some(_) = transeiver_service {
+                    transceiver_inputs.push(Input {
+                        service: service_name.clone(),
+                        streams: streams.clone(),
+                    });
+                }
+
                 inputs.push(Input {
                     service: service_name.clone(),
                     streams,
-                })
+                });
             }
 
             let b = BootSpec {
@@ -128,6 +144,23 @@ impl BootSpecs {
                 inputs,
                 outputs,
                 configuration: s.configuration.clone(),
+                tuning: tuning.clone(),
+            };
+
+            result.insert(fq, b);
+        }
+
+        if let Some(s) = transeiver_service {
+            let fq = FqBuf::from(s.clone());
+            let b = BootSpec {
+                name: s.0.name.clone(),
+                version: s.0.version.clone(),
+                inputs: transceiver_inputs,
+                outputs: vec![Stream {
+                    name: s.0.name.clone(),
+                    address: tuning.address.clone(),
+                }],
+                configuration: s.0.configuration.clone(),
                 tuning: tuning.clone(),
             };
 

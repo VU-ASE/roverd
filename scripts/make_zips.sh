@@ -19,6 +19,10 @@ for dir in *; do
     cd controller
     zip -r ../controller.zip bin/controller.py service.yaml
     cd ..
+    
+    cd transceiver
+    zip -r ../transceiver.zip bin/transceiver service.yaml
+    cd ..
 
     cd ..
 done
