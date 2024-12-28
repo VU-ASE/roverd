@@ -51,7 +51,7 @@ impl Roverd {
                     processes: Arc::new(RwLock::new(vec![])),
                     spawned: Arc::new(RwLock::new(vec![])),
                     stats: Arc::new(RwLock::new(PipelineStats {
-                        status: PipelineStatus::Empty,
+                        status: PipelineStatus::Startable,
                         last_start: None,
                         last_stop: None,
                         last_restart: None,
@@ -336,12 +336,11 @@ impl State {
                         let pid = pid as i32;
                         let mut memory = 0;
                         let mut cpu = 0;
-                        let mut uptime = 0;
+                        let uptime = (time_now!() as i64) - p.start_time;
                         // todo: test this with a substantial payload on the debix
                         if let Some(proc_info) = sysinfo.process(Pid::from(pid as usize)) {
                             memory = (proc_info.memory() / 1000000_u64) as i32;
                             cpu = (proc_info.cpu_usage() * 100.0) as i32;
-                            uptime = (proc_info.run_time() * 1000_u64) as i64;
                         }
                         PipelineGet200ResponseEnabledInner {
                             process: Some(PipelineGet200ResponseEnabledInnerProcess {
@@ -396,7 +395,7 @@ impl State {
         // clear the existing processes and then add them again
         let mut processes = self.process_manager.processes.write().await;
 
-        let bootspecs = bootspec::BootSpecs::new(runnable.services()).0;
+        let bootspecs = bootspec::BootSpecs::new(runnable.services().clone()).0;
 
         let mut fqs = vec![];
         let mut service_data = vec![];
@@ -425,6 +424,7 @@ impl State {
                 // that the service.yaml has changed, so update only those fields
                 proc.command = service.0.commands.run.clone();
                 proc.injected_env = injected_env.clone();
+                proc.start_time = time_now!() as i64;
             } else {
                 // The runnable service has not previously been added, so add a new one
                 processes.push(Process {
@@ -437,6 +437,7 @@ impl State {
                     log_file: PathBuf::from(fq.log_file()),
                     injected_env: injected_env.clone(),
                     faults: 0,
+                    start_time: time_now!() as i64,
                 })
             }
         }
