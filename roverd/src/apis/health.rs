@@ -11,7 +11,7 @@ use axum_extra::extract::CookieJar;
 use openapi::models::GenericError;
 use tracing::warn;
 
-use sysinfo::System;
+use sysinfo::{CpuRefreshKind, MemoryRefreshKind, ProcessRefreshKind, RefreshKind, System};
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -47,23 +47,27 @@ impl Health for Roverd {
             DaemonStatus::Operational => None,
         };
 
-        let mut sys = System::new_all();
-        sys.refresh_cpu_usage();
-        sys.refresh_memory();
+        let mut sysinfo = self.state.sysinfo.write().await;
+
+        sysinfo.refresh_specifics(
+            RefreshKind::nothing()
+                .with_cpu(CpuRefreshKind::everything())
+                .with_memory(MemoryRefreshKind::everything()),
+        );
 
         let mut cpus = vec![];
 
-        for (i, c) in sys.cpus().iter().enumerate() {
+        for (i, c) in sysinfo.cpus().iter().enumerate() {
             cpus.push(StatusGet200ResponseCpuInner {
                 core: i as i32,
                 total: 100,
-                used: (c.cpu_usage() * 100.0) as i32,
+                used: c.cpu_usage() as i32,
             });
         }
 
         let memory = StatusGet200ResponseMemory {
-            total: (sys.total_memory() / (1000_u64)) as i32,
-            used: (sys.used_memory() / (1000_u64)) as i32,
+            total: (sysinfo.total_memory() / (1000_u64)) as i32,
+            used: (sysinfo.used_memory() / (1000_u64)) as i32,
         };
 
         Ok(

@@ -38,7 +38,7 @@ pub enum Error {
     StringToFqConversion,
     FailedToSpawnProcess(String),
 
-    // Since pipeline is *always* in a valid state, the only 
+    // Since pipeline is *always* in a valid state, the only
     // error case is a warning in which it is empty, but valid.
     PipelineIsEmpty,
     PipelineAlreadyStarted,

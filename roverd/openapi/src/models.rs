@@ -1208,8 +1208,11 @@ pub struct PipelineGet200ResponseEnabledInnerService {
 
     /// The number of faults that have occurred (causing the pipeline to restart) since pipeline.last_start
     #[serde(rename = "faults")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub faults: Option<i32>,
+    pub faults: i32,
+
+    /// The most recent exit code returned by the process.
+    #[serde(rename = "exit")]
+    pub exit: i32,
 }
 
 impl PipelineGet200ResponseEnabledInnerService {
@@ -1218,12 +1221,15 @@ impl PipelineGet200ResponseEnabledInnerService {
         name: String,
         version: String,
         author: String,
+        faults: i32,
+        exit: i32,
     ) -> PipelineGet200ResponseEnabledInnerService {
         PipelineGet200ResponseEnabledInnerService {
             name,
             version,
             author,
-            faults: None,
+            faults,
+            exit,
         }
     }
 }
@@ -1240,9 +1246,10 @@ impl std::fmt::Display for PipelineGet200ResponseEnabledInnerService {
             Some(self.version.to_string()),
             Some("author".to_string()),
             Some(self.author.to_string()),
-            self.faults
-                .as_ref()
-                .map(|faults| ["faults".to_string(), faults.to_string()].join(",")),
+            Some("faults".to_string()),
+            Some(self.faults.to_string()),
+            Some("exit".to_string()),
+            Some(self.exit.to_string()),
         ];
 
         write!(
@@ -1268,6 +1275,7 @@ impl std::str::FromStr for PipelineGet200ResponseEnabledInnerService {
             pub version: Vec<String>,
             pub author: Vec<String>,
             pub faults: Vec<i32>,
+            pub exit: Vec<i32>,
         }
 
         let mut intermediate_rep = IntermediateRep::default();
@@ -1306,6 +1314,10 @@ impl std::str::FromStr for PipelineGet200ResponseEnabledInnerService {
                     "faults" => intermediate_rep.faults.push(
                         <i32 as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?,
                     ),
+                    #[allow(clippy::redundant_clone)]
+                    "exit" => intermediate_rep.exit.push(
+                        <i32 as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?,
+                    ),
                     _ => return std::result::Result::Err(
                         "Unexpected key while parsing PipelineGet200ResponseEnabledInnerService"
                             .to_string(),
@@ -1328,7 +1340,12 @@ impl std::str::FromStr for PipelineGet200ResponseEnabledInnerService {
             author: intermediate_rep.author.into_iter().next().ok_or_else(|| {
                 "author missing in PipelineGet200ResponseEnabledInnerService".to_string()
             })?,
-            faults: intermediate_rep.faults.into_iter().next(),
+            faults: intermediate_rep.faults.into_iter().next().ok_or_else(|| {
+                "faults missing in PipelineGet200ResponseEnabledInnerService".to_string()
+            })?,
+            exit: intermediate_rep.exit.into_iter().next().ok_or_else(|| {
+                "exit missing in PipelineGet200ResponseEnabledInnerService".to_string()
+            })?,
         })
     }
 }

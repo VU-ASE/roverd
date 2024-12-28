@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 use std::process::Stdio;
-use std::time::Duration;
 
 use std::io::Write;
 
@@ -14,7 +13,6 @@ use tokio::{
     process::{Child, Command},
     select,
     sync::{broadcast::Sender, Mutex, RwLock},
-    time,
 };
 
 use openapi::models::*;
@@ -22,8 +20,6 @@ use openapi::models::*;
 use crate::constants::*;
 use crate::error::Error;
 use crate::service::FqBuf;
-
-use super::get_proc;
 
 #[derive(Debug, Clone)]
 pub struct SpawnedProcess {
@@ -38,7 +34,7 @@ pub struct SpawnedProcess {
 pub struct Process {
     pub fq: FqBuf,
     pub last_pid: u32,
-    pub last_exit_code: Option<i32>,
+    pub last_exit_code: i32,
     pub name: String,
     pub command: String,
     pub log_file: PathBuf,
@@ -110,7 +106,7 @@ impl ProcessManager {
                         let err_msg = format!("process: {} exited immediately", p.name);
                         warn!(err_msg);
                         p.faults += 1;
-                        p.last_exit_code = Some(1);
+                        p.last_exit_code = 1;
                         cancel_start(&mut *status, &mut *procs, &mut *spawned_procs);
                         return Err(Error::FailedToSpawnProcess(err_msg));
                     }
@@ -119,16 +115,12 @@ impl ProcessManager {
                         name: p.name.clone(),
                         child: Arc::from(Mutex::from(child)),
                     });
-
-                    // p.child = Some(Arc::from(Mutex::from(child)));
-                    // let mut shutdown_rx = self.shutdown_tx.subscribe();
-                    // let process_shutdown_tx = self.shutdown_tx.clone();
                 }
                 Err(e) => {
                     let err_msg = format!("{}", e);
                     warn!("failed to spawn process '{}': {}", p.name, &err_msg);
                     p.faults += 1;
-                    p.last_exit_code = Some(1);
+                    p.last_exit_code = 1;
                     cancel_start(&mut *status, &mut *procs, &mut *spawned_procs);
                     return Err(Error::FailedToSpawnProcess(err_msg));
                 }
@@ -161,7 +153,9 @@ impl ProcessManager {
 
                                 if let Some(proc) = procs_guard.iter_mut().find(|p| p.fq == spawned.fq) {
                                     proc.status = ProcessStatus::Stopped;
-                                    proc.last_exit_code = exit_code;
+                                    if let Some(e) = exit_code {
+                                        proc.last_exit_code = e;
+                                    }
                                     if !exit_status.success() {
                                         proc.faults += 1
                                     }
@@ -184,7 +178,7 @@ impl ProcessManager {
                         let mut procs_guard = procs_clone.write().await;
                         if let Some(proc) = procs_guard.iter_mut().find(|p| p.fq == spawned.fq) {
                             proc.status = ProcessStatus::Terminated;
-                            proc.last_exit_code = None;
+                            proc.last_exit_code = 0;
                         }
 
                         if let Some(id) = child.id() {

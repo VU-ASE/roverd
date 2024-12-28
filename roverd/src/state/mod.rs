@@ -6,6 +6,7 @@ use rovervalidate::pipeline::interface::{Pipeline, RunnablePipeline};
 use rovervalidate::service::{Service, ValidatedService};
 use rovervalidate::validate::Validate;
 use service::{Fq, FqBuf, FqBufVec, FqVec};
+use std::arch::x86_64::CpuidResult;
 use std::collections::HashMap;
 use std::fs::{self, remove_dir_all, remove_file};
 use std::io::{BufRead, BufReader, Write};
@@ -13,6 +14,7 @@ use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
+use sysinfo::{CpuRefreshKind, MemoryRefreshKind, Pid, ProcessRefreshKind, RefreshKind, System};
 use tokio::process::Command;
 use tokio::sync::{broadcast, RwLock};
 use tracing::{error, warn};
@@ -53,6 +55,12 @@ impl Roverd {
                     shutdown_tx: broadcast::channel::<()>(1).0,
                 },
                 built_services: Arc::new(RwLock::new(HashMap::new())),
+                sysinfo: Arc::new(RwLock::new(System::new_with_specifics(
+                    RefreshKind::nothing()
+                        .with_processes(ProcessRefreshKind::everything())
+                        .with_cpu(CpuRefreshKind::everything())
+                        .with_memory(MemoryRefreshKind::everything()),
+                ))),
             },
         };
 
@@ -77,6 +85,9 @@ pub struct State {
 
     // Look up the last built time of a service on disk.
     pub built_services: Arc<RwLock<HashMap<FqBuf, i64>>>,
+
+    // System information initialized once
+    pub sysinfo: Arc<RwLock<System>>,
 }
 
 impl State {
@@ -295,55 +306,68 @@ impl State {
     }
 
     pub async fn get_pipeline(&self) -> Result<Vec<PipelineGet200ResponseEnabledInner>, Error> {
-        // todo: a pipeline can only be valid, meaning that a pipeline enabled on disk is
-        // always valid. if the pipeline from the rover.yaml file is not valid, clear it.
         let conf = get_config().await?;
 
         let processes = self.process_manager.processes.read().await;
 
-        let responses = conf
-            .enabled
-            .into_iter()
-            .map(|validated_service| {
-                let fq = FqBuf::try_from(validated_service)?;
+        let mut responses = vec![];
 
-                let proc = get_proc(fq.clone(), &*processes);
-                match proc {
-                    Ok(p) => {
-                        let status = p.status;
-                        let cpu = 32; // todo
-                        let pid = p.last_pid;
-                        let uptime = 32; // todo
-                        let memory = 32; // todo
+        for validated_service in conf.enabled.into_iter() {
+            let fq = FqBuf::try_from(validated_service)?;
 
-                        Ok(PipelineGet200ResponseEnabledInner {
-                            process: Some(PipelineGet200ResponseEnabledInnerProcess {
-                                cpu,
-                                pid: pid as i32,
-                                uptime,
-                                memory,
-                                status,
-                            }),
-                            service: PipelineGet200ResponseEnabledInnerService {
-                                author: fq.author,
-                                name: fq.name,
-                                version: fq.version,
-                                faults: Some(p.faults as i32),
-                            },
-                        })
+            let mut sysinfo = self.sysinfo.write().await;
+
+            sysinfo.refresh_specifics(
+                RefreshKind::nothing()
+                    .with_processes(ProcessRefreshKind::everything())
+                    .with_cpu(CpuRefreshKind::everything())
+                    .with_memory(MemoryRefreshKind::everything()),
+            );
+
+            let proc = get_proc(fq.clone(), &*processes);
+            responses.push(match proc {
+                Ok(p) => {
+                    let status = p.status;
+                    let pid = p.last_pid as i32;
+                    let mut memory = 0;
+                    let mut cpu = 0;
+                    let mut uptime = 0;
+                    // todo: test this with a substantial payload on the debix
+                    if let Some(proc_info) = sysinfo.process(Pid::from(p.last_pid as usize)) {
+                        memory = (proc_info.memory() / 1000000_u64) as i32;
+                        cpu = (proc_info.cpu_usage() * 100.0) as i32;
+                        uptime = (proc_info.run_time() * 1000_u64) as i64;
                     }
-                    Err(_) => Ok(PipelineGet200ResponseEnabledInner {
-                        process: None,
+
+                    PipelineGet200ResponseEnabledInner {
+                        process: Some(PipelineGet200ResponseEnabledInnerProcess {
+                            cpu,
+                            pid,
+                            uptime,
+                            memory,
+                            status,
+                        }),
                         service: PipelineGet200ResponseEnabledInnerService {
                             author: fq.author,
                             name: fq.name,
                             version: fq.version,
-                            faults: None,
+                            faults: p.faults as i32,
+                            exit: p.last_exit_code,
                         },
-                    }),
+                    }
                 }
-            })
-            .collect::<Result<Vec<PipelineGet200ResponseEnabledInner>, Error>>()?;
+                Err(_) => PipelineGet200ResponseEnabledInner {
+                    process: None,
+                    service: PipelineGet200ResponseEnabledInnerService {
+                        author: fq.author,
+                        name: fq.name,
+                        version: fq.version,
+                        faults: 0,
+                        exit: 0,
+                    },
+                },
+            });
+        }
 
         Ok(responses)
     }
@@ -355,32 +379,50 @@ impl State {
         // Assign the new processes state each time, so first
         // clear the existing processes and then add them again
         let mut processes = self.process_manager.processes.write().await;
-        processes.clear();
 
         let bootspecs = bootspec::BootSpecs::new(runnable.services()).0;
+
+        let mut fqs = vec![];
+        let mut service_data = vec![];
 
         for service in runnable.services() {
             // Create bootspecs with missing inputs, since the first step is to hand out
             // ports. After knowing the ports of all outputs, we can fill in the inputs.
             // Since we are valid, a given input will _always_ have an output.
-
             let fq = FqBuf::from(service);
-
             let bootspec = bootspecs.get(&fq);
             let injected_env = serde_json::to_string(&bootspec)?;
 
-            processes.push(Process {
-                fq: fq.clone(),
-                command: service.0.commands.run.clone(), // run the command in the service's working directory
-                last_pid: 0,
-                last_exit_code: Some(0),
-                name: service.0.name.clone(),
-                status: ProcessStatus::Stopped,
-                log_file: PathBuf::from(fq.log_file()),
-                injected_env,
-                faults: 0,
-                // child: None,
-            })
+            // Save the necessary information from each runnable service
+            fqs.push(fq);
+            service_data.push((service, injected_env));
+        }
+
+        // Most of the time, we will retain all processes, however when the pipeline changes
+        // we need to reflect those changes
+        processes.retain(|p| fqs.contains(&p.fq));
+        let fqs_and_services = fqs.iter().zip(service_data.iter());
+
+        for (fq, (service, injected_env)) in fqs_and_services {
+            if let Some(proc) = processes.iter_mut().find(|p| p.fq == *fq) {
+                // If the runnable service identified by its fq already exists, there's a chance
+                // that the service.yaml has changed, so update only those fields
+                proc.command = service.0.commands.run.clone();
+                proc.injected_env = injected_env.clone();
+            } else {
+                // The runnable service has not previously been added, so add a new one
+                processes.push(Process {
+                    fq: fq.clone(),
+                    command: service.0.commands.run.clone(),
+                    last_pid: 0,
+                    last_exit_code: 0,
+                    name: service.0.name.clone(),
+                    status: ProcessStatus::Stopped,
+                    log_file: PathBuf::from(fq.log_file()),
+                    injected_env: injected_env.clone(),
+                    faults: 0,
+                })
+            }
         }
 
         Ok(())
@@ -404,7 +446,6 @@ impl State {
 
         Ok(())
     }
-
 
     /// If the pipeline is started, it will be stopped.
     pub async fn stop(&self) -> Result<(), Error> {
@@ -466,7 +507,6 @@ pub async fn get_config() -> Result<Configuration, Error> {
         // If there is no existing config, create a new file and write
         // an empty config to it.
         let empty_config = Configuration { enabled: vec![] };
-
         update_config(&empty_config)?;
     }
 

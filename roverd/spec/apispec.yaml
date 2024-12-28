@@ -70,6 +70,8 @@ paths:
                             - "name"
                             - "version"
                             - "author"
+                            - "faults"
+                            - "exit"
                           properties:
                             name:
                               type: string
@@ -84,6 +86,10 @@ paths:
                               type: integer
                               description: "The number of faults that have occurred (causing the pipeline to restart) since pipeline.last_start"
                               example: 1
+                            exit:
+                              type: integer
+                              description: "The most recent exit code returned by the process."
+                              example: 1
                         process:
                           type: object
                           description: "The last process that was started for this service (instantiated from the service). This can be undefined if the pipeline was not started before."
@@ -93,7 +99,6 @@ paths:
                             - "uptime"
                             - "memory"
                             - "cpu"
-                            - "faults"
                           properties:
                             pid:
                               type: integer
