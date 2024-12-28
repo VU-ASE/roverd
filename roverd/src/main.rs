@@ -71,7 +71,7 @@ fn check_auth(state: &Roverd, auth_str: &str) -> Result<(), Error> {
 /// Main authentication logic requires authenticated requests for all endpoints
 /// except for "/status".
 async fn auth(State(state): State<Roverd>, req: Request, next: Next) -> Result<Response, Error> {
-    info!("incoming {} on {}", req.method(), *req.uri());
+    info!("{} on {}", req.method(), *req.uri());
 
     // the /status endpoint does not require authentication, all others do.
     if *req.uri() != *"/status" {

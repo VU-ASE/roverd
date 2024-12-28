@@ -38,9 +38,10 @@ pub enum Error {
     StringToFqConversion,
     FailedToSpawnProcess(String),
 
-    // Since pipeline is *always* in a valid state, the only 
+    // Since pipeline is *always* in a valid state, the only
     // error case is a warning in which it is empty, but valid.
     PipelineIsEmpty,
+    PipelineAlreadyStarted,
 
     // TODO: remove me for prod!
     Unimplemented,
@@ -71,6 +72,9 @@ pub enum Error {
 
     #[from]
     Multipart(axum_extra::extract::Multipart),
+
+    #[from]
+    SerdeRawValue(String),
 
     #[from]
     Validation(Vec<rovervalidate::error::Error>),

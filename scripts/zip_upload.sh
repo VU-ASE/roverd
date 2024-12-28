@@ -4,7 +4,7 @@
 # cd imaging
 # zip -r ../imaging.zip bin/imaging service.yaml
 
-DIR=circular
+DIR=normal
 
 sudo rm -rf /home/debix/.rover/vu-ase
 

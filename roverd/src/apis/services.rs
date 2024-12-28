@@ -10,6 +10,7 @@ use axum::extract::Host;
 use axum::http::Method;
 use axum_extra::extract::{CookieJar, Multipart};
 
+use serde_json::value::RawValue;
 use tracing::warn;
 
 use crate::service::FqBuf;
@@ -29,10 +30,8 @@ impl Services for Roverd {
         _cookies: CookieJar,
         body: models::FetchPostRequest,
     ) -> Result<FetchPostResponse, String> {
-        let state = self.state.write().await;
-
         let (fq_buf, invalidated_pipeline) =
-            warn_generic!(state.fetch_service(&body).await, FetchPostResponse);
+            warn_generic!(self.state.fetch_service(&body).await, FetchPostResponse);
 
         Ok(
             FetchPostResponse::Status200_TheServiceWasUploadedSuccessfully(FetchPost200Response {
@@ -54,9 +53,8 @@ impl Services for Roverd {
         _cookies: CookieJar,
         body: Multipart,
     ) -> Result<UploadPostResponse, String> {
-        let state = self.state.write().await;
         let (fq_buf, invalidated_pipeline) =
-            warn_generic!(state.receive_upload(body).await, UploadPostResponse);
+            warn_generic!(self.state.receive_upload(body).await, UploadPostResponse);
 
         Ok(
             UploadPostResponse::Status200_TheServiceWasUploadedSuccessfully(FetchPost200Response {
@@ -78,9 +76,8 @@ impl Services for Roverd {
         _cookies: CookieJar,
         path_params: ServicesAuthorServiceGetPathParams,
     ) -> Result<ServicesAuthorServiceGetResponse, String> {
-        let state = self.state.read().await;
         let versions = warn_generic!(
-            state.get_versions(path_params).await,
+            self.state.get_versions(path_params).await,
             ServicesAuthorServiceGetResponse
         );
 
@@ -97,10 +94,8 @@ impl Services for Roverd {
         _cookies: CookieJar,
         path_params: ServicesAuthorServiceVersionDeletePathParams,
     ) -> Result<ServicesAuthorServiceVersionDeleteResponse, String> {
-        let mut state = self.state.write().await;
-
         let invalidated_pipeline = warn_generic!(
-            state.delete_service(&path_params).await,
+            self.state.delete_service(&path_params).await,
             ServicesAuthorServiceVersionDeleteResponse
         );
 
@@ -121,17 +116,35 @@ impl Services for Roverd {
         _cookies: CookieJar,
         path_params: ServicesAuthorServiceVersionGetPathParams,
     ) -> Result<ServicesAuthorServiceVersionGetResponse, String> {
-        let state = self.state.read().await;
-
         let fq = FqBuf::from(&path_params);
 
         let service = warn_generic!(
-            state.get_service(fq.clone()).await,
+            self.state.get_service(fq.clone()).await,
             ServicesAuthorServiceVersionGetResponse
         );
 
+        let built_services = self.state.built_services.read().await;
+        let built_at = built_services.get(&fq).copied();
+
+        let mut configuration = vec![];
+
+        for c in service.0.configuration.iter() {
+            configuration.push(models::ServicesAuthorServiceVersionGet200ResponseConfigurationInner {
+                name: c.name.clone(),
+                r#type: match c.value.clone() {
+                    rovervalidate::service::Value::Number(_) => "number".to_string(),
+                    rovervalidate::service::Value::String(_) => "string".to_string(),
+                },
+                tunable: c.tunable.unwrap_or(false),
+                value: match c.value.clone() {
+                    rovervalidate::service::Value::Number(n) => models::ServicesAuthorServiceVersionGet200ResponseConfigurationInnerValue(RawValue::from_string(format!("{}", n)).unwrap()),
+                    rovervalidate::service::Value::String(s) => models::ServicesAuthorServiceVersionGet200ResponseConfigurationInnerValue(RawValue::from_string(format!("\"{}\"", s)).unwrap()),
+                },
+            })
+        }
+
         Ok(
-            ServicesAuthorServiceVersionGetResponse::Status200_TheServiceConfiguration(
+            ServicesAuthorServiceVersionGetResponse::Status200_AFullDescriptionOfTheServiceAtThisVersion(
                 models::ServicesAuthorServiceVersionGet200Response {
                     inputs: service
                         .0
@@ -142,8 +155,9 @@ impl Services for Roverd {
                             streams: i.streams.clone(),
                         })
                         .collect::<Vec<_>>(),
-                    built_at: state.built_services.get(&fq).copied(),
+                    built_at,
                     outputs: service.0.outputs,
+                    configuration,
                 },
             ),
         )
@@ -159,8 +173,7 @@ impl Services for Roverd {
         _cookies: CookieJar,
         path_params: ServicesAuthorServiceVersionPostPathParams,
     ) -> Result<ServicesAuthorServiceVersionPostResponse, String> {
-        let mut state = self.state.write().await;
-        let _ = if let Err(e) = state.build_service(path_params).await {
+        let _ = if let Err(e) = self.state.build_service(path_params).await {
             warn!("{:#?}", &e);
             match e {
                 Error::BuildLog(build_log) => {
@@ -198,9 +211,7 @@ impl Services for Roverd {
         _host: Host,
         _cookies: CookieJar,
     ) -> Result<ServicesGetResponse, String> {
-        let state = self.state.read().await;
-
-        let authors = warn_generic!(state.get_authors().await, ServicesGetResponse);
+        let authors = warn_generic!(self.state.get_authors().await, ServicesGetResponse);
 
         Ok(ServicesGetResponse::Status200_TheListOfAuthors(authors))
     }
@@ -215,10 +226,8 @@ impl Services for Roverd {
         _cookies: CookieJar,
         path_params: ServicesAuthorGetPathParams,
     ) -> Result<ServicesAuthorGetResponse, String> {
-        let state = self.state.read().await;
-
         let services = warn_generic!(
-            state.get_services(path_params).await,
+            self.state.get_services(path_params).await,
             ServicesAuthorGetResponse
         );
 

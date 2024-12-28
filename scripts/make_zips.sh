@@ -17,7 +17,7 @@ for dir in *; do
     cd ..
 
     cd controller
-    zip -r ../controller.zip bin/controller service.yaml
+    zip -r ../controller.zip bin/controller.py service.yaml
     cd ..
 
     cd ..

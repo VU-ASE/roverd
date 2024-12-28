@@ -1197,7 +1197,7 @@ where
 
     let resp = match result {
                                             Ok(rsp) => match rsp {
-                                                apis::services::ServicesAuthorServiceVersionGetResponse::Status200_TheServiceConfiguration
+                                                apis::services::ServicesAuthorServiceVersionGetResponse::Status200_AFullDescriptionOfTheServiceAtThisVersion
                                                     (body)
                                                 => {
                                                   let mut response = response.status(200);

@@ -1,6 +1,6 @@
 use axum_extra::extract::Multipart;
 use openapi::models::*;
-use process::{Process, ProcessManager};
+use process::{PipelineStats, Process, ProcessManager};
 use rovervalidate::config::{Configuration, ValidatedConfiguration};
 use rovervalidate::pipeline::interface::{Pipeline, RunnablePipeline};
 use rovervalidate::service::{Service, ValidatedService};
@@ -13,6 +13,7 @@ use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
+use sysinfo::{CpuRefreshKind, MemoryRefreshKind, Pid, ProcessRefreshKind, RefreshKind, System};
 use tokio::process::Command;
 use tokio::sync::{broadcast, RwLock};
 use tracing::{error, warn};
@@ -38,21 +39,33 @@ pub struct Roverd {
 
     /// Run-time data structures of the Rover, interacts with the file system
     /// and spawns processes, so must be read/write locked.
-    pub state: Arc<RwLock<State>>,
+    pub state: State,
 }
 
 impl Roverd {
     pub async fn new() -> Result<Self, Error> {
         let roverd = Self {
             info: info::Info::new(),
-            state: Arc::from(RwLock::from(State {
+            state: State {
                 process_manager: ProcessManager {
-                    processes: vec![],
-                    spawned: vec![],
+                    processes: Arc::new(RwLock::new(vec![])),
+                    spawned: Arc::new(RwLock::new(vec![])),
+                    stats: Arc::new(RwLock::new(PipelineStats {
+                        status: PipelineStatus::Empty,
+                        last_start: None,
+                        last_stop: None,
+                        last_restart: None,
+                    })),
                     shutdown_tx: broadcast::channel::<()>(1).0,
                 },
-                built_services: HashMap::new(),
-            })),
+                built_services: Arc::new(RwLock::new(HashMap::new())),
+                sysinfo: Arc::new(RwLock::new(System::new_with_specifics(
+                    RefreshKind::nothing()
+                        .with_processes(ProcessRefreshKind::everything())
+                        .with_cpu(CpuRefreshKind::everything())
+                        .with_memory(MemoryRefreshKind::everything()),
+                ))),
+            },
         };
 
         if roverd.info.status != DaemonStatus::Operational {
@@ -75,31 +88,15 @@ pub struct State {
     pub process_manager: ProcessManager,
 
     // Look up the last built time of a service on disk.
-    pub built_services: HashMap<FqBuf, i64>,
+    pub built_services: Arc<RwLock<HashMap<FqBuf, i64>>>,
+
+    // System information initialized once
+    pub sysinfo: Arc<RwLock<System>>,
 }
 
 impl State {
-    /// Retrieves rover.yaml file from disk, performs validation and returns object.
-    pub async fn get_config(&self) -> Result<Configuration, Error> {
-        if !Path::new(ROVER_CONFIG_FILE).exists() {
-            // If there is no existing config, create a new file and write
-            // an empty config to it.
-            let empty_config = Configuration { enabled: vec![] };
-
-            update_config(&empty_config)?;
-        }
-
-        let file_content =
-            std::fs::read_to_string(ROVER_CONFIG_FILE).map_err(|_| Error::ConfigFileIO)?;
-
-        let config: ValidatedConfiguration =
-            serde_yaml::from_str::<Configuration>(&file_content)?.validate()?;
-
-        Ok(config.0)
-    }
-
     pub async fn should_invalidate(&self, fq_buf: &FqBuf) -> Result<bool, Error> {
-        let mut config = self.get_config().await?;
+        let mut config = get_config().await?;
         let enabled_fq = FqVec::try_from(&config.enabled)?;
         let pipeline_invalidated = enabled_fq.0.contains(&Fq::from(fq_buf));
 
@@ -186,13 +183,15 @@ impl State {
     }
 
     pub async fn delete_service(
-        &mut self,
+        &self,
         path_params: &ServicesAuthorServiceVersionDeletePathParams,
     ) -> Result<bool, Error> {
         let delete_fq = FqBuf::from(path_params);
 
         // Get the current configuration from disk
-        let mut config = self.get_config().await?;
+        let mut config = get_config().await?;
+
+        let mut built_services = self.built_services.write().await;
 
         let mut should_reset = false;
         // Return whether or not the service was enabled and if it was,
@@ -204,7 +203,7 @@ impl State {
             config.enabled.clear();
             update_config(&config)?;
 
-            self.built_services.remove(&delete_fq);
+            built_services.remove(&delete_fq);
         }
 
         // Remove the service to delete from the filesystem
@@ -218,7 +217,7 @@ impl State {
     }
 
     pub async fn build_service(
-        &mut self,
+        &self,
         params: ServicesAuthorServiceVersionPostPathParams,
     ) -> Result<(), Error> {
         let fq = FqBuf::from(&params);
@@ -232,8 +231,10 @@ impl State {
         let stdout = Stdio::from(log_file.try_clone()?);
         let stderr = Stdio::from(log_file);
 
+        let mut built_services = self.built_services.write().await;
+
         match Command::new("sh")
-            .args(&["-c", build_string.as_str()])
+            .args(["-c", build_string.as_str()])
             .stdout(stdout)
             .stderr(stderr)
             .current_dir(fq.dir())
@@ -252,9 +253,7 @@ impl State {
                         // Build was successful, save time it was built at
                         let time_now = time_now!() as i64;
 
-                        dbg!(&self.built_services);
-
-                        *self.built_services.entry(fq).or_insert_with(|| time_now) = time_now;
+                        *built_services.entry(fq).or_insert_with(|| time_now) = time_now;
                     }
                     Ok(())
                 }
@@ -274,6 +273,13 @@ impl State {
         &self,
         incoming_pipeline: Vec<PipelinePostRequestInner>,
     ) -> Result<(), Error> {
+        let mut stats = self.process_manager.stats.write().await;
+
+        if incoming_pipeline.is_empty() {
+            stats.status = PipelineStatus::Empty;
+            return Err(Error::PipelineIsEmpty);
+        }
+
         let services = FqBufVec::from(incoming_pipeline).0;
 
         let mut valid_services = vec![];
@@ -288,7 +294,7 @@ impl State {
         let _ = Pipeline::new(valid_services).validate()?;
 
         // Here we have a valid pipeline, so rover.yaml can be overwritten
-        let mut config = self.get_config().await?;
+        let mut config = get_config().await?;
         config.enabled.clear();
 
         // Services are valid since we didn't return earlier
@@ -298,46 +304,49 @@ impl State {
 
         update_config(&config)?;
 
+        stats.status = PipelineStatus::Startable;
+
         Ok(())
     }
 
-    // todo implement this
-    // note from elias: is there anything more to implement?
-    pub fn get_proc(&self, fq: FqBuf) -> Result<&Process, Error> {
-        for p in self.process_manager.processes.iter() {
-            if p.fq == fq {
-                return Ok(p);
-            }
-        }
-        Err(Error::ProcessNotFound)
-    }
+    pub async fn get_pipeline(&self) -> Result<Vec<PipelineGet200ResponseEnabledInner>, Error> {
+        let conf = get_config().await?;
 
-    pub async fn get_pipeline(&mut self) -> Result<Vec<PipelineGet200ResponseEnabledInner>, Error> {
-        // todo: a pipeline can only be valid, meaning that a pipeline enabled on disk is
-        // always valid. if the pipeline from the rover.yaml file is not valid, clear it.
-        // let conf = self.get_valid_pipeline().await?;
-        let conf = self.get_config().await?;
+        let processes = self.process_manager.processes.read().await;
 
-        let responses = conf
-            .enabled
-            .into_iter()
-            .map(|validated_service| {
-                let fq = FqBuf::try_from(validated_service)?;
+        let mut responses = vec![];
 
-                // todo get proc and populate cpu, uptime, memory, status
-                let proc = self.get_proc(fq.clone());
-                match proc {
-                    Ok(p) => {
-                        let status = p.state.clone();
-                        let cpu = 32;
-                        let pid = p.last_pid;
-                        let uptime = 32;
-                        let memory = 32;
+        for validated_service in conf.enabled.into_iter() {
+            let fq = FqBuf::try_from(validated_service)?;
 
-                        Ok(PipelineGet200ResponseEnabledInner {
+            let mut sysinfo = self.sysinfo.write().await;
+
+            sysinfo.refresh_specifics(
+                RefreshKind::nothing()
+                    .with_processes(ProcessRefreshKind::everything())
+                    .with_cpu(CpuRefreshKind::everything())
+                    .with_memory(MemoryRefreshKind::everything()),
+            );
+
+            let proc = get_proc(fq.clone(), &processes);
+            responses.push(match proc {
+                Ok(p) => {
+                    if let Some(pid) = p.last_pid {
+                        let status = p.status;
+                        let pid = pid as i32;
+                        let mut memory = 0;
+                        let mut cpu = 0;
+                        let mut uptime = 0;
+                        // todo: test this with a substantial payload on the debix
+                        if let Some(proc_info) = sysinfo.process(Pid::from(pid as usize)) {
+                            memory = (proc_info.memory() / 1000000_u64) as i32;
+                            cpu = (proc_info.cpu_usage() * 100.0) as i32;
+                            uptime = (proc_info.run_time() * 1000_u64) as i64;
+                        }
+                        PipelineGet200ResponseEnabledInner {
                             process: Some(PipelineGet200ResponseEnabledInnerProcess {
                                 cpu,
-                                pid: pid as i32,
+                                pid,
                                 uptime,
                                 memory,
                                 status,
@@ -346,89 +355,107 @@ impl State {
                                 author: fq.author,
                                 name: fq.name,
                                 version: fq.version,
-                                faults: Some(p.faults as i32),
+                                faults: p.faults as i32,
+                                exit: p.last_exit_code,
                             },
-                        })
+                        }
+                    } else {
+                        PipelineGet200ResponseEnabledInner {
+                            process: None,
+                            service: PipelineGet200ResponseEnabledInnerService {
+                                author: fq.author,
+                                name: fq.name,
+                                version: fq.version,
+                                faults: p.faults as i32,
+                                exit: p.last_exit_code,
+                            },
+                        }
                     }
-                    Err(e) => Ok(PipelineGet200ResponseEnabledInner {
-                        process: None,
-                        service: PipelineGet200ResponseEnabledInnerService {
-                            author: fq.author,
-                            name: fq.name,
-                            version: fq.version,
-                            faults: Some(0),
-                        },
-                    }),
                 }
-
-                // Ok::<_, Error>(PipelineGet200ResponseEnabledInner {
-                //     process: Some(PipelineGet200ResponseEnabledInnerProcess {
-                //         cpu: 69,
-                //         pid: 69,
-                //         uptime: 69,
-                //         memory: 69,
-                //         status: ProcessStatus::Terminated,
-                //     }),
-                //     service: PipelineGet200ResponseEnabledInnerService {
-                //         author: fq.author,
-                //         name: fq.name,
-                //         version: fq.version,
-                //         faults: None,
-                //     },
-                // })
-            })
-            .collect::<Result<Vec<PipelineGet200ResponseEnabledInner>, Error>>()?;
+                Err(_) => PipelineGet200ResponseEnabledInner {
+                    process: None,
+                    service: PipelineGet200ResponseEnabledInnerService {
+                        author: fq.author,
+                        name: fq.name,
+                        version: fq.version,
+                        faults: 0,
+                        exit: 0,
+                    },
+                },
+            });
+        }
 
         Ok(responses)
     }
 
-    pub async fn construct_managed_services(&mut self) -> Result<(), Error> {
+    pub async fn construct_managed_services(
+        &self,
+        runnable: RunnablePipeline,
+    ) -> Result<(), Error> {
         // Assign the new processes state each time, so first
         // clear the existing processes and then add them again
-        self.process_manager.processes.clear();
-
-        let runnable = self.get_valid_pipeline().await?;
+        let mut processes = self.process_manager.processes.write().await;
 
         let bootspecs = bootspec::BootSpecs::new(runnable.services()).0;
+
+        let mut fqs = vec![];
+        let mut service_data = vec![];
 
         for service in runnable.services() {
             // Create bootspecs with missing inputs, since the first step is to hand out
             // ports. After knowing the ports of all outputs, we can fill in the inputs.
             // Since we are valid, a given input will _always_ have an output.
-
             let fq = FqBuf::from(service);
-
             let bootspec = bootspecs.get(&fq);
             let injected_env = serde_json::to_string(&bootspec)?;
 
-            self.process_manager.processes.push(Process {
-                fq: fq.clone(),
-                command: service.0.commands.run.clone(), // run the command in the service's working directory
-                last_pid: 0,
-                last_exit_code: Some(0),
-                name: service.0.name.clone(),
-                state: ProcessStatus::Stopped,
-                log_file: PathBuf::from(fq.log_file()),
-                injected_env,
-                faults: 0,
-            })
+            // Save the necessary information from each runnable service
+            fqs.push(fq);
+            service_data.push((service, injected_env));
+        }
+
+        // Most of the time, we will retain all processes, however when the pipeline changes
+        // we need to reflect those changes
+        processes.retain(|p| fqs.contains(&p.fq));
+        let fqs_and_services = fqs.iter().zip(service_data.iter());
+
+        for (fq, (service, injected_env)) in fqs_and_services {
+            if let Some(proc) = processes.iter_mut().find(|p| p.fq == *fq) {
+                // If the runnable service identified by its fq already exists, there's a chance
+                // that the service.yaml has changed, so update only those fields
+                proc.command = service.0.commands.run.clone();
+                proc.injected_env = injected_env.clone();
+            } else {
+                // The runnable service has not previously been added, so add a new one
+                processes.push(Process {
+                    fq: fq.clone(),
+                    command: service.0.commands.run.clone(),
+                    last_pid: None,
+                    last_exit_code: 0,
+                    name: service.0.name.clone(),
+                    status: ProcessStatus::Stopped,
+                    log_file: PathBuf::from(fq.log_file()),
+                    injected_env: injected_env.clone(),
+                    faults: 0,
+                })
+            }
         }
 
         Ok(())
     }
 
-    pub async fn start(&mut self) -> Result<(), Error> {
-        let enabled_services = self.get_config().await?.enabled;
+    pub async fn start(&self) -> Result<(), Error> {
+        let enabled_services = get_config().await?.enabled;
 
         if enabled_services.is_empty() {
             return Err(Error::PipelineIsEmpty);
         }
 
         // Pipeline validation step
-        self.get_valid_pipeline().await?;
+        let runnable = self.get_valid_pipeline().await?;
 
         // After this, self.processes will be ready
-        self.construct_managed_services().await?;
+        self.construct_managed_services(runnable).await?;
 
         // Start the actual processes
         self.process_manager.start().await?;
@@ -436,16 +463,23 @@ impl State {
         Ok(())
     }
 
-    pub async fn stop(&mut self) -> Result<(), Error> {
-        if self.process_manager.spawned.is_empty() {
+    /// If the pipeline is started, it will be stopped.
+    pub async fn stop(&self) -> Result<(), Error> {
+        let mut stats = self.process_manager.stats.write().await;
+        if stats.status != PipelineStatus::Started {
             return Err(Error::NoRunningServices);
         }
-        self.process_manager.stop().await?;
+        stats.last_stop = Some(time_now!() as i64);
+        self.process_manager.shutdown_tx.send(()).ok();
+        let mut spawned = self.process_manager.spawned.write().await;
+        spawned.clear();
         Ok(())
     }
 
-    pub async fn get_valid_pipeline(&mut self) -> Result<RunnablePipeline, Error> {
-        let mut config = self.get_config().await?;
+    /// Reads the config file from disk and returns a RunnablePipeline if it is valid.
+    /// If it isn't valid it returns an error and resets the config.
+    pub async fn get_valid_pipeline(&self) -> Result<RunnablePipeline, Error> {
+        let mut config = get_config().await?;
         let mut enabled_services: Vec<ValidatedService> = vec![];
 
         let res = {
@@ -482,4 +516,32 @@ impl State {
 
         Ok(log_lines[index..].to_vec())
     }
+}
+
+/// Retrieves rover.yaml file from disk, performs validation and returns object.
+pub async fn get_config() -> Result<Configuration, Error> {
+    if !Path::new(ROVER_CONFIG_FILE).exists() {
+        // If there is no existing config, create a new file and write
+        // an empty config to it.
+        let empty_config = Configuration { enabled: vec![] };
+        update_config(&empty_config)?;
+    }
+
+    let file_content =
+        std::fs::read_to_string(ROVER_CONFIG_FILE).map_err(|_| Error::ConfigFileIO)?;
+
+    let config: ValidatedConfiguration =
+        serde_yaml::from_str::<Configuration>(&file_content)?.validate()?;
+
+    Ok(config.0)
+}
+
+/// Returns the process which contains the fq.
+pub fn get_proc(fq: FqBuf, processes: &Vec<Process>) -> Result<&Process, Error> {
+    for p in processes {
+        if p.fq == fq {
+            return Ok(p);
+        }
+    }
+    Err(Error::ProcessNotFound)
 }

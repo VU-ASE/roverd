@@ -6,7 +6,7 @@ pub fn init() {
     tracing_subscriber::fmt()
         .with_max_level(Level::INFO)
         .without_time()
-        .with_line_number(true)
-        .with_file(true)
+        .with_line_number(false)
+        .with_file(false)
         .init();
 }
