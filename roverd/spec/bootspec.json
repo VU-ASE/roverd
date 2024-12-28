@@ -85,10 +85,9 @@
                         "description": "The type of this configuration option",
                         "enum": [
                             "string",
-                            "int",
                             "float"
                         ],
-                        "example": "int"
+                        "example": "float"
                     },
                     "tunable": {
                         "type": "boolean",
@@ -96,18 +95,13 @@
                         "example": true
                     },
                     "value": {
-                        "oneOf": [
-                            {
+                        "oneOf": [{
                                 "type": "string",
                                 "description": "The value can be a string"
                             },
                             {
-                                "type": "integer",
-                                "description": "The value can be an integer"
-                            },
-                            {
                                 "type": "number",
-                                "description": "The value can be a floating-point number"
+                                "description": "The value can be a floating-point number or integer"
                             }
                         ],
                         "description": "The value of this configuration option, which can be a string, integer, or float",

@@ -67,8 +67,10 @@ pub enum ServicesAuthorServiceVersionDeleteResponse {
 #[must_use]
 #[allow(clippy::large_enum_variant)]
 pub enum ServicesAuthorServiceVersionGetResponse {
-    /// The service configuration
-    Status200_TheServiceConfiguration(models::ServicesAuthorServiceVersionGet200Response),
+    /// A full description of the service at this version, with inputs, outputs and configuration
+    Status200_AFullDescriptionOfTheServiceAtThisVersion(
+        models::ServicesAuthorServiceVersionGet200Response,
+    ),
     /// An error occurred
     Status400_AnErrorOccurred(models::GenericError),
     /// Entity not found

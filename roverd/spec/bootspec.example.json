@@ -1,11 +1,9 @@
 {
     "name": "controller",
     "version": "1.0.1",
-    "inputs": [
-        {
+    "inputs": [{
             "service": "imaging",
-            "streams": [
-                {
+            "streams": [{
                     "name": "track_data",
                     "address": "tcp://unix:7890"
                 },
@@ -17,16 +15,13 @@
         },
         {
             "service": "navigation",
-            "streams": [
-                {
-                    "name": "location_data",
-                    "address": "tcp://unix:7892"
-                }
-            ]
+            "streams": [{
+                "name": "location_data",
+                "address": "tcp://unix:7892"
+            }]
         }
     ],
-    "outputs": [
-        {
+    "outputs": [{
             "name": "motor_movement",
             "address": "tcp://unix:7882"
         },
@@ -35,10 +30,9 @@
             "address": "tcp://unix:7883"
         }
     ],
-    "configuration": [
-        {
+    "configuration": [{
             "name": "max-iterations",
-            "type": "int",
+            "type": "float",
             "tunable": true,
             "value": 100
         },

@@ -126,7 +126,7 @@ impl Services for Roverd {
         let built_at = built_services.get(&fq).copied();
 
         Ok(
-            ServicesAuthorServiceVersionGetResponse::Status200_TheServiceConfiguration(
+            ServicesAuthorServiceVersionGetResponse::Status200_AFullDescriptionOfTheServiceAtThisVersion(
                 models::ServicesAuthorServiceVersionGet200Response {
                     inputs: service
                         .0
@@ -139,6 +139,7 @@ impl Services for Roverd {
                         .collect::<Vec<_>>(),
                     built_at,
                     outputs: service.0.outputs,
+                    configuration: vec![],
                 },
             ),
         )

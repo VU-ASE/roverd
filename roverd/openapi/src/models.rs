@@ -2292,6 +2292,10 @@ pub struct ServicesAuthorServiceVersionGet200Response {
     /// The output streams of this service version
     #[serde(rename = "outputs")]
     pub outputs: Vec<String>,
+
+    /// All configuration values of this service version and their tunability
+    #[serde(rename = "configuration")]
+    pub configuration: Vec<models::ServicesAuthorServiceVersionGet200ResponseConfigurationInner>,
 }
 
 impl ServicesAuthorServiceVersionGet200Response {
@@ -2299,11 +2303,13 @@ impl ServicesAuthorServiceVersionGet200Response {
     pub fn new(
         inputs: Vec<models::ServicesAuthorServiceVersionGet200ResponseInputsInner>,
         outputs: Vec<String>,
+        configuration: Vec<models::ServicesAuthorServiceVersionGet200ResponseConfigurationInner>,
     ) -> ServicesAuthorServiceVersionGet200Response {
         ServicesAuthorServiceVersionGet200Response {
             built_at: None,
             inputs,
             outputs,
+            configuration,
         }
     }
 }
@@ -2326,6 +2332,7 @@ impl std::fmt::Display for ServicesAuthorServiceVersionGet200Response {
                     .collect::<Vec<_>>()
                     .join(","),
             ),
+            // Skipping configuration in query parameter serialization
         ];
 
         write!(
@@ -2350,6 +2357,8 @@ impl std::str::FromStr for ServicesAuthorServiceVersionGet200Response {
             pub built_at: Vec<i64>,
             pub inputs: Vec<Vec<models::ServicesAuthorServiceVersionGet200ResponseInputsInner>>,
             pub outputs: Vec<Vec<String>>,
+            pub configuration:
+                Vec<Vec<models::ServicesAuthorServiceVersionGet200ResponseConfigurationInner>>,
         }
 
         let mut intermediate_rep = IntermediateRep::default();
@@ -2375,6 +2384,7 @@ impl std::str::FromStr for ServicesAuthorServiceVersionGet200Response {
                     "built_at" => intermediate_rep.built_at.push(<i64 as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?),
                     "inputs" => return std::result::Result::Err("Parsing a container in this style is not supported in ServicesAuthorServiceVersionGet200Response".to_string()),
                     "outputs" => return std::result::Result::Err("Parsing a container in this style is not supported in ServicesAuthorServiceVersionGet200Response".to_string()),
+                    "configuration" => return std::result::Result::Err("Parsing a container in this style is not supported in ServicesAuthorServiceVersionGet200Response".to_string()),
                     _ => return std::result::Result::Err("Unexpected key while parsing ServicesAuthorServiceVersionGet200Response".to_string())
                 }
             }
@@ -2392,6 +2402,14 @@ impl std::str::FromStr for ServicesAuthorServiceVersionGet200Response {
             outputs: intermediate_rep.outputs.into_iter().next().ok_or_else(|| {
                 "outputs missing in ServicesAuthorServiceVersionGet200Response".to_string()
             })?,
+            configuration: intermediate_rep
+                .configuration
+                .into_iter()
+                .next()
+                .ok_or_else(|| {
+                    "configuration missing in ServicesAuthorServiceVersionGet200Response"
+                        .to_string()
+                })?,
         })
     }
 }
@@ -2437,6 +2455,206 @@ impl std::convert::TryFrom<HeaderValue>
                  format!("Unable to convert header: {:?} to string: {}",
                      hdr_value, e))
         }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize, validator::Validate)]
+#[cfg_attr(feature = "conversion", derive(frunk::LabelledGeneric))]
+pub struct ServicesAuthorServiceVersionGet200ResponseConfigurationInner {
+    /// The name of the configuration value
+    #[serde(rename = "name")]
+    pub name: String,
+
+    /// The type of the configuration value
+    /// Note: inline enums are not fully supported by openapi-generator
+    #[serde(rename = "type")]
+    pub r#type: String,
+
+    #[serde(rename = "value")]
+    pub value: models::ServicesAuthorServiceVersionGet200ResponseConfigurationInnerValue,
+
+    /// Whether this configuration value is tunable
+    #[serde(rename = "tunable")]
+    pub tunable: bool,
+}
+
+impl ServicesAuthorServiceVersionGet200ResponseConfigurationInner {
+    #[allow(clippy::new_without_default, clippy::too_many_arguments)]
+    pub fn new(
+        name: String,
+        r#type: String,
+        value: models::ServicesAuthorServiceVersionGet200ResponseConfigurationInnerValue,
+        tunable: bool,
+    ) -> ServicesAuthorServiceVersionGet200ResponseConfigurationInner {
+        ServicesAuthorServiceVersionGet200ResponseConfigurationInner {
+            name,
+            r#type,
+            value,
+            tunable,
+        }
+    }
+}
+
+/// Converts the ServicesAuthorServiceVersionGet200ResponseConfigurationInner value to the Query Parameters representation (style=form, explode=false)
+/// specified in https://swagger.io/docs/specification/serialization/
+/// Should be implemented in a serde serializer
+impl std::fmt::Display for ServicesAuthorServiceVersionGet200ResponseConfigurationInner {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let params: Vec<Option<String>> = vec![
+            Some("name".to_string()),
+            Some(self.name.to_string()),
+            Some("type".to_string()),
+            Some(self.r#type.to_string()),
+            // Skipping value in query parameter serialization
+            Some("tunable".to_string()),
+            Some(self.tunable.to_string()),
+        ];
+
+        write!(
+            f,
+            "{}",
+            params.into_iter().flatten().collect::<Vec<_>>().join(",")
+        )
+    }
+}
+
+/// Converts Query Parameters representation (style=form, explode=false) to a ServicesAuthorServiceVersionGet200ResponseConfigurationInner value
+/// as specified in https://swagger.io/docs/specification/serialization/
+/// Should be implemented in a serde deserializer
+impl std::str::FromStr for ServicesAuthorServiceVersionGet200ResponseConfigurationInner {
+    type Err = String;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        /// An intermediate representation of the struct to use for parsing.
+        #[derive(Default)]
+        #[allow(dead_code)]
+        struct IntermediateRep {
+            pub name: Vec<String>,
+            pub r#type: Vec<String>,
+            pub value:
+                Vec<models::ServicesAuthorServiceVersionGet200ResponseConfigurationInnerValue>,
+            pub tunable: Vec<bool>,
+        }
+
+        let mut intermediate_rep = IntermediateRep::default();
+
+        // Parse into intermediate representation
+        let mut string_iter = s.split(',');
+        let mut key_result = string_iter.next();
+
+        while key_result.is_some() {
+            let val = match string_iter.next() {
+                Some(x) => x,
+                None => return std::result::Result::Err("Missing value while parsing ServicesAuthorServiceVersionGet200ResponseConfigurationInner".to_string())
+            };
+
+            if let Some(key) = key_result {
+                #[allow(clippy::match_single_binding)]
+                match key {
+                    #[allow(clippy::redundant_clone)]
+                    "name" => intermediate_rep.name.push(<String as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?),
+                    #[allow(clippy::redundant_clone)]
+                    "type" => intermediate_rep.r#type.push(<String as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?),
+                    #[allow(clippy::redundant_clone)]
+                    "value" => intermediate_rep.value.push(<models::ServicesAuthorServiceVersionGet200ResponseConfigurationInnerValue as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?),
+                    #[allow(clippy::redundant_clone)]
+                    "tunable" => intermediate_rep.tunable.push(<bool as std::str::FromStr>::from_str(val).map_err(|x| x.to_string())?),
+                    _ => return std::result::Result::Err("Unexpected key while parsing ServicesAuthorServiceVersionGet200ResponseConfigurationInner".to_string())
+                }
+            }
+
+            // Get the next key
+            key_result = string_iter.next();
+        }
+
+        // Use the intermediate representation to return the struct
+        std::result::Result::Ok(ServicesAuthorServiceVersionGet200ResponseConfigurationInner {
+            name: intermediate_rep.name.into_iter().next().ok_or_else(|| "name missing in ServicesAuthorServiceVersionGet200ResponseConfigurationInner".to_string())?,
+            r#type: intermediate_rep.r#type.into_iter().next().ok_or_else(|| "type missing in ServicesAuthorServiceVersionGet200ResponseConfigurationInner".to_string())?,
+            value: intermediate_rep.value.into_iter().next().ok_or_else(|| "value missing in ServicesAuthorServiceVersionGet200ResponseConfigurationInner".to_string())?,
+            tunable: intermediate_rep.tunable.into_iter().next().ok_or_else(|| "tunable missing in ServicesAuthorServiceVersionGet200ResponseConfigurationInner".to_string())?,
+        })
+    }
+}
+
+// Methods for converting between header::IntoHeaderValue<ServicesAuthorServiceVersionGet200ResponseConfigurationInner> and HeaderValue
+
+#[cfg(feature = "server")]
+impl
+    std::convert::TryFrom<
+        header::IntoHeaderValue<ServicesAuthorServiceVersionGet200ResponseConfigurationInner>,
+    > for HeaderValue
+{
+    type Error = String;
+
+    fn try_from(
+        hdr_value: header::IntoHeaderValue<
+            ServicesAuthorServiceVersionGet200ResponseConfigurationInner,
+        >,
+    ) -> std::result::Result<Self, Self::Error> {
+        let hdr_value = hdr_value.to_string();
+        match HeaderValue::from_str(&hdr_value) {
+             std::result::Result::Ok(value) => std::result::Result::Ok(value),
+             std::result::Result::Err(e) => std::result::Result::Err(
+                 format!("Invalid header value for ServicesAuthorServiceVersionGet200ResponseConfigurationInner - value: {} is invalid {}",
+                     hdr_value, e))
+        }
+    }
+}
+
+#[cfg(feature = "server")]
+impl std::convert::TryFrom<HeaderValue>
+    for header::IntoHeaderValue<ServicesAuthorServiceVersionGet200ResponseConfigurationInner>
+{
+    type Error = String;
+
+    fn try_from(hdr_value: HeaderValue) -> std::result::Result<Self, Self::Error> {
+        match hdr_value.to_str() {
+             std::result::Result::Ok(value) => {
+                    match <ServicesAuthorServiceVersionGet200ResponseConfigurationInner as std::str::FromStr>::from_str(value) {
+                        std::result::Result::Ok(value) => std::result::Result::Ok(header::IntoHeaderValue(value)),
+                        std::result::Result::Err(err) => std::result::Result::Err(
+                            format!("Unable to convert header value '{}' into ServicesAuthorServiceVersionGet200ResponseConfigurationInner - {}",
+                                value, err))
+                    }
+             },
+             std::result::Result::Err(e) => std::result::Result::Err(
+                 format!("Unable to convert header: {:?} to string: {}",
+                     hdr_value, e))
+        }
+    }
+}
+
+/// The value of the configuration
+
+/// One of:
+/// - String
+/// - f64
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ServicesAuthorServiceVersionGet200ResponseConfigurationInnerValue(
+    Box<serde_json::value::RawValue>,
+);
+
+impl validator::Validate for ServicesAuthorServiceVersionGet200ResponseConfigurationInnerValue {
+    fn validate(&self) -> std::result::Result<(), validator::ValidationErrors> {
+        std::result::Result::Ok(())
+    }
+}
+
+/// Converts Query Parameters representation (style=form, explode=false) to a ServicesAuthorServiceVersionGet200ResponseConfigurationInnerValue value
+/// as specified in https://swagger.io/docs/specification/serialization/
+/// Should be implemented in a serde deserializer
+impl std::str::FromStr for ServicesAuthorServiceVersionGet200ResponseConfigurationInnerValue {
+    type Err = serde_json::Error;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        serde_json::from_str(s)
+    }
+}
+
+impl PartialEq for ServicesAuthorServiceVersionGet200ResponseConfigurationInnerValue {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.get() == other.0.get()
     }
 }
 
