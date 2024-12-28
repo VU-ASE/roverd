@@ -1,5 +1,6 @@
 use crate::Error;
 use openapi::models::DaemonStatus;
+use sysinfo::System;
 use std::path::Path;
 use std::{fs::read_to_string, time::SystemTime};
 use tracing::error;
@@ -35,11 +36,15 @@ impl Info {
             }
         };
 
+        let distribution_name = System::long_os_version().unwrap_or("Linux".to_string());
+        let kernel_version = System::kernel_version().unwrap_or("".to_string());
+        let os = format!("{} {}", distribution_name, kernel_version);
+
         Self {
             status,
             version: VERSION.to_string(),
             start_time: SystemTime::now(),
-            os: os_info::get().to_string(),
+            os,
             rover_id: id,
             rover_name: name,
             username: ROVER_USER.to_string(),
