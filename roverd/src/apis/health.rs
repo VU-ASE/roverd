@@ -11,7 +11,7 @@ use axum_extra::extract::CookieJar;
 use openapi::models::GenericError;
 use tracing::warn;
 
-use sysinfo::{CpuRefreshKind, MemoryRefreshKind, ProcessRefreshKind, RefreshKind, System};
+use sysinfo::{CpuRefreshKind, MemoryRefreshKind, RefreshKind};
 
 use std::time::{SystemTime, UNIX_EPOCH};
 

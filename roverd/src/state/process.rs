@@ -107,7 +107,7 @@ impl ProcessManager {
                         warn!(err_msg);
                         p.faults += 1;
                         p.last_exit_code = 1;
-                        cancel_start(&mut *status, &mut *procs, &mut *spawned_procs);
+                        cancel_start(&mut status, &mut procs, &mut spawned_procs);
                         return Err(Error::FailedToSpawnProcess(err_msg));
                     }
                     spawned_procs.push(SpawnedProcess {
@@ -121,7 +121,7 @@ impl ProcessManager {
                     warn!("failed to spawn process '{}': {}", p.name, &err_msg);
                     p.faults += 1;
                     p.last_exit_code = 1;
-                    cancel_start(&mut *status, &mut *procs, &mut *spawned_procs);
+                    cancel_start(&mut status, &mut procs, &mut spawned_procs);
                     return Err(Error::FailedToSpawnProcess(err_msg));
                 }
             }

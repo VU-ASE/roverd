@@ -6,7 +6,6 @@ use rovervalidate::pipeline::interface::{Pipeline, RunnablePipeline};
 use rovervalidate::service::{Service, ValidatedService};
 use rovervalidate::validate::Validate;
 use service::{Fq, FqBuf, FqBufVec, FqVec};
-use std::arch::x86_64::CpuidResult;
 use std::collections::HashMap;
 use std::fs::{self, remove_dir_all, remove_file};
 use std::io::{BufRead, BufReader, Write};
@@ -230,7 +229,7 @@ impl State {
         let mut built_services = self.built_services.write().await;
 
         match Command::new("sh")
-            .args(&["-c", build_string.as_str()])
+            .args(["-c", build_string.as_str()])
             .stdout(stdout)
             .stderr(stderr)
             .current_dir(fq.dir())
@@ -324,7 +323,7 @@ impl State {
                     .with_memory(MemoryRefreshKind::everything()),
             );
 
-            let proc = get_proc(fq.clone(), &*processes);
+            let proc = get_proc(fq.clone(), &processes);
             responses.push(match proc {
                 Ok(p) => {
                     let status = p.status;
