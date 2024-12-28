@@ -161,7 +161,11 @@ impl BootSpecs {
                     address: tuning.address.clone(),
                 }],
                 configuration: s.0.configuration.clone(),
-                tuning: tuning.clone(),
+                // This might seem weird, but the transceiver itself does not listen to tuning from another service
+                tuning: BootSpecTuning {
+                    enabled: false,
+                    address: "disabled".to_string(),
+                },
             };
 
             result.insert(fq, b);
