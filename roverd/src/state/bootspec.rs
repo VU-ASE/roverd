@@ -100,9 +100,13 @@ impl BootSpecs {
                 let stream_name = out_stream.clone();
 
                 if let Some(address) = mappings.get(&(service_name.clone(), stream_name.clone())) {
+                    // For outputs, the address should be in the form of tcp://*:port instead of tcp://localhost:port
+                    // (required for zmq bind). So we replace localhost with *.
+                    let bind_address = address.clone().replace("localhost", "*");
+
                     outputs.push(Stream {
                         name: stream_name.clone(),
-                        address: address.clone(),
+                        address: bind_address,
                     });
                 }
             }
