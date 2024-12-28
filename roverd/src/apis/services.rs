@@ -10,6 +10,7 @@ use axum::extract::Host;
 use axum::http::Method;
 use axum_extra::extract::{CookieJar, Multipart};
 
+use serde_json::value::RawValue;
 use tracing::warn;
 
 use crate::service::FqBuf;
@@ -125,6 +126,23 @@ impl Services for Roverd {
         let built_services = self.state.built_services.read().await;
         let built_at = built_services.get(&fq).copied();
 
+        let mut configuration = vec![];
+
+        for c in service.0.configuration.iter() {
+            configuration.push(models::ServicesAuthorServiceVersionGet200ResponseConfigurationInner {
+                name: c.name.clone(),
+                r#type: match c.value.clone() {
+                    rovervalidate::service::Value::Number(_) => "number".to_string(),
+                    rovervalidate::service::Value::String(_) => "string".to_string(),
+                },
+                tunable: c.tunable.unwrap_or(false),
+                value: match c.value.clone() {
+                    rovervalidate::service::Value::Number(n) => models::ServicesAuthorServiceVersionGet200ResponseConfigurationInnerValue(RawValue::from_string(format!("{}", n)).unwrap()),
+                    rovervalidate::service::Value::String(s) => models::ServicesAuthorServiceVersionGet200ResponseConfigurationInnerValue(RawValue::from_string(format!("\"{}\"", s)).unwrap()),
+                },
+            })
+        }
+
         Ok(
             ServicesAuthorServiceVersionGetResponse::Status200_AFullDescriptionOfTheServiceAtThisVersion(
                 models::ServicesAuthorServiceVersionGet200Response {
@@ -139,7 +157,7 @@ impl Services for Roverd {
                         .collect::<Vec<_>>(),
                     built_at,
                     outputs: service.0.outputs,
-                    configuration: vec![],
+                    configuration,
                 },
             ),
         )

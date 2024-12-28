@@ -74,8 +74,7 @@ pub struct Configuration {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Type {
-    Float,
-
+    Number,
     String,
 }
 
@@ -83,8 +82,7 @@ pub enum Type {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Value {
-    Double(f64),
-
+    Number(f64),
     String(String),
 }
 

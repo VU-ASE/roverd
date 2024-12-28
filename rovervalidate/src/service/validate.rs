@@ -263,11 +263,11 @@ impl Validate<bool> for gen::Configuration {
                         return Some("must not be empty");
                     }
                     // Does this correspond with self.configuration_type?
-                    if let Some(gen::Type::Float) = &self.configuration_type {
+                    if let Some(gen::Type::Number) = &self.configuration_type {
                         return Some("is parsed as a string, but was specified as a float, make sure to use float syntax");
                     }
                 }
-                gen::Value::Double(f) => {
+                gen::Value::Number(f) => {
                     if f.is_nan() {
                         return Some("must be a valid float");
                     }

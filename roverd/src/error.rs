@@ -74,5 +74,8 @@ pub enum Error {
     Multipart(axum_extra::extract::Multipart),
 
     #[from]
+    SerdeRawValue(String),
+
+    #[from]
     Validation(Vec<rovervalidate::error::Error>),
 }

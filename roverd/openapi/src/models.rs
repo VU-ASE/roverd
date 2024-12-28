@@ -2632,7 +2632,7 @@ impl std::convert::TryFrom<HeaderValue>
 /// - f64
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ServicesAuthorServiceVersionGet200ResponseConfigurationInnerValue(
-    Box<serde_json::value::RawValue>,
+    pub Box<serde_json::value::RawValue>,
 );
 
 impl validator::Validate for ServicesAuthorServiceVersionGet200ResponseConfigurationInnerValue {
