@@ -30,10 +30,10 @@ enum BootSpecDataType {
     Number(f64),
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-struct BootSpecConfig {
-    name: String,
-    data_type: BootSpecDataType,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct BootSpecTuning {
+    enabled: bool,
+    address: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -43,6 +43,7 @@ pub struct BootSpec {
     inputs: Vec<Input>,
     outputs: Vec<Stream>,
     configuration: Vec<rovervalidate::service::Configuration>,
+    tuning: BootSpecTuning,
 }
 
 #[repr(transparent)]
@@ -50,7 +51,16 @@ pub struct BootSpecs(pub HashMap<FqBuf, BootSpec>);
 
 impl BootSpecs {
     pub fn new(services: &Vec<ValidatedService>) -> Self {
-        let mut start_port = START_PORT;
+        let mut tuning = BootSpecTuning {
+            enabled: false,
+            address: format!("{}:{}", DATA_ADDRESS, START_PORT),
+        };
+
+        if services.iter().any(|s| s.0.name == "transceiver") {
+            tuning.enabled = true;
+        }
+
+        let mut start_port = START_PORT + 1;
 
         let mut result = HashMap::new();
 
@@ -118,6 +128,7 @@ impl BootSpecs {
                 inputs,
                 outputs,
                 configuration: s.configuration.clone(),
+                tuning: tuning.clone(),
             };
 
             result.insert(fq, b);
