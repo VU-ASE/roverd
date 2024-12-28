@@ -1,6 +1,6 @@
 use axum_extra::extract::Multipart;
 use openapi::models::*;
-use process::{Process, ProcessManager};
+use process::{PipelineStats, Process, ProcessManager};
 use rovervalidate::config::{Configuration, ValidatedConfiguration};
 use rovervalidate::pipeline::interface::{Pipeline, RunnablePipeline};
 use rovervalidate::service::{Service, ValidatedService};
@@ -50,7 +50,12 @@ impl Roverd {
                 process_manager: ProcessManager {
                     processes: Arc::new(RwLock::new(vec![])),
                     spawned: Arc::new(RwLock::new(vec![])),
-                    status: Arc::new(RwLock::new(PipelineStatus::Empty)),
+                    stats: Arc::new(RwLock::new(PipelineStats {
+                        status: PipelineStatus::Empty,
+                        last_start: None,
+                        last_stop: None,
+                        last_restart: None,
+                    })),
                     shutdown_tx: broadcast::channel::<()>(1).0,
                 },
                 built_services: Arc::new(RwLock::new(HashMap::new())),
@@ -268,10 +273,10 @@ impl State {
         &self,
         incoming_pipeline: Vec<PipelinePostRequestInner>,
     ) -> Result<(), Error> {
-        let mut status = self.process_manager.status.write().await;
+        let mut stats = self.process_manager.stats.write().await;
 
         if incoming_pipeline.is_empty() {
-            *status = PipelineStatus::Empty;
+            stats.status = PipelineStatus::Empty;
             return Err(Error::PipelineIsEmpty);
         }
 
@@ -299,7 +304,7 @@ impl State {
 
         update_config(&config)?;
 
-        *status = PipelineStatus::Startable;
+        stats.status = PipelineStatus::Startable;
 
         Ok(())
     }
@@ -326,33 +331,45 @@ impl State {
             let proc = get_proc(fq.clone(), &processes);
             responses.push(match proc {
                 Ok(p) => {
-                    let status = p.status;
-                    let pid = p.last_pid as i32;
-                    let mut memory = 0;
-                    let mut cpu = 0;
-                    let mut uptime = 0;
-                    // todo: test this with a substantial payload on the debix
-                    if let Some(proc_info) = sysinfo.process(Pid::from(p.last_pid as usize)) {
-                        memory = (proc_info.memory() / 1000000_u64) as i32;
-                        cpu = (proc_info.cpu_usage() * 100.0) as i32;
-                        uptime = (proc_info.run_time() * 1000_u64) as i64;
-                    }
-
-                    PipelineGet200ResponseEnabledInner {
-                        process: Some(PipelineGet200ResponseEnabledInnerProcess {
-                            cpu,
-                            pid,
-                            uptime,
-                            memory,
-                            status,
-                        }),
-                        service: PipelineGet200ResponseEnabledInnerService {
-                            author: fq.author,
-                            name: fq.name,
-                            version: fq.version,
-                            faults: p.faults as i32,
-                            exit: p.last_exit_code,
-                        },
+                    if let Some(pid) = p.last_pid {
+                        let status = p.status;
+                        let pid = pid as i32;
+                        let mut memory = 0;
+                        let mut cpu = 0;
+                        let mut uptime = 0;
+                        // todo: test this with a substantial payload on the debix
+                        if let Some(proc_info) = sysinfo.process(Pid::from(pid as usize)) {
+                            memory = (proc_info.memory() / 1000000_u64) as i32;
+                            cpu = (proc_info.cpu_usage() * 100.0) as i32;
+                            uptime = (proc_info.run_time() * 1000_u64) as i64;
+                        }
+                        PipelineGet200ResponseEnabledInner {
+                            process: Some(PipelineGet200ResponseEnabledInnerProcess {
+                                cpu,
+                                pid,
+                                uptime,
+                                memory,
+                                status,
+                            }),
+                            service: PipelineGet200ResponseEnabledInnerService {
+                                author: fq.author,
+                                name: fq.name,
+                                version: fq.version,
+                                faults: p.faults as i32,
+                                exit: p.last_exit_code,
+                            },
+                        }
+                    } else {
+                        PipelineGet200ResponseEnabledInner {
+                            process: None,
+                            service: PipelineGet200ResponseEnabledInnerService {
+                                author: fq.author,
+                                name: fq.name,
+                                version: fq.version,
+                                faults: p.faults as i32,
+                                exit: p.last_exit_code,
+                            },
+                        }
                     }
                 }
                 Err(_) => PipelineGet200ResponseEnabledInner {
@@ -413,7 +430,7 @@ impl State {
                 processes.push(Process {
                     fq: fq.clone(),
                     command: service.0.commands.run.clone(),
-                    last_pid: 0,
+                    last_pid: None,
                     last_exit_code: 0,
                     name: service.0.name.clone(),
                     status: ProcessStatus::Stopped,
@@ -448,10 +465,11 @@ impl State {
 
     /// If the pipeline is started, it will be stopped.
     pub async fn stop(&self) -> Result<(), Error> {
-        let status = self.process_manager.status.read().await;
-        if *status != PipelineStatus::Started {
+        let mut stats = self.process_manager.stats.write().await;
+        if stats.status != PipelineStatus::Started {
             return Err(Error::NoRunningServices);
         }
+        stats.last_stop = Some(time_now!() as i64);
         self.process_manager.shutdown_tx.send(()).ok();
         let mut spawned = self.process_manager.spawned.write().await;
         spawned.clear();

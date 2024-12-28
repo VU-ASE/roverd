@@ -27,7 +27,7 @@ RUN devbox global install ; echo "Installed devbox packages."
 # --- DEPENDENCIES ---
 
 RUN devbox global run -- rustup default stable
-RUN sudo apt install -y pkg-config libssl-dev
+RUN sudo apt install -y pkg-config libssl-dev python3
 
 # --- debix user setup ---
 USER root:root

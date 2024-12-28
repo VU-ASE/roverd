@@ -187,7 +187,6 @@ impl TryFrom<String> for FqBuf {
             return Err(Error::EnabledPathInvalid);
         }
 
-        // TODO this is error prone since we extracting the author, name, version from the path
         let values = path_vec[(path_vec.len() - 4)..(path_vec.len() - 1)]
             .iter()
             .map(|component| Ok(component.as_os_str().to_os_string().into_string()?))
@@ -212,7 +211,6 @@ impl TryFrom<&String> for FqBuf {
             return Err(Error::EnabledPathInvalid);
         }
 
-        // TODO this is error prone since we extracting the author, name, version from the path
         let values = path_vec[(path_vec.len() - 4)..(path_vec.len() - 1)]
             .iter()
             .map(|component| Ok(component.as_os_str().to_os_string().into_string()?))
@@ -318,18 +316,6 @@ impl<'a> From<&'a FqBuf> for Fq<'a> {
         }
     }
 }
-
-// TODO:
-// impl<'a> From<&'a FetchPostRequest> for FqService<'a> {
-//     fn from(value: &'a FetchPostRequest) -> Self {
-//         FqService {
-//             name: &value.name,
-//             author: AUTHOR,
-//             version: &value.version,
-//             url: Some(&value.url),
-//         }
-//     }
-// }
 
 impl<'a> PartialEq for Fq<'a> {
     fn eq(&self, other: &Self) -> bool {

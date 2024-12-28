@@ -46,14 +46,14 @@ impl Pipeline for Roverd {
     ) -> Result<PipelineGetResponse, String> {
         let enabled: Vec<PipelineGet200ResponseEnabledInner> =
             warn_generic!(self.state.get_pipeline().await, PipelineGetResponse);
-        let status = self.state.process_manager.status.read().await;
+        let stats = self.state.process_manager.stats.read().await;
         Ok(
             PipelineGetResponse::Status200_PipelineStatusAndAnArrayOfProcesses(
                 PipelineGet200Response {
-                    status: *status,
-                    last_start: None,   // todo
-                    last_stop: None,    // todo
-                    last_restart: None, // todo
+                    status: stats.status,
+                    last_start: stats.last_start,
+                    last_stop: stats.last_stop,
+                    last_restart: stats.last_restart,
                     enabled,
                 },
             ),
