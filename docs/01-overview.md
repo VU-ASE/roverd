@@ -4,6 +4,6 @@ The daemon works with two concepts: **services** and a **pipeline**. Services ca
 
 The following shows the three states of a pipeline: Empty, Startable and Started. From the Empty state one can set a pipeline. If that pipeline is invalid, it will be rejected an we remain in the empty state. On the other hand, if it is valid, then we transition to the Startable state from where we can start the rover. From this state any changes made to the pipeline will be checked again so if a new pipeline is invalid, it will be sent back to the Empty state.
 
-![Pipeline States](/docs/StateMachine.jpg)
+![Pipeline States](https://github.com/user-attachments/assets/56cba2f5-cd62-4366-97b4-159fc9837299)
 
 After starting the rover from the Startable state, the pipeline moves to the Started state. From there, if any process from a service exits, all other processes will be terminated and we are back in the Startable state. The stop command will similarly terminate all processes and bring us back to the Startable state.
