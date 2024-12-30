@@ -6,9 +6,12 @@ use rovervalidate::pipeline::interface::{Pipeline, RunnablePipeline};
 use rovervalidate::service::{Service, ValidatedService};
 use rovervalidate::validate::Validate;
 use service::{Fq, FqBuf, FqBufVec, FqVec};
+use std::cmp;
 use std::collections::HashMap;
+use std::fs::File;
 use std::fs::{self, remove_dir_all, remove_file};
 use std::io::{BufRead, BufReader, Write};
+use std::io::{Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::sync::Arc;
@@ -17,9 +20,6 @@ use sysinfo::{CpuRefreshKind, MemoryRefreshKind, Pid, ProcessRefreshKind, Refres
 use tokio::process::Command;
 use tokio::sync::{broadcast, RwLock};
 use tracing::{error, warn};
-use std::fs::File;
-use std::io::{BufReader, BufRead, Seek, SeekFrom};
-use std::cmp;
 
 use crate::error::Error;
 use crate::util::*;
@@ -514,13 +514,13 @@ impl State {
     ) -> Result<Vec<String>, Error> {
         let file = File::open(fq.log_file()).map_err(|_| Error::NoLogsFound)?;
         let mut reader = BufReader::new(file);
-    
+
         let mut buffer = Vec::new();
         let mut lines = Vec::new();
-    
+
         // Seek to the end of the file
         let mut position = reader.seek(SeekFrom::End(0))?;
-    
+
         // Read the file in reverse to gather lines
         while lines.len() < num_lines && position > 0 {
             // Adjust buffer size based on remaining file size
@@ -528,19 +528,18 @@ impl State {
             position -= chunk_size as u64;
             reader.seek(SeekFrom::Start(position))?;
             buffer.resize(chunk_size, 0);
-    
+
             // Read the chunk
-            reader.read_exact(&mut buffer)?;
-    
+            reader.get_mut().read_exact(&mut buffer)?;
+
             // Split into lines and push to the result
             let chunk = String::from_utf8_lossy(&buffer);
             let mut chunk_lines: Vec<_> = chunk.lines().rev().map(String::from).collect();
             lines.append(&mut chunk_lines);
         }
-    
+
         // Reverse the lines to restore their original order
         lines.reverse();
-    
         Ok(lines.into_iter().take(num_lines).collect())
     }
 }
