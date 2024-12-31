@@ -1,3 +1,4 @@
+<!--
 # Overview
 
 The daemon works with two concepts: **services** and a **pipeline**. Services can be though of as any program that might run on the car and a pipeline is a colleection of those services that get started and stopped together. The definition of a pipeline is a list of enabled services. In the case of roverd, the pipeline is **always** valid (empty pipelines are technically valid). This make it easier to reason about the state since we know that at any given time the stored pipeline (in `/etc/roverd/rover.yaml`) is always a valid one.
@@ -44,4 +45,4 @@ For interacting with the API, the Swagger extension (already installed through d
 
 ## Future Improvements
 This repo has an unnecessarily **large** amount of code due to type conversions between types generated from openapi and validation types in rovervalidate. Furthermore, boilerplate code could be largely reduced by not generating Rust code from openapi, but by generating a openapi defintion form Rust types.
-
+--->
