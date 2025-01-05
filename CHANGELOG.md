@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/VU-ASE/roverd/compare/v1.1.0...v1.1.1) (2025-01-05)
+
+
+### Bug Fixes
+
+* actions trying gh_pat ([16891c6](https://github.com/VU-ASE/roverd/commit/16891c64aea875832683ab688dad398ff34e5d48))
+
 ## [1.1.0](https://github.com/VU-ASE/roverd/compare/v1.0.1...v1.1.0) (2025-01-05)
 
 
