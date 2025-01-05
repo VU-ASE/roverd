@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.2](https://github.com/VU-ASE/roverd/compare/v1.1.1...v1.1.2) (2025-01-05)
+
+
+### Bug Fixes
+
+* debugging gh actions ([97c95c3](https://github.com/VU-ASE/roverd/commit/97c95c3f17f93901ada55ea15c8c64caa0daffc3))
+
 ## [1.1.1](https://github.com/VU-ASE/roverd/compare/v1.1.0...v1.1.1) (2025-01-05)
 
 
