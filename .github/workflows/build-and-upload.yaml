@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build-and-upload:
-    runs-on: imx8mp-debix
+    runs-on: self-hosted
     steps:
     - uses: actions/checkout@v4
 
