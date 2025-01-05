@@ -1,5 +1,41 @@
 # Changelog
 
+## [1.1.0](https://github.com/VU-ASE/roverd/compare/v1.0.1...v1.1.0) (2025-01-05)
+
+
+### Features
+
+* add configuration options to service fqn GET endpoint ([1a07036](https://github.com/VU-ASE/roverd/commit/1a070368bb4db2f9233b316566cbedbba9deb46a))
+* added pipeline stats ([caa1aec](https://github.com/VU-ASE/roverd/commit/caa1aec6b1e4b1797dd141d4045dcc418a868623))
+* added tuning ouput address for services ([90e62ac](https://github.com/VU-ASE/roverd/commit/90e62acc43a27c1d842c18276f458376b75992e5))
+* build services using sh -c ([c9452fa](https://github.com/VU-ASE/roverd/commit/c9452fa396594a204ac059314031bfa093473f93))
+* configuraiton type returned in get service ([2594c5e](https://github.com/VU-ASE/roverd/commit/2594c5ea636a207c78fc41dc3a518b5c7e213b3e))
+* initial test with transceiver ([dfbab8a](https://github.com/VU-ASE/roverd/commit/dfbab8a6905e00453a3850164bac396d5f114af2))
+* readme + doc update ([74548dd](https://github.com/VU-ASE/roverd/commit/74548dd43284f1f67c6ac2b6e59c11ebdfd286f7))
+* require configuration type to be string or float ([cd004a2](https://github.com/VU-ASE/roverd/commit/cd004a2619ccafd2aaaa7dd90e8bfdb9eba309fb))
+* run command with sh -c instead of execve for more versatility ([66cb19c](https://github.com/VU-ASE/roverd/commit/66cb19c9578664042d9955f4e2091d594630e324))
+* use more memory efficient log fetching ([9e412b1](https://github.com/VU-ASE/roverd/commit/9e412b164b4a4e4e5944b887a608cdd836608b35))
+
+
+### Bug Fixes
+
+* added false_start protection ([6314469](https://github.com/VU-ASE/roverd/commit/6314469bf323b88b4753f940a8037b8daf222887))
+* build action run on self-hosted ([6d76358](https://github.com/VU-ASE/roverd/commit/6d76358b43ab7ae5bf97b2187605a3b506d2007c))
+* cleaned main ([0f4af18](https://github.com/VU-ASE/roverd/commit/0f4af18b431c24ffc51937f1b5f88bd1caa19838))
+* clippy lint ([cdb9eb2](https://github.com/VU-ASE/roverd/commit/cdb9eb21e7e87260de1d988437ab020e478d81ba))
+* don't enable tuning for transceiver itself ([d0da6c3](https://github.com/VU-ASE/roverd/commit/d0da6c329d978053d1b982b68eed2d34243d3f5f))
+* don't error if process not started yet ([666e722](https://github.com/VU-ASE/roverd/commit/666e722fe4fa62a9d9b430ed650d420a19a26719))
+* error msg on spawn process failur ([7f88a04](https://github.com/VU-ASE/roverd/commit/7f88a04b1576985691198c871d9bf1f3216f48e1))
+* implemented process stats ([1757c1a](https://github.com/VU-ASE/roverd/commit/1757c1a100e6363ee3b2bf9c912206c5c9d9639a))
+* improved error types WIP ([29531f6](https://github.com/VU-ASE/roverd/commit/29531f6b4f0774e6e22406347f1a1238311c5a36))
+* merged main, WIP ([c97f52f](https://github.com/VU-ASE/roverd/commit/c97f52f1d4ad75a31efd877486251b332106a956))
+* more work on errors ([1af7810](https://github.com/VU-ASE/roverd/commit/1af7810e00b105ad685270a2cbf5550526fc7d42))
+* process datastructures use fine grained locking ([b4aefa5](https://github.com/VU-ASE/roverd/commit/b4aefa540aec4f8ec749adaf75a313436a01d722))
+* read_exact import trait ([1949bde](https://github.com/VU-ASE/roverd/commit/1949bdeee11715124be79c4fbdea28d6150cf1ee))
+* set_pipeline protection ([0f06e04](https://github.com/VU-ASE/roverd/commit/0f06e049782142a25e686940b97bb2bba5680b13))
+* update bootspec to only allow string or float ([5fa0cb5](https://github.com/VU-ASE/roverd/commit/5fa0cb5aa2ec3218493d9ca73df2804d57b2c7b3))
+* use * instead of localhost for zmq bind inputs ([e68dccc](https://github.com/VU-ASE/roverd/commit/e68dccc41e2a5b86f51214ad7fa5bffc3a480561))
+
 ## [1.0.1](https://github.com/VU-ASE/roverd/compare/v1.0.0...v1.0.1) (2024-12-17)
 
 
