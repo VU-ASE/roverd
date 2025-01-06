@@ -1,0 +1,32 @@
+name: build-and-upload
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+  packages: write
+
+
+jobs:
+  build-and-upload:
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Build and run in Docker container
+      run: |
+        docker build -t roverd-build-container -f .devcontainer/Dockerfile .
+        docker run --rm --user devbox -v "$(pwd):/home/devbox/work" roverd-build-container bash -ic 'make build -C /home/devbox/work'
+
+    - name: Set VERSION from tag
+      run: echo "VERSION=${GITHUB_REF_NAME}" >> $GITHUB_ENV
+
+    - uses: AButler/upload-release-assets@v3.0
+      with:
+        files: "${{ github.workspace }}/target/release/roverd"
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        release-tag: ${{ env.VERSION }}
+
+# docker run -it --rm --user devbox -v "$(pwd):/home/devbox/work" roverd-build-container bash

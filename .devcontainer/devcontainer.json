@@ -1,0 +1,28 @@
+{
+  "name": "roverd",
+  "build": {
+    "dockerfile": "./Dockerfile",
+    "context": ".."
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer", // Rust language server
+        "tamasfe.even-better-toml", // TOML syntax support
+        "ms-vscode.makefile-tools", // Makefile Tools extension
+        "usernamehw.errorlens", // Error Lens for inline error highlighting
+        "42Crunch.vscode-openapi", // OpenAPI Editor
+        "Arjun.swagger-viewer", // Swagger Viewer
+        "philosowaffle.openapi-snippets", // OpenAPI Snippets
+        "dbankier.vscode-quick-select" // Quick select with cmd/ctrl+k "
+      ]
+    }
+  },
+  "runArgs": [
+    "--network=host"
+  ],
+  "forwardPorts": [
+    8070
+  ],
+  "remoteUser": "devbox"
+}
