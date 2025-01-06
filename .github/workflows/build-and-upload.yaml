@@ -18,36 +18,7 @@ jobs:
     - name: Build and run in Docker container
       run: |
         docker build -t roverd-build-container -f .devcontainer/Dockerfile .
-        docker run --rm --user devbox -v "$(pwd):/home/devbox/work" roverd-build-container bash -ic 'cd /home/devbox/work ; mkdir -p ./target/release ; echo yoyoyo > ./target/release/roverd'
-
-    - name: Test Print
-      run: |
-        echo "testing print"
-        cat ./target/release/roverd
-        cat ${{ github.workspace }}/target/release/roverd
-        file ./target/release/roverd
-        file ${{ github.workspace }}/target/release/roverd
-
-    # - name: Get release
-    #   id: get_release
-    #   uses: bruceadams/get-release@v1.3.2
-    #   env:
-    #       GITHUB_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
-
-    # - name: Upload Release Asset
-    #   id: upload-release-asset
-    #   uses: actions/upload-release-asset@v1
-    #   env:
-    #       GITHUB_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
-    #   with:
-    #       upload_url: ${{ steps.get_release.outputs.upload_url }}
-    #       asset_path: ${{ env.REPO_NAME }}.zip
-    #       asset_name: ${{ env.REPO_NAME }}.zip
-    #       asset_content_type: application/zip
-
-
-
-
+        docker run --rm --user devbox -v "$(pwd):/home/devbox/work" roverd-build-container bash -ic 'make build -C /home/devbox/work'
 
     - name: Set VERSION from tag
       run: echo "VERSION=${GITHUB_REF_NAME}" >> $GITHUB_ENV
@@ -57,9 +28,5 @@ jobs:
         files: "${{ github.workspace }}/target/release/roverd"
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         release-tag: ${{ env.VERSION }}
-
-
-# docker run --rm --user devbox -v "$(pwd):/home/devbox/work" roverd-build-container bash -ic 'make build -C /home/devbox/work'
-
 
 # docker run -it --rm --user devbox -v "$(pwd):/home/devbox/work" roverd-build-container bash
