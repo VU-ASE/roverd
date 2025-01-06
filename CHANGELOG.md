@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.0 (2025-01-06)
+
+
+### Features
+
+* initial commit ([ec5ed8d](https://github.com/VU-ASE/roverd/commit/ec5ed8d03f8770f06e77c4743b7ac2950de299ec))
+
 ## [1.1.3](https://github.com/VU-ASE/roverd/compare/v1.1.2...v1.1.3) (2025-01-05)
 
 
