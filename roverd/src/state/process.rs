@@ -71,7 +71,7 @@ pub struct ProcessManager {
 
     // Daemons are subprocess that roverd should manage.
     // Someday, this could be part of the API.
-    pub daemons: DaemonManager,
+    pub daemons: Option<DaemonManager>,
 }
 
 impl ProcessManager {

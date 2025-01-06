@@ -3,6 +3,7 @@ use axum::http::{self, StatusCode};
 use axum::middleware::{self, Next};
 use axum::response::Response;
 use base64::Engine;
+use openapi::models::DaemonStatus;
 use tower_http::cors::CorsLayer;
 use tracing::{info, warn};
 
@@ -33,7 +34,7 @@ async fn auth_wrapper(
     match auth(state, req, next).await {
         Ok(response) => Ok(response),
         Err(e) => {
-            warn!("Unauthorized or bad request");
+            warn!("Unauthorized or bad request: {:?}", e);
             match e {
                 Http(status_code) => Err(status_code),
                 _ => Err(StatusCode::BAD_REQUEST),
@@ -75,30 +76,35 @@ async fn auth(State(state): State<Roverd>, req: Request, next: Next) -> Result<R
 
     // the /status endpoint does not require authentication, all others do.
     if *req.uri() != *"/status" {
-        let auth_header = req
-            .headers()
-            .get(http::header::AUTHORIZATION)
-            .and_then(|header| header.to_str().ok())
-            .ok_or(Http(StatusCode::UNAUTHORIZED))?;
+        info!("status {:?}", state.info.status);
+        if state.info.status == DaemonStatus::Operational {
+            let auth_header = req
+                .headers()
+                .get(http::header::AUTHORIZATION)
+                .and_then(|header| header.to_str().ok())
+                .ok_or(Http(StatusCode::UNAUTHORIZED))?;
 
-        let basic_auth: Vec<&str> = auth_header.split(' ').collect();
+            let basic_auth: Vec<&str> = auth_header.split(' ').collect();
 
-        if basic_auth.len() != 2 || basic_auth[0] != "Basic" {
-            warn!("request is missing basic auth header");
-            return Err(Http(StatusCode::BAD_REQUEST));
+            if basic_auth.len() != 2 || basic_auth[0] != "Basic" {
+                warn!("request is missing basic auth header");
+                return Err(Http(StatusCode::BAD_REQUEST));
+            }
+
+            let base64_data = basic_auth[1];
+
+            let raw_bytes = base64::prelude::BASE64_STANDARD
+                .decode(base64_data)
+                .map_err(|_| Http(StatusCode::BAD_REQUEST))?;
+
+            let auth_str =
+                core::str::from_utf8(&raw_bytes).map_err(|_| Http(StatusCode::BAD_REQUEST))?;
+
+            // Returns early if authentication fails
+            check_auth(&state, auth_str)?;
+        } else {
+            return Err(Error::RoverdNotOperational);
         }
-
-        let base64_data = basic_auth[1];
-
-        let raw_bytes = base64::prelude::BASE64_STANDARD
-            .decode(base64_data)
-            .map_err(|_| Http(StatusCode::BAD_REQUEST))?;
-
-        let auth_str =
-            core::str::from_utf8(&raw_bytes).map_err(|_| Http(StatusCode::BAD_REQUEST))?;
-
-        // Returns early if authentication fails
-        check_auth(&state, auth_str)?;
     }
 
     // Pass the request on to the request handlers.
@@ -123,7 +129,6 @@ async fn main() -> Result<(), Error> {
         ))
         .layer(CorsLayer::permissive())
         .layer(DefaultBodyLimit::max(100000000));
-
 
     let listener = tokio::net::TcpListener::bind(LISTEN_ADDRESS).await.unwrap();
 

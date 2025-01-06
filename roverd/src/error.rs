@@ -8,6 +8,9 @@ use derive_more::From;
 /// about the error, it should all already be clear just based on the enum variant.
 #[derive(Debug, From)]
 pub enum Error {
+    // --- Roverd status ---
+    RoverdNotOperational,
+
     // --- Rover info file ---
     RoverFileNotFound,
     RoverFileFormat,

@@ -8,42 +8,42 @@ use serde::{Deserialize, Serialize};
 use super::{service::FqBuf, DATA_ADDRESS};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-struct Stream {
-    name: String,
-    address: String,
+pub struct Stream {
+    pub name: String,
+    pub address: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct Input {
-    service: String,
-    streams: Vec<Stream>,
+pub struct Input {
+    pub service: String,
+    pub streams: Vec<Stream>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct BootSpecOutput {
-    streams: Vec<Stream>,
+pub struct BootSpecOutput {
+    pub streams: Vec<Stream>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-enum BootSpecDataType {
+pub enum BootSpecDataType {
     String(String),
     Number(f64),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct BootSpecTuning {
-    enabled: bool,
-    address: String,
+pub struct BootSpecTuning {
+    pub enabled: bool,
+    pub address: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BootSpec {
-    name: String,
-    version: String,
-    inputs: Vec<Input>,
-    outputs: Vec<Stream>,
-    configuration: Vec<rovervalidate::service::Configuration>,
-    tuning: BootSpecTuning,
+    pub name: String,
+    pub version: String,
+    pub inputs: Vec<Input>,
+    pub outputs: Vec<Stream>,
+    pub configuration: Vec<rovervalidate::service::Configuration>,
+    pub tuning: BootSpecTuning,
 }
 
 #[repr(transparent)]

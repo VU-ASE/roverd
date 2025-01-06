@@ -74,7 +74,6 @@ pub async fn download_service(url: &String) -> Result<(), Error> {
     info!("Downloading: {}", url);
 
     let response = reqwest::get(url).await?;
-
     if response.status() != StatusCode::OK {
         let resp: axum::http::StatusCode = response.status();
         match response.status() {
@@ -84,12 +83,16 @@ pub async fn download_service(url: &String) -> Result<(), Error> {
             _ => return Err(Error::Http(resp)),
         }
     }
-
+    
+    tracing::warn!("after get");
     let mut file = std::fs::File::create(ZIP_FILE)?;
-
+    tracing::warn!("after file create");
+    
     let bytes = response.bytes().await?;
-
+    tracing::warn!("after file bytes");
+    
     file.write_all(&bytes)?;
+    tracing::warn!("after file write");
 
     Ok(())
 }

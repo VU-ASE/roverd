@@ -138,6 +138,10 @@ impl FqBuf {
             ROVER_DIR, self.author, self.name, self.version
         )
     }
+
+    pub fn exists(&self) -> bool {
+        Path::new(&self.path()).exists()
+    }
 }
 
 impl Display for FqBuf {

@@ -49,10 +49,20 @@ pub struct Roverd {
 
 impl Roverd {
     pub async fn new() -> Result<Self, Error> {
-        let daemons = DaemonManager::new();
+        let mut info = info::Info::new();
+
+        // let daemons = match DaemonManager::new().await {
+        //     Ok(d) => Some(d),
+        //     Err(e) => {
+        //         error!("Unable to start daemons: {:?}", e);
+        //         info.status = DaemonStatus::Unrecoverable;
+        //         None
+        //     }
+        // };
+        let daemons = None;
 
         let roverd = Self {
-            info: info::Info::new(),
+            info,
             state: State {
                 process_manager: ProcessManager {
                     processes: Arc::new(RwLock::new(vec![])),
