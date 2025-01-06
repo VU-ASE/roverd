@@ -1,4 +1,5 @@
 use axum_extra::extract::Multipart;
+use daemons::DaemonManager;
 use openapi::models::*;
 use process::{PipelineStats, Process, ProcessManager};
 use rovervalidate::config::{Configuration, ValidatedConfiguration};
@@ -28,6 +29,7 @@ use crate::{constants::*, time_now};
 mod bootspec;
 pub mod process;
 pub mod service;
+pub mod daemons;
 
 /// Start-up information, system clock and utilization
 pub mod info;
@@ -61,6 +63,10 @@ impl Roverd {
                     })),
                     shutdown_tx: broadcast::channel::<()>(1).0,
                 },
+                daemons: DaemonManager {
+                    processes: Arc::new(RwLock::new(vec![])),
+                    spawned: Arc::new(RwLock::new(vec![]))
+                },
                 built_services: Arc::new(RwLock::new(HashMap::new())),
                 sysinfo: Arc::new(RwLock::new(System::new_with_specifics(
                     RefreshKind::nothing()
@@ -89,6 +95,10 @@ impl AsRef<Roverd> for Roverd {
 pub struct State {
     // Holds all necessary data structures for starting/stopping processes
     pub process_manager: ProcessManager,
+
+    // Daemons are subprocess that roverd should manage.
+    // Someday, this could be part of the API.
+    pub daemons: DaemonManager,
 
     // Look up the last built time of a service on disk.
     pub built_services: Arc<RwLock<HashMap<FqBuf, i64>>>,

@@ -1,10 +1,10 @@
 name: build-and-upload
 
+on: workflow_dispatch
+
 # on:
 #   release:
 #     types: [published]
-
-on: workflow_dispatch
 
 permissions:
   contents: write
@@ -20,16 +20,25 @@ jobs:
     - name: Build and run in Docker container
       run: |
         docker build -t roverd-build-container -f .devcontainer/Dockerfile .
-        docker run --rm --user devbox -v "$(pwd):/home/devbox/work" roverd-build-container bash -ic 'make build -C /home/devbox/work'
+        docker run --rm --user devbox -v "$(pwd):/home/devbox/work" roverd-build-container bash -ic 'cd /home/devbox/work ; mkdir -p ./target/release ; echo yoyoyo > ./target/release/roverd'
 
-    - name: Set VERSION from tag
-      run: echo "VERSION=${GITHUB_REF_NAME}" >> $GITHUB_ENV
+    - name: Test Print
+      run: |
+        echo "testing print"
+        cat ./target/release/roverd
+        file ./target/release/roverd
 
-    - uses: AButler/upload-release-assets@v3.0
-      with:
-        files: "./target/release/roverd"
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
-        release-tag: ${{ env.VERSION }}
+    # - name: Set VERSION from tag
+    #   run: echo "VERSION=${GITHUB_REF_NAME}" >> $GITHUB_ENV
+
+    # - uses: AButler/upload-release-assets@v3.0
+    #   with:
+    #     files: "./target/release/roverd"
+    #     repo-token: ${{ secrets.GITHUB_TOKEN }}
+    #     release-tag: ${{ env.VERSION }}
+
+
+# docker run --rm --user devbox -v "$(pwd):/home/devbox/work" roverd-build-container bash -ic 'make build -C /home/devbox/work'
 
 
 # docker run -it --rm --user devbox -v "$(pwd):/home/devbox/work" roverd-build-container bash
