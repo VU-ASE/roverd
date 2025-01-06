@@ -1,33 +1,29 @@
 use std::{
     path::PathBuf,
-    sync::Arc,
-    time::{SystemTime, UNIX_EPOCH},
+    process::Stdio,
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 use openapi::models::ProcessStatus;
 use rovervalidate::{config::Validate, service::Service};
-use tokio::sync::RwLock;
-use tracing::info;
+use tokio::{process::Command, time::sleep};
+use tracing::{error, info};
 
-use crate::constants::*;
 use crate::util::*;
+use crate::{command::ParsedCommand, constants::*};
 use crate::{time_now, Error};
 
-use super::bootspec::{BootSpecOutput, Input, Stream};
+use super::bootspec::{Input, Stream};
 use super::{
     bootspec::{BootSpec, BootSpecTuning},
-    process::{Process, SpawnedProcess},
+    process::Process,
     service::FqBuf,
 };
 
 #[derive(Debug, Clone)]
 pub struct DaemonManager {
-    /// Contains the "application view" of process after validation. In-between start / stop
-    /// runs this vec remains unchanged.
-    pub processes: Arc<RwLock<Vec<Process>>>,
-
-    /// The "runtime" view of all processes, this contains handles to the spawned children.
-    pub spawned: Arc<RwLock<Vec<SpawnedProcess>>>,
+    // When refactoring it, we will have to save the state of processes
+    // pub processes: Arc<RwLock<Vec<Process>>>,
 }
 
 /// Here are two hard coded daemons, ideally we make this extensible by specifying
@@ -35,17 +31,17 @@ pub struct DaemonManager {
 /// via the API, but getters would be nice. For now, this is hardcoded and error prone,
 /// but it also will not change for the forseeable future.
 impl DaemonManager {
-    pub async fn new() -> Result<DaemonManager, Error> {
+    pub async fn init() -> Result<(), Error> {
         // First make sure the daemons are installed, this can fail which will
         // put roverd in a non operational state.
         let display_fq = {
-            let fq = FqBuf::try_from(&"/home/debix/.rover/vu-ase/display/1.0.1".to_string())?;
+            let fq = FqBuf::new("vu-ase", "display", "1.1.1");
             if fq.exists() {
                 info!("found daemon 'display'");
                 fq
             } else {
                 download_and_install_service(
-                    &"https://github.com/VU-ASE/display/releases/download/v1.0.1/display.zip"
+                    &"https://github.com/VU-ASE/display/releases/download/v1.1.1/display.zip"
                         .to_string(),
                 )
                 .await?
@@ -53,13 +49,13 @@ impl DaemonManager {
         };
 
         let battery_fq = {
-            let fq = FqBuf::try_from(&"/home/debix/.rover/vu-ase/battery/1.1.0".to_string())?;
+            let fq = FqBuf::new("vu-ase", "battery", "1.2.1");
             if fq.exists() {
                 info!("found daemon 'battery'");
                 fq
             } else {
                 download_and_install_service(
-                    &"https://github.com/VU-ASE/battery/releases/download/v1.1.0/battery.zip"
+                    &"https://github.com/VU-ASE/battery/releases/download/v1.2.1/battery.zip"
                         .to_string(),
                 )
                 .await?
@@ -112,37 +108,77 @@ impl DaemonManager {
         let display_injected_env = serde_json::to_string(&display_bootspec)?;
         let battery_injected_env = serde_json::to_string(&battery_bootspec)?;
 
-        let mut procs = vec![];
+        let procs = vec![
+            Process {
+                fq: display_fq.clone(),
+                command: display_service.0.commands.run.clone(),
+                last_pid: None,
+                last_exit_code: 0,
+                name: display_service.0.name.clone(),
+                status: ProcessStatus::Stopped,
+                log_file: PathBuf::from(display_fq.log_file()),
+                injected_env: display_injected_env.clone(),
+                faults: 0,
+                start_time: time_now!() as i64,
+            },
+            Process {
+                fq: battery_fq.clone(),
+                command: battery_service.0.commands.run.clone(),
+                last_pid: None,
+                last_exit_code: 0,
+                name: battery_service.0.name.clone(),
+                status: ProcessStatus::Stopped,
+                log_file: PathBuf::from(battery_fq.log_file()),
+                injected_env: battery_injected_env.clone(),
+                faults: 0,
+                start_time: time_now!() as i64,
+            }
+        ];
 
-        procs.push(Process {
-            fq: display_fq.clone(),
-            command: display_service.0.commands.run.clone(),
-            last_pid: None,
-            last_exit_code: 0,
-            name: display_service.0.name.clone(),
-            status: ProcessStatus::Stopped,
-            log_file: PathBuf::from(display_fq.log_file()),
-            injected_env: display_injected_env.clone(),
-            faults: 0,
-            start_time: time_now!() as i64,
-        });
+        start_daemons(procs).await?;
 
-        procs.push(Process {
-            fq: battery_fq.clone(),
-            command: battery_service.0.commands.run.clone(),
-            last_pid: None,
-            last_exit_code: 0,
-            name: battery_service.0.name.clone(),
-            status: ProcessStatus::Stopped,
-            log_file: PathBuf::from(battery_fq.log_file()),
-            injected_env: battery_injected_env.clone(),
-            faults: 0,
-            start_time: time_now!() as i64,
-        });
-
-        Ok(DaemonManager {
-            processes: Arc::new(RwLock::new(procs)),
-            spawned: Arc::new(RwLock::new(vec![])),
-        })
+        Ok(())
     }
+}
+
+#[allow(unreachable_code)]
+pub async fn start_daemons(procs: Vec<Process>) -> Result<(), Error> {
+    for proc in procs {
+        let parsed_command = ParsedCommand::try_from(&proc.command)?;
+
+        tokio::spawn(async move {
+            loop {
+                let log_file = create_log_file(&proc.log_file)?;
+                let stdout = Stdio::from(log_file.try_clone()?);
+                let stderr = Stdio::from(log_file);
+                let mut command = Command::new(parsed_command.program.clone());
+                command
+                    .args(parsed_command.arguments.clone())
+                    .env(ENV_KEY, proc.injected_env.clone())
+                    .current_dir(proc.fq.dir())
+                    .stdout(stdout)
+                    .stderr(stderr);
+                match command.spawn() {
+                    Ok(mut child) => {
+                        info!("daemon '{}' started", proc.name);
+                        match child.wait().await {
+                            Ok(status) => info!(
+                                "daemon '{}' exited with status: {}",
+                                proc.name, status
+                            ),
+                            Err(e) => info!("daemon '{}' error: {}", proc.name, e),
+                        }
+                    }
+                    Err(e) => {
+                        error!("Could not start daemon '{}': {}", proc.name, e);
+                    }
+                }
+                info!("restarting daemon '{}'", proc.name);
+                sleep(Duration::from_secs(3)).await;
+            }
+            Ok::<(), Error>(())
+        });
+    }
+
+    Ok(())
 }

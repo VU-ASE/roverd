@@ -20,11 +20,6 @@ pub struct Input {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct BootSpecOutput {
-    pub streams: Vec<Stream>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
 pub enum BootSpecDataType {
     String(String),
     Number(f64),

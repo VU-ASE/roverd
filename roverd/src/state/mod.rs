@@ -51,15 +51,15 @@ impl Roverd {
     pub async fn new() -> Result<Self, Error> {
         let mut info = info::Info::new();
 
-        // let daemons = match DaemonManager::new().await {
-        //     Ok(d) => Some(d),
-        //     Err(e) => {
-        //         error!("Unable to start daemons: {:?}", e);
-        //         info.status = DaemonStatus::Unrecoverable;
-        //         None
-        //     }
-        // };
-        let daemons = None;
+        // todo when implementing daemons properly, add state here
+        let _ = match DaemonManager::init().await {
+            Ok(d) => Some(d),
+            Err(e) => {
+                error!("Unable to start daemons: {:?}", e);
+                info.status = DaemonStatus::Unrecoverable;
+                None
+            }
+        };
 
         let roverd = Self {
             info,
@@ -74,7 +74,6 @@ impl Roverd {
                         last_restart: None,
                     })),
                     shutdown_tx: broadcast::channel::<()>(1).0,
-                    daemons,
                 },
                 built_services: Arc::new(RwLock::new(HashMap::new())),
                 sysinfo: Arc::new(RwLock::new(System::new_with_specifics(

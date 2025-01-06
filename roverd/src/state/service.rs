@@ -30,6 +30,16 @@ pub struct FqBuf {
     pub version: String,
 }
 
+impl FqBuf {
+    pub fn new(author: &str, name: &str, version: &str) -> FqBuf {
+        FqBuf {
+            author: author.to_string(),
+            name: name.to_string(),
+            version: version.to_string(),
+        }
+    }
+}
+
 impl Clone for FqBuf {
     fn clone(&self) -> Self {
         Self {
@@ -140,7 +150,7 @@ impl FqBuf {
     }
 
     pub fn exists(&self) -> bool {
-        Path::new(&self.path()).exists()
+        Path::new(&self.dir()).exists()
     }
 }
 

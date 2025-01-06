@@ -21,8 +21,6 @@ use crate::constants::*;
 use crate::error::Error;
 use crate::service::FqBuf;
 
-use super::daemons::DaemonManager;
-
 #[derive(Debug, Clone)]
 pub struct SpawnedProcess {
     pub fq: FqBuf,
@@ -71,7 +69,7 @@ pub struct ProcessManager {
 
     // Daemons are subprocess that roverd should manage.
     // Someday, this could be part of the API.
-    pub daemons: Option<DaemonManager>,
+    // pub daemons: Option<DaemonManager>,
 }
 
 impl ProcessManager {

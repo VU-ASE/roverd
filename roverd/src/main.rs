@@ -121,7 +121,7 @@ async fn main() -> Result<(), Error> {
     // All app initialization happens in new()
     let rover_state = Roverd::new().await?;
 
-    // Hand-off to axum
+    // Hand-off to axum with a max upload limit of 100MB
     let router = openapi::server::new(rover_state.clone())
         .layer(middleware::from_fn_with_state(
             rover_state.clone(),
