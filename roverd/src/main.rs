@@ -154,6 +154,18 @@ async fn download_latest_roverd() -> Result<(), Error> {
     info!("downloading latest roverd");
 
     let response = reqwest::get(ROVERD_DOWNLOAD_URL).await?;
+
+    if response.status() != StatusCode::OK {
+        let resp: axum::http::StatusCode = response.status();
+        match response.status() {
+            StatusCode::NOT_FOUND => return Err(Error::ServiceNotFound),
+            StatusCode::BAD_REQUEST => return Err(Error::ServiceDownloadFailed),
+            StatusCode::FORBIDDEN => return Err(Error::Http(StatusCode::FORBIDDEN)),
+            _ => return Err(Error::Http(resp)),
+        }
+    }
+
+
     let new_binary = response.bytes().await?;
 
     let mut roverd_file = fs::OpenOptions::new()
