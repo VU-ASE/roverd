@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/VU-ASE/roverd/compare/v1.1.0...v1.1.1) (2025-01-06)
+
+
+### Bug Fixes
+
+* incorrect download address ([7855829](https://github.com/VU-ASE/roverd/commit/78558295657a86a33146ab792a7873fb5dfa3548))
+
 ## [1.1.0](https://github.com/VU-ASE/roverd/compare/v1.0.1...v1.1.0) (2025-01-06)
 
 
