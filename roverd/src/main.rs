@@ -154,22 +154,16 @@ async fn download_latest_roverd() -> Result<(), Error> {
     info!("downloading latest roverd");
 
     let response = reqwest::get(ROVERD_DOWNLOAD_URL).await?;
-    info!("let response = reqwest::get(ROVERD_DOWNLOAD_URL).await?;");
-
     let new_binary = response.bytes().await?;
-    info!("let new_binary = response.bytes().await?;");
 
     let mut roverd_file = fs::OpenOptions::new()
         .create(true)
         .write(true)
         .open(ROVERD_INSTALL_PATH)?;
 
-    info!("let new_binary = response.bytes().await?;");
-
     roverd_file.write_all(&new_binary)?;
 
     fs::set_permissions(ROVERD_INSTALL_PATH, Permissions::from_mode(0o755))?;
-    info!("fs::set_permissions(temp_path.clone(), Permissions::from_mode(0o755))?;");
 
     Ok(())
 }
