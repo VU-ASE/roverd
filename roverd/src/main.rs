@@ -4,8 +4,11 @@ use axum::middleware::{self, Next};
 use axum::response::Response;
 use base64::Engine;
 use openapi::models::DaemonStatus;
+use std::fs::{self, Permissions};
+use std::io::Write;
+use std::os::unix::fs::PermissionsExt;
 use tower_http::cors::CorsLayer;
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 
 mod apis;
 mod command;
@@ -117,6 +120,15 @@ async fn main() -> Result<(), Error> {
     log::init();
     info!("logging initialized");
 
+    // Download latest version of roverd from github
+    match download_latest_roverd().await {
+        Err(e) => {
+            error!("Unable to download latest roverd");
+            error!("{:?}", e);
+        }
+        _ => (),
+    };
+
     // All app initialization happens in new()
     let rover_state = Roverd::new().await?;
 
@@ -134,6 +146,30 @@ async fn main() -> Result<(), Error> {
     info!("listening on {}", LISTEN_ADDRESS);
 
     axum::serve(listener, router).await.unwrap();
+
+    Ok(())
+}
+
+async fn download_latest_roverd() -> Result<(), Error> {
+    info!("downloading latest roverd");
+
+    let response = reqwest::get(ROVERD_DOWNLOAD_URL).await?;
+    info!("let response = reqwest::get(ROVERD_DOWNLOAD_URL).await?;");
+
+    let new_binary = response.bytes().await?;
+    info!("let new_binary = response.bytes().await?;");
+
+    let mut roverd_file = fs::OpenOptions::new()
+        .create(true)
+        .write(true)
+        .open(ROVERD_INSTALL_PATH)?;
+
+    info!("let new_binary = response.bytes().await?;");
+
+    roverd_file.write_all(&new_binary)?;
+
+    fs::set_permissions(ROVERD_INSTALL_PATH, Permissions::from_mode(0o755))?;
+    info!("fs::set_permissions(temp_path.clone(), Permissions::from_mode(0o755))?;");
 
     Ok(())
 }
