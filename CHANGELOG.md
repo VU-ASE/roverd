@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/VU-ASE/roverd/compare/v1.0.0...v1.0.1) (2025-01-06)
+
+
+### Bug Fixes
+
+* testing container file io ([ff0207a](https://github.com/VU-ASE/roverd/commit/ff0207a7269ed728688863822f5d8b675aa53de8))
+
 ## 1.0.0 (2025-01-06)
 
 
