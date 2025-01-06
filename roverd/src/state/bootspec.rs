@@ -5,7 +5,7 @@ use crate::constants::*;
 use rovervalidate::service::ValidatedService;
 use serde::{Deserialize, Serialize};
 
-use super::{service::FqBuf};
+use super::service::FqBuf;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Stream {
@@ -149,17 +149,14 @@ impl BootSpecs {
             result.insert(fq, b);
         }
 
-
         // Add the battery stream as input to transceiver
         if transeiver_service.is_some() {
             transceiver_inputs.push(Input {
                 service: "battery".to_string(),
-                streams: vec![
-                    Stream {
-                        name: BATTERY_STREAM_NAME.to_string(),
-                        address: format!("{}:{}", DATA_ADDRESS, BATTERY_PORT),
-                    }
-                ]
+                streams: vec![Stream {
+                    name: BATTERY_STREAM_NAME.to_string(),
+                    address: format!("{}:{}", DATA_ADDRESS, BATTERY_PORT),
+                }],
             })
         }
 

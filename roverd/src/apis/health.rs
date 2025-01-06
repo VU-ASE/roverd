@@ -9,7 +9,8 @@ use axum::http::Method;
 use axum_extra::extract::CookieJar;
 
 use openapi::models::GenericError;
-use tracing::warn;
+use tokio::process::Command;
+use tracing::{error, warn};
 
 use sysinfo::{CpuRefreshKind, MemoryRefreshKind, RefreshKind};
 
@@ -99,5 +100,25 @@ impl Health for Roverd {
     ) -> Result<UpdatePostResponse, String> {
         let a = || Err(Error::Unimplemented);
         warn_generic!(a(), UpdatePostResponse)
+    }
+
+    /// Shutdown the rover..
+    ///
+    /// ShutdownPost - POST /shutdown
+    async fn shutdown_post(
+        &self,
+        _method: Method,
+        _host: Host,
+        _cookies: CookieJar,
+    ) -> Result<ShutdownPostResponse, String> {
+        let mut shutdown = Command::new("shutdown");
+        shutdown.arg("-h").arg("now");
+
+        match shutdown.spawn() {
+            Ok(_) => (),
+            Err(e) => error!("Unable to run shutdown command: {}", e),
+        }
+
+        Ok(ShutdownPostResponse::Status200_RoverShutdownSuccessfully)
     }
 }

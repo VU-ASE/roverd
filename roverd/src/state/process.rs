@@ -102,7 +102,10 @@ impl ProcessManager {
 
             let parsed_command = ParsedCommand::try_from(&p.command)?;
 
-            fs::set_permissions(parsed_command.program.clone(), Permissions::from_mode(0o755))?;
+            fs::set_permissions(
+                parsed_command.program.clone(),
+                Permissions::from_mode(0o755),
+            )?;
 
             let mut command = Command::new(parsed_command.program);
             command

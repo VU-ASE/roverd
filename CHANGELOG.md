@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/VU-ASE/roverd/compare/v1.0.0...v1.0.1) (2025-01-06)
+
+
+### Bug Fixes
+
+* binaries are +x and transceiver gets battery ([bcf34cf](https://github.com/VU-ASE/roverd/commit/bcf34cfcc92fb7bca1e833c649b88339aa70a6a8))
+
 ## 1.0.0 (2025-01-06)
 
 
