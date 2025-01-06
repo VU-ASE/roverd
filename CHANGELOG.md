@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.0](https://github.com/VU-ASE/roverd/compare/v1.0.1...v1.1.0) (2025-01-06)
+
+
+### Features
+
+* added shutdown endoint ([02892e7](https://github.com/VU-ASE/roverd/commit/02892e76bd08a8fae4e46f7239aed8f49365015f))
+* self updater ([c0557d7](https://github.com/VU-ASE/roverd/commit/c0557d75741d2885a86347bb4e3102b580af7c81))
+
 ## [1.0.1](https://github.com/VU-ASE/roverd/compare/v1.0.0...v1.0.1) (2025-01-06)
 
 
