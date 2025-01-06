@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.0 (2025-01-06)
+
+
+### Features
+
+* rudimentary daemons (hard-coded) ([b8c4a16](https://github.com/VU-ASE/roverd/commit/b8c4a16fe0591835df99f3eb16ade42933c441af))
+* tested bigger zip upload size ([5cc78b4](https://github.com/VU-ASE/roverd/commit/5cc78b4f4f228cd132f1b747ee649255a774169d))
+
 ## [1.0.3](https://github.com/VU-ASE/roverd/compare/v1.0.2...v1.0.3) (2025-01-06)
 
 
