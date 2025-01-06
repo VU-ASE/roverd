@@ -14,6 +14,10 @@ pub const ZIP_FILE: &str = "/tmp/incoming-service.zip";
 pub const UNZIPPED_DIR: &str = "/tmp/incoming-service";
 
 pub const ENV_KEY: &str = "ASE_SERVICE";
+
+pub const BATTERY_PORT: u32 = 5699;
+pub const BATTERY_STREAM_NAME: &str = "voltage";
+
 pub const START_PORT: u32 = 5700;
 
 pub const DATA_ADDRESS: &str = "tcp://localhost";

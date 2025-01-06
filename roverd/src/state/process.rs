@@ -1,4 +1,6 @@
+use std::fs::{self, Permissions};
 use std::io::Write;
+use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -66,7 +68,6 @@ pub struct ProcessManager {
 
     /// Broadcast channel to send shutdown command for termination.
     pub shutdown_tx: Sender<()>,
-
     // Daemons are subprocess that roverd should manage.
     // Someday, this could be part of the API.
     // pub daemons: Option<DaemonManager>,
@@ -100,6 +101,8 @@ impl ProcessManager {
             let stderr = Stdio::from(log_file);
 
             let parsed_command = ParsedCommand::try_from(&p.command)?;
+
+            fs::set_permissions(parsed_command.program.clone(), Permissions::from_mode(0o755))?;
 
             let mut command = Command::new(parsed_command.program);
             command

@@ -76,7 +76,6 @@ async fn auth(State(state): State<Roverd>, req: Request, next: Next) -> Result<R
 
     // the /status endpoint does not require authentication, all others do.
     if *req.uri() != *"/status" {
-        info!("status {:?}", state.info.status);
         if state.info.status == DaemonStatus::Operational {
             let auth_header = req
                 .headers()

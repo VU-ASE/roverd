@@ -1,4 +1,7 @@
 use std::{
+    fs,
+    fs::Permissions,
+    os::unix::fs::PermissionsExt,
     path::PathBuf,
     process::Stdio,
     time::{Duration, SystemTime, UNIX_EPOCH},
@@ -74,8 +77,8 @@ impl DaemonManager {
         let battery_service = battery_service.validate()?;
 
         let voltage_stream = Stream {
-            name: "voltage".to_string(),
-            address: "tcp://localhost:5699".to_string(),
+            name: BATTERY_STREAM_NAME.to_string(),
+            address: format!("{}:{}", DATA_ADDRESS, BATTERY_PORT),
         };
 
         let display_bootspec = BootSpec {
@@ -132,7 +135,7 @@ impl DaemonManager {
                 injected_env: battery_injected_env.clone(),
                 faults: 0,
                 start_time: time_now!() as i64,
-            }
+            },
         ];
 
         start_daemons(procs).await?;
@@ -151,6 +154,11 @@ pub async fn start_daemons(procs: Vec<Process>) -> Result<(), Error> {
                 let log_file = create_log_file(&proc.log_file)?;
                 let stdout = Stdio::from(log_file.try_clone()?);
                 let stderr = Stdio::from(log_file);
+                fs::set_permissions(
+                    parsed_command.program.clone(),
+                    Permissions::from_mode(0o755),
+                )?;
+
                 let mut command = Command::new(parsed_command.program.clone());
                 command
                     .args(parsed_command.arguments.clone())
@@ -162,10 +170,9 @@ pub async fn start_daemons(procs: Vec<Process>) -> Result<(), Error> {
                     Ok(mut child) => {
                         info!("daemon '{}' started", proc.name);
                         match child.wait().await {
-                            Ok(status) => info!(
-                                "daemon '{}' exited with status: {}",
-                                proc.name, status
-                            ),
+                            Ok(status) => {
+                                info!("daemon '{}' exited with status: {}", proc.name, status)
+                            }
                             Err(e) => info!("daemon '{}' error: {}", proc.name, e),
                         }
                     }
