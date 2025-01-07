@@ -153,6 +153,8 @@ async fn main() -> Result<(), Error> {
 async fn download_latest_roverd() -> Result<(), Error> {
     info!("downloading latest roverd");
 
+    let temp_file = "/tmp/roverd.incoming".to_string();
+
     let response = reqwest::get(ROVERD_DOWNLOAD_URL).await?;
 
     if response.status() != StatusCode::OK {
@@ -165,17 +167,18 @@ async fn download_latest_roverd() -> Result<(), Error> {
         }
     }
 
-
     let new_binary = response.bytes().await?;
 
     let mut roverd_file = fs::OpenOptions::new()
         .create(true)
         .write(true)
-        .open(ROVERD_INSTALL_PATH)?;
+        .open(temp_file.clone())?;
 
     roverd_file.write_all(&new_binary)?;
 
-    fs::set_permissions(ROVERD_INSTALL_PATH, Permissions::from_mode(0o755))?;
+    fs::set_permissions(temp_file.clone(), Permissions::from_mode(0o755))?;
+
+    fs::rename(temp_file, ROVERD_INSTALL_PATH)?;
 
     Ok(())
 }
