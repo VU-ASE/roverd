@@ -27,7 +27,8 @@ RUN devbox global install ; echo "Installed devbox packages."
 # --- DEPENDENCIES ---
 
 RUN devbox global run -- rustup default stable
-RUN sudo apt install -y pkg-config libssl-dev python3
+# RUN devbox global run -- rustup target add aarch64-unknown-linux-gnu
+RUN sudo apt install -y pkg-config libssl-dev python3 gcc-aarch64-linux-gnu libssl-dev libudev-dev procps
 
 # --- debix user setup ---
 USER root:root

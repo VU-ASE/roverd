@@ -148,42 +148,51 @@ impl DaemonManager {
 pub async fn start_daemons(procs: Vec<Process>) -> Result<(), Error> {
     for proc in procs {
         let parsed_command = ParsedCommand::try_from(&proc.command)?;
-
+        
         tokio::spawn(async move {
             loop {
-                let log_file = create_log_file(&proc.log_file)?;
-                let stdout = Stdio::from(log_file.try_clone()?);
-                let stderr = Stdio::from(log_file);
-                fs::set_permissions(
-                    parsed_command.program.clone(),
-                    Permissions::from_mode(0o755),
-                )?;
+                let result: Result<(), Error> = async {
+                    let log_file = create_log_file(&proc.log_file)?;
+                    let stdout = Stdio::from(log_file.try_clone()?);
+                    let stderr = Stdio::from(log_file);
 
-                let mut command = Command::new(parsed_command.program.clone());
-                command
-                    .args(parsed_command.arguments.clone())
-                    .env(ENV_KEY, proc.injected_env.clone())
-                    .current_dir(proc.fq.dir())
-                    .stdout(stdout)
-                    .stderr(stderr);
-                match command.spawn() {
-                    Ok(mut child) => {
-                        info!("daemon '{}' started", proc.name);
-                        match child.wait().await {
-                            Ok(status) => {
-                                info!("daemon '{}' exited with status: {}", proc.name, status)
+                    let full_path = format!("{}/{}", proc.fq.dir(), &parsed_command.program);
+                    fs::set_permissions(
+                        &full_path,
+                        Permissions::from_mode(0o755),
+                    )?;
+                    let mut command = Command::new(&parsed_command.program);
+                    command
+                        .args(&parsed_command.arguments)
+                        .env(ENV_KEY, &proc.injected_env)
+                        .current_dir(proc.fq.dir())
+                        .stdout(stdout)
+                        .stderr(stderr);
+
+                    match command.spawn() {
+                        Ok(mut child) => {
+                            info!("daemon '{}' started", proc.name);
+                            match child.wait().await {
+                                Ok(status) => {
+                                    info!("daemon '{}' exited with status: {}", proc.name, status)
+                                }
+                                Err(e) => info!("daemon '{}' error: {}", proc.name, e),
                             }
-                            Err(e) => info!("daemon '{}' error: {}", proc.name, e),
+                        }
+                        Err(e) => {
+                            error!("could not start daemon '{}': {}", proc.name, e);
                         }
                     }
-                    Err(e) => {
-                        error!("Could not start daemon '{}': {}", proc.name, e);
-                    }
+                    Ok(())
+                }.await;
+
+                if let Err(e) = result {
+                    error!("error in daemon '{}': {:?}", proc.name, e);
                 }
+
                 info!("restarting daemon '{}'", proc.name);
                 sleep(Duration::from_secs(3)).await;
             }
-            Ok::<(), Error>(())
         });
     }
 

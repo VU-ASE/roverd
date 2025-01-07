@@ -121,13 +121,13 @@ async fn main() -> Result<(), Error> {
     info!("logging initialized");
 
     // Download latest version of roverd from github
-    match download_latest_roverd().await {
-        Err(e) => {
-            error!("Unable to download latest roverd");
-            error!("{:?}", e);
-        }
-        _ => (),
-    };
+    // match download_latest_roverd().await {
+    //     Err(e) => {
+    //         error!("Unable to download latest roverd");
+    //         error!("{:?}", e);
+    //     }
+    //     _ => (),
+    // };
 
     // All app initialization happens in new()
     let rover_state = Roverd::new().await?;

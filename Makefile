@@ -19,6 +19,10 @@ setup:
 dev: build
 	sudo ./target/release/roverd
 
+# cross:
+# 	cross build --target aarch64-unknown-linux-gnu --release
+
+
 clean:
 	@cargo clean
 
