@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.5](https://github.com/VU-ASE/roverd/compare/v1.1.4...v1.1.5) (2025-01-07)
+
+
+### Bug Fixes
+
+* final processess executable ([4107d41](https://github.com/VU-ASE/roverd/commit/4107d41724e12fb42576b1bf89907dc3c432aa34))
+
 ## [1.1.4](https://github.com/VU-ASE/roverd/compare/v1.1.3...v1.1.4) (2025-01-07)
 
 
