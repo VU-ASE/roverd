@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.4](https://github.com/VU-ASE/roverd/compare/v1.1.3...v1.1.4) (2025-01-07)
+
+
+### Bug Fixes
+
+* daemons started properly now ([331cab5](https://github.com/VU-ASE/roverd/commit/331cab5889bce34dc6aa47fcf304b9091b09ad21))
+
 ## [1.1.3](https://github.com/VU-ASE/roverd/compare/v1.1.2...v1.1.3) (2025-01-07)
 
 
