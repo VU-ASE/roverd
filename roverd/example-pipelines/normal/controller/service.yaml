@@ -6,7 +6,7 @@ description: Makes the main control decisions steering the car to victory.
 
 commands:
   build: make build
-  run: python3 ./bin/controller.py
+  run: ./bin/controller
 
 inputs:
   - service: imaging

@@ -102,8 +102,11 @@ impl ProcessManager {
 
             let parsed_command = ParsedCommand::try_from(&p.command)?;
 
+            let full_program_path = format!("{}/{}", p.fq.dir(), &parsed_command.program);
+            info!("full path: {:?}", full_program_path);
+
             fs::set_permissions(
-                parsed_command.program.clone(),
+                full_program_path.clone(),
                 Permissions::from_mode(0o755),
             )?;
 
