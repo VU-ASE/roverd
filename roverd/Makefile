@@ -9,7 +9,7 @@ lint:
 	@cargo clippy
 
 build-open-api:
-	@openapi-generator-cli generate -i spec/apispec.yaml -g rust-axum -o openapi/
+	@openapi-generator generate -i spec/apispec.yaml -g rust-axum -o openapi/
 	@cd openapi ; cargo fmt ; cargo clippy
 
 build: build-open-api lint

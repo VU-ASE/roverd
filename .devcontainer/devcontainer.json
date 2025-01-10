@@ -2,7 +2,10 @@
   "name": "roverd",
   "build": {
     "dockerfile": "./Dockerfile",
-    "context": ".."
+    "context": "..",
+    "options": [
+      "--network=host"
+    ]
   },
   "customizations": {
     "vscode": {
@@ -21,8 +24,5 @@
   "runArgs": [
     "--network=host"
   ],
-  "forwardPorts": [
-    8070
-  ],
-  "remoteUser": "devbox"
+  "remoteUser": "dev"
 }

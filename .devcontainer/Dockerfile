@@ -1,53 +1,44 @@
-FROM jetpackio/devbox:latest
+FROM ubuntu:22.04
 
-# Set environment variables to prevent interactive prompts during package installation
-ARG DEBIAN_FRONTEND=noninteractive
+ENV DEBIAN_FRONTEND=noninteractive
 
-USER root:root
+RUN apt-get update && \
+    apt-get install -y curl \
+        sudo \
+        nano \
+        software-properties-common \
+        build-essential \
+        gcc-aarch64-linux-gnu \
+        gcc-arm-linux-gnueabihf \
+        pkg-config
 
-# Update packages and install common apt tools
-RUN apt-get update && apt-get install -y \
-	build-essential \
-	sudo \
-	make \
-	git \
-	curl \
-	gnupg \
-	binutils \
-	xz-utils \
-	wget
+# Java install
+RUN add-apt-repository ppa:openjdk-r/ppa && \
+apt-get update && \
+apt-get install -y openjdk-17-jdk-headless 
 
-USER ${DEVBOX_USER}:${DEVBOX_USER}
+# Python 3 install
+RUN apt-get install -y python3 python3-pip
 
-# Install all devbox packages globally
-COPY --chown=${DEVBOX_USER}:${DEVBOX_USER} devbox.json /home/${DEVBOX_USER}/.local/share/devbox/global/default/devbox.json
-RUN devbox global install ; echo "Installed devbox packages."
+RUN echo 'root:dev' | chpasswd
+RUN useradd -ms /bin/bash dev && echo 'dev:dev' | chpasswd && adduser dev sudo
+RUN echo 'dev ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
+COPY --chown=dev:dev .devcontainer/scripts/gu /usr/local/bin/gu
+COPY --chown=dev:dev .devcontainer/scripts/.bashrc /home/dev/.bashrc
 
-# --- DEPENDENCIES ---
+USER dev
 
-RUN devbox global run -- rustup default stable
-# RUN devbox global run -- rustup target add aarch64-unknown-linux-gnu
-RUN sudo apt install -y pkg-config libssl-dev python3 gcc-aarch64-linux-gnu libssl-dev libudev-dev procps
+# Rust Install
+RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
+RUN /home/dev/.cargo/bin/rustup target add aarch64-unknown-linux-gnu
 
-# --- debix user setup ---
-USER root:root
-RUN useradd -ms /bin/bash debix
-RUN echo "debix:debix" | chpasswd
+# OpenAPI-cli install
+RUN pip install openapi-generator-cli==4.3.1
 
-# --- /etc/rover configuration ---
-# Rover ID
-RUN echo "13" > /etc/rover
-# Rover name
-RUN echo "bunny" >> /etc/rover
-# Roverd password
-RUN echo -n "debix" | sha256sum | cut -d ' ' -f 1 >> /etc/rover
+# Cross Compilation Dependencies
+RUN sudo apt install libssl-dev
 
 
-
-# --- switch to dev user ---
-USER ${DEVBOX_USER}:${DEVBOX_USER}
-COPY --chown=${DEVBOX_USER}:${DEVBOX_USER} .devcontainer/scripts/gu /usr/local/bin/gu
-COPY --chown=${DEVBOX_USER}:${DEVBOX_USER} .devcontainer/scripts/.bashrc /home/${DEVBOX_USER}/.bashrc
-
-USER root:root
+# Clean up
+# RUN apt-get clean && rm -rf /var/lib/apt/lists/*

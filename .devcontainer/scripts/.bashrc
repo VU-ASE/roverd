@@ -55,7 +55,7 @@ if ! shopt -oq posix; then
   fi
 fi
 
+export PATH=$PATH:/home/dev/.local/bin
 
-export PATH=$PATH:/home/devbox/.local/share/devbox/global/default/.devbox/nix/profile/default/bin
+if [ -f "$HOME/.cargo/env" ]; then . "$HOME/.cargo/env"; fi
 
-eval "$(devbox global shellenv --init-hook)"

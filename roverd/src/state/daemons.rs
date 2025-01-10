@@ -148,7 +148,7 @@ impl DaemonManager {
 pub async fn start_daemons(procs: Vec<Process>) -> Result<(), Error> {
     for proc in procs {
         let parsed_command = ParsedCommand::try_from(&proc.command)?;
-        
+
         tokio::spawn(async move {
             loop {
                 let result: Result<(), Error> = async {
@@ -157,10 +157,7 @@ pub async fn start_daemons(procs: Vec<Process>) -> Result<(), Error> {
                     let stderr = Stdio::from(log_file);
 
                     let full_path = format!("{}/{}", proc.fq.dir(), &parsed_command.program);
-                    fs::set_permissions(
-                        &full_path,
-                        Permissions::from_mode(0o755),
-                    )?;
+                    fs::set_permissions(&full_path, Permissions::from_mode(0o755))?;
                     let mut command = Command::new(&parsed_command.program);
                     command
                         .args(&parsed_command.arguments)
@@ -184,7 +181,8 @@ pub async fn start_daemons(procs: Vec<Process>) -> Result<(), Error> {
                         }
                     }
                     Ok(())
-                }.await;
+                }
+                .await;
 
                 if let Err(e) = result {
                     error!("error in daemon '{}': {:?}", proc.name, e);

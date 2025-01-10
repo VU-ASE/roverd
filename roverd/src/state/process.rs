@@ -105,10 +105,7 @@ impl ProcessManager {
             let full_program_path = format!("{}/{}", p.fq.dir(), &parsed_command.program);
             info!("full path: {:?}", full_program_path);
 
-            fs::set_permissions(
-                full_program_path.clone(),
-                Permissions::from_mode(0o755),
-            )?;
+            fs::set_permissions(full_program_path.clone(), Permissions::from_mode(0o755))?;
 
             let mut command = Command::new(parsed_command.program);
             command
