@@ -1,7 +1,2 @@
 [target.aarch64-unknown-linux-gnu]
-rustflags = [
-    "-C",
-    "linker=aarch64-linux-gnu-ld",
-    "-L",
-    "",
-]
+linker = "aarch64-linux-gnu-gcc"

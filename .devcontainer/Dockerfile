@@ -37,7 +37,9 @@ RUN /home/dev/.cargo/bin/rustup target add aarch64-unknown-linux-gnu
 RUN pip install openapi-generator-cli==4.3.1
 
 # Cross Compilation Dependencies
-RUN sudo apt install libssl-dev
+RUN sudo apt install -y libssl-dev file git \
+    gcc-aarch64-linux-gnu \
+    binutils-aarch64-linux-gnu
 
 
 # Clean up
