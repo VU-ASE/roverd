@@ -1,3 +1,4 @@
+use anyhow::Context;
 use axum::extract::{DefaultBodyLimit, Request, State};
 use axum::http::{self, StatusCode};
 use axum::middleware::{self, Next};
@@ -155,7 +156,9 @@ async fn download_latest_roverd() -> Result<(), Error> {
 
     let temp_file = "/tmp/roverd.incoming".to_string();
 
-    let response = reqwest::get(ROVERD_DOWNLOAD_URL).await?;
+    let response = reqwest::get(ROVERD_DOWNLOAD_URL)
+        .await
+        .with_context(|| format!("failed to perform get request to {}", ROVERD_DOWNLOAD_URL))?;
 
     if response.status() != StatusCode::OK {
         let resp: axum::http::StatusCode = response.status();
@@ -167,18 +170,26 @@ async fn download_latest_roverd() -> Result<(), Error> {
         }
     }
 
-    let new_binary = response.bytes().await?;
+    let new_binary = response
+        .bytes()
+        .await
+        .context("failed unpacking downloaded response bytes")?;
 
     let mut roverd_file = fs::OpenOptions::new()
         .create(true)
         .write(true)
-        .open(temp_file.clone())?;
+        .open(temp_file.clone())
+        .with_context(|| format!("failed to create/open {}", temp_file))?;
 
-    roverd_file.write_all(&new_binary)?;
+    roverd_file
+        .write_all(&new_binary)
+        .with_context(|| format!("failed to write bytes to {}", temp_file))?;
 
-    fs::set_permissions(temp_file.clone(), Permissions::from_mode(0o755))?;
+    fs::set_permissions(temp_file.clone(), Permissions::from_mode(0o755))
+        .with_context(|| format!("failed to set 755 permissions to {}", temp_file))?;
 
-    fs::rename(temp_file, ROVERD_INSTALL_PATH)?;
+    fs::rename(temp_file.clone(), ROVERD_INSTALL_PATH)
+        .with_context(|| format!("failed to rename {} to {}", temp_file, ROVERD_INSTALL_PATH))?;
 
     Ok(())
 }

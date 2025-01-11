@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use std::fs::{File, OpenOptions};
 
 use std::{
@@ -19,7 +20,7 @@ use crate::service::FqBuf;
 use crate::constants::*;
 
 /// Copy files from source to destination recursively.
-pub fn copy_recursively(source: impl AsRef<Path>, destination: impl AsRef<Path>) -> io::Result<()> {
+pub fn copy_recursively(source: impl AsRef<Path>, destination: impl AsRef<Path>) -> Result<()> {
     fs::create_dir_all(&destination)?;
     for entry in fs::read_dir(source)? {
         let entry = entry?;
@@ -35,11 +36,14 @@ pub fn copy_recursively(source: impl AsRef<Path>, destination: impl AsRef<Path>)
 
 /// Extracts the contents of the zip file into the directory at destination_dir.
 pub fn extract_zip(zip_file: &str, destination_dir: &str) -> Result<(), Error> {
-    std::fs::create_dir_all(destination_dir)?;
+    std::fs::create_dir_all(destination_dir)
+        .with_context(|| format!("failed to create dirs {}", destination_dir))?;
 
-    let mut file = fs::File::open(zip_file)?;
+    let mut file =
+        fs::File::open(zip_file).with_context(|| format!("failed to open {}", zip_file))?;
     let mut bytes: Vec<u8> = Vec::new();
-    file.read_to_end(&mut bytes)?;
+    file.read_to_end(&mut bytes)
+        .with_context(|| format!("failed to read to end of {}", zip_file))?;
 
     let target = PathBuf::from(destination_dir);
 
@@ -57,13 +61,16 @@ pub fn extract_zip(zip_file: &str, destination_dir: &str) -> Result<(), Error> {
 // fn prepare_dirs(author: &str, name: &str, version: &str) -> Result<String, Error> {
 fn prepare_dirs(fq: &FqBuf) -> Result<String, Error> {
     // Construct the full path
-    let full_path_string = format!("{}/{}/{}/{}", ROVER_DIR, fq.author, fq.name, fq.version);
+    let full_path_string = fq.dir().clone();
     let full_path = PathBuf::from(full_path_string.clone());
 
     // Ensure the directory exists
-    std::fs::create_dir_all(full_path.clone())?;
+    std::fs::create_dir_all(full_path.clone())
+        .with_context(|| format!("failed to create dirs {:?}", full_path))?;
 
-    std::fs::remove_dir_all(full_path.as_path())?;
+    // If it already existed and it contained old contents, remove them.
+    std::fs::remove_dir_all(full_path.as_path())
+        .with_context(|| format!("failed to remove path {:?}", full_path))?;
 
     Ok(full_path_string)
 }
@@ -84,11 +91,15 @@ pub async fn download_service(url: &String) -> Result<(), Error> {
         }
     }
 
-    let mut file = std::fs::File::create(ZIP_FILE)?;
+    std::fs::remove_file(ZIP_FILE).with_context(|| format!("failed to remove {}", ZIP_FILE))?;
+
+    let mut file = std::fs::File::create(ZIP_FILE)
+        .with_context(|| format!("failed to create {}", ZIP_FILE))?;
 
     let bytes = response.bytes().await?;
 
-    file.write_all(&bytes)?;
+    file.write_all(&bytes)
+        .with_context(|| format!("failed to failed to write to {}", ZIP_FILE))?;
 
     Ok(())
 }
@@ -96,9 +107,10 @@ pub async fn download_service(url: &String) -> Result<(), Error> {
 /// Downloads a service to /tmp and moves it into the correct place on disk.
 /// There shouldn't be any directories or files in the unique path of the service,
 /// however if there are, they will get deleted to make space.
-pub async fn download_and_install_service(url: &String) -> Result<FqBuf, Error> {
+pub async fn download_and_install_service(url: &String, is_daemon: bool) -> Result<FqBuf, Error> {
     download_service(url).await?;
-    let fq = extract_fq_from_zip().await?;
+    let mut fq = extract_fq_from_zip().await?;
+    fq.is_daemon = is_daemon;
     install_service(&fq).await?;
     Ok(fq)
 }
@@ -110,7 +122,8 @@ pub async fn extract_fq_from_zip() -> Result<FqBuf, Error> {
     let _ = std::fs::remove_dir_all(UNZIPPED_DIR);
 
     // Create directory, this must not fail
-    std::fs::create_dir_all(UNZIPPED_DIR)?;
+    std::fs::create_dir_all(UNZIPPED_DIR)
+        .with_context(|| format!("failed to create {}", UNZIPPED_DIR))?;
 
     // Unpack the downloaded service and validate it.
     extract_zip(ZIP_FILE, UNZIPPED_DIR)?;
@@ -132,17 +145,15 @@ pub async fn install_service(fq: &FqBuf) -> Result<(), Error> {
     let full_path = prepare_dirs(fq)?;
 
     // Copy contents into place
-    copy_recursively(UNZIPPED_DIR, full_path)?;
+    copy_recursively(UNZIPPED_DIR, &full_path).with_context(|| {
+        format!(
+            "failed to copy contents from {} to {}",
+            UNZIPPED_DIR, full_path
+        )
+    })?;
 
     Ok(())
 }
-
-// pub fn service_exists(fq: &Fq<'_>) -> Result<bool, Error> {
-//     match Path::new(fq.path().as_str()).try_exists() {
-//         Ok(a) => Ok(a),
-//         Err(e) => Err(Error::Io(e)),
-//     }
-// }
 
 pub fn list_dir_contents(added_path: &str) -> Result<Vec<String>, Error> {
     let paths = fs::read_dir(format!("{}/{}", ROVER_DIR, added_path))
@@ -150,7 +161,12 @@ pub fn list_dir_contents(added_path: &str) -> Result<Vec<String>, Error> {
     let mut contents: Vec<String> = vec![];
 
     for path in paths {
-        contents.push(path?.file_name().to_os_string().into_string()?)
+        contents.push(
+            path.with_context(|| format!("failed to unpack direntry"))?
+                .file_name()
+                .to_os_string()
+                .into_string()?,
+        )
     }
 
     Ok(contents)
@@ -180,7 +196,8 @@ pub fn create_log_file(log_path: &PathBuf) -> Result<File, Error> {
     if let Some(parent_dir) = path.parent() {
         if !parent_dir.exists() {
             info!("creating parent dir of logfile: {:?}", &parent_dir);
-            std::fs::create_dir_all(parent_dir)?;
+            std::fs::create_dir_all(parent_dir)
+                .with_context(|| format!("failed to create {:?}", parent_dir))?;
         }
     }
 
@@ -188,7 +205,8 @@ pub fn create_log_file(log_path: &PathBuf) -> Result<File, Error> {
         .read(true)
         .append(true)
         .create(true)
-        .open(log_path.clone())?;
+        .open(log_path.clone())
+        .with_context(|| format!("failed to create/open {:?}", log_path))?;
 
     Ok(log_file)
 }

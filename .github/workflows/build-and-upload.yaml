@@ -18,14 +18,14 @@ jobs:
     - name: Build and run in Docker container
       run: |
         docker build -t roverd-build-container -f .devcontainer/Dockerfile .
-        docker run --rm --user devbox -v "$(pwd):/home/devbox/work" roverd-build-container bash -ic 'make build -C /home/devbox/work'
+        docker run --rm --user devbox -v "$(pwd):/home/devbox/work" roverd-build-container bash -ic 'make build-arm -C /home/devbox/work'
 
     - name: Set VERSION from tag
       run: echo "VERSION=${GITHUB_REF_NAME}" >> $GITHUB_ENV
 
     - uses: AButler/upload-release-assets@v3.0
       with:
-        files: "${{ github.workspace }}/target/release/roverd"
+        files: "${{ github.workspace }}/target/aarch64-unknown-linux-gnu/release/roverd"
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         release-tag: ${{ env.VERSION }}
 

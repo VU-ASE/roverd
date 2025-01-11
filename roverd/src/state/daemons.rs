@@ -1,3 +1,4 @@
+use anyhow::Context;
 use std::{
     fs,
     fs::Permissions,
@@ -38,7 +39,7 @@ impl DaemonManager {
         // First make sure the daemons are installed, this can fail which will
         // put roverd in a non operational state.
         let display_fq = {
-            let fq = FqBuf::new("vu-ase", "display", "1.1.1");
+            let fq = FqBuf::new_daemon("vu-ase", "display", "1.1.1");
             if fq.exists() {
                 info!("found daemon 'display'");
                 fq
@@ -46,13 +47,14 @@ impl DaemonManager {
                 download_and_install_service(
                     &"https://github.com/VU-ASE/display/releases/download/v1.1.1/display.zip"
                         .to_string(),
+                    true,
                 )
                 .await?
             }
         };
 
         let battery_fq = {
-            let fq = FqBuf::new("vu-ase", "battery", "1.2.1");
+            let fq = FqBuf::new_daemon("vu-ase", "battery", "1.2.1");
             if fq.exists() {
                 info!("found daemon 'battery'");
                 fq
@@ -60,6 +62,7 @@ impl DaemonManager {
                 download_and_install_service(
                     &"https://github.com/VU-ASE/battery/releases/download/v1.2.1/battery.zip"
                         .to_string(),
+                    true,
                 )
                 .await?
             }
@@ -70,8 +73,10 @@ impl DaemonManager {
         let battery_service_file =
             std::fs::read_to_string(battery_fq.path()).map_err(|_| Error::ServiceNotFound)?;
 
-        let display_service: Service = serde_yaml::from_str(&display_service_file)?;
-        let battery_service: Service = serde_yaml::from_str(&battery_service_file)?;
+        let display_service: Service = serde_yaml::from_str(&display_service_file)
+            .with_context(|| format!("failed to parse {}", display_service_file))?;
+        let battery_service: Service = serde_yaml::from_str(&battery_service_file)
+            .with_context(|| format!("failed to parse {}", battery_service_file))?;
 
         let display_service = display_service.validate()?;
         let battery_service = battery_service.validate()?;
@@ -153,11 +158,18 @@ pub async fn start_daemons(procs: Vec<Process>) -> Result<(), Error> {
             loop {
                 let result: Result<(), Error> = async {
                     let log_file = create_log_file(&proc.log_file)?;
-                    let stdout = Stdio::from(log_file.try_clone()?);
+
+                    let stdout = Stdio::from(
+                        log_file
+                            .try_clone()
+                            .with_context(|| format!("failed to clone log file {:?}", log_file))?,
+                    );
                     let stderr = Stdio::from(log_file);
 
                     let full_path = format!("{}/{}", proc.fq.dir(), &parsed_command.program);
-                    fs::set_permissions(&full_path, Permissions::from_mode(0o755))?;
+                    fs::set_permissions(&full_path, Permissions::from_mode(0o755)).with_context(
+                        || format!("failed to set 755 permissions to {}", full_path),
+                    )?;
                     let mut command = Command::new(&parsed_command.program);
                     command
                         .args(&parsed_command.arguments)

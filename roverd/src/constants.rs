@@ -7,6 +7,7 @@ pub const ROVER_CONFIG_DIR: &str = "/etc/roverd";
 pub const ROVER_CONFIG_FILE: &str = "/etc/roverd/rover.yaml";
 pub const ROVER_USER: &str = "debix";
 pub const ROVER_DIR: &str = "/home/debix/.rover";
+pub const DAEMON_DIR: &str = "/etc/roverd/daemons";
 pub const LOG_DIR: &str = "/tmp/roverlog";
 pub const BUILD_LOG_DIR: &str = "/tmp/roverbuildlog";
 

@@ -1,3 +1,4 @@
+use anyhow::Context;
 use std::path::Path;
 
 use once_cell::sync::Lazy;
@@ -81,7 +82,10 @@ async fn delete_service(client: &Client, s: &str) -> Response {
 
 async fn upload_file(client: &Client, s: &str) -> Result<Response, Error> {
     let file_path = Path::new(s);
-    let form = multipart::Form::new().file("file", file_path).await?;
+    let form = multipart::Form::new()
+        .file("file", file_path)
+        .await
+        .with_context(|| format!("failed to create multipart form from {:?}", file_path))?;
 
     let response = client
         .post("http://localhost:/upload") // Replace with your actual endpoint

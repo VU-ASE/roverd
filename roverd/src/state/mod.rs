@@ -1,3 +1,4 @@
+use anyhow::Context;
 use axum_extra::extract::Multipart;
 use daemons::DaemonManager;
 use openapi::models::*;
@@ -126,7 +127,7 @@ impl State {
     }
 
     pub async fn fetch_service(&self, body: &FetchPostRequest) -> Result<(FqBuf, bool), Error> {
-        let fq_buf = download_and_install_service(&body.url).await?;
+        let fq_buf = download_and_install_service(&body.url, false).await?;
         let invalidate_pipline = self.should_invalidate(&fq_buf).await?;
         Ok((fq_buf, invalidate_pipline))
     }
@@ -153,9 +154,11 @@ impl State {
                 .create(true)
                 .truncate(true)
                 .write(true)
-                .open(ZIP_FILE)?;
+                .open(ZIP_FILE)
+                .with_context(|| format!("failed to create file {}", ZIP_FILE))?;
 
-            file.write_all(&data)?;
+            file.write_all(&data)
+                .with_context(|| format!("failed to write data to {}", ZIP_FILE))?;
 
             let fq_buf = extract_fq_from_zip().await?;
 
@@ -225,7 +228,8 @@ impl State {
 
         // Remove the service to delete from the filesystem
         if Path::new(&delete_fq.dir()).exists() {
-            std::fs::remove_dir_all(delete_fq.dir())?;
+            std::fs::remove_dir_all(delete_fq.dir())
+                .with_context(|| format!("failed to remove {}", delete_fq.dir()))?;
         } else {
             return Err(Error::ServiceNotFound);
         }
@@ -245,7 +249,11 @@ impl State {
             .build
             .ok_or_else(|| Error::BuildCommandMissing)?;
         let log_file = create_log_file(&PathBuf::from(fq.build_log_file()))?;
-        let stdout = Stdio::from(log_file.try_clone()?);
+        let stdout = Stdio::from(
+            log_file
+                .try_clone()
+                .with_context(|| format!("failed to clone build-log file {:?}", log_file))?,
+        );
         let stderr = Stdio::from(log_file);
 
         let mut built_services = self.built_services.write().await;
@@ -261,10 +269,15 @@ impl State {
                 Ok(exit_status) => {
                     if !exit_status.success() {
                         // Build was not successful, return logs
-                        let file = std::fs::File::open(fq.build_log_file())?;
+                        let file = std::fs::File::open(fq.build_log_file())
+                            .with_context(|| format!("failed to open {}", fq.build_log_file()))?;
                         let reader = BufReader::new(file);
-                        let lines: Vec<String> =
-                            reader.lines().collect::<Result<Vec<String>, _>>()?;
+                        let lines: Vec<String> = reader
+                            .lines()
+                            .collect::<Result<Vec<String>, _>>()
+                            .with_context(|| {
+                                format!("failed to collect lines from {}", fq.build_log_file())
+                            })?;
                         return Err(Error::BuildLog(lines));
                     } else {
                         // Build was successful, save time it was built at
@@ -533,18 +546,25 @@ impl State {
         let mut lines = Vec::new();
 
         // Seek to the end of the file
-        let mut position = reader.seek(SeekFrom::End(0))?;
+        let mut position = reader
+            .seek(SeekFrom::End(0))
+            .with_context(|| format!("failed to seek in {}", fq.log_file()))?;
 
         // Read the file in reverse to gather lines
         while lines.len() < num_lines && position > 0 {
             // Adjust buffer size based on remaining file size
             let chunk_size = cmp::min(position as usize, 4096);
             position -= chunk_size as u64;
-            reader.seek(SeekFrom::Start(position))?;
+            reader
+                .seek(SeekFrom::Start(position))
+                .with_context(|| format!("failed to seek in {}", fq.log_file()))?;
             buffer.resize(chunk_size, 0);
 
             // Read the chunk
-            reader.get_mut().read_exact(&mut buffer)?;
+            reader
+                .get_mut()
+                .read_exact(&mut buffer)
+                .with_context(|| format!("failed to read chunk for {}", fq.log_file()))?;
 
             // Split into lines and push to the result
             let chunk = String::from_utf8_lossy(&buffer);

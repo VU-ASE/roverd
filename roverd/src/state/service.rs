@@ -28,6 +28,7 @@ pub struct FqBuf {
     pub author: String,
     pub name: String,
     pub version: String,
+    pub is_daemon: bool,
 }
 
 impl FqBuf {
@@ -36,6 +37,16 @@ impl FqBuf {
             author: author.to_string(),
             name: name.to_string(),
             version: version.to_string(),
+            is_daemon: false,
+        }
+    }
+
+    pub fn new_daemon(author: &str, name: &str, version: &str) -> FqBuf {
+        FqBuf {
+            author: author.to_string(),
+            name: name.to_string(),
+            version: version.to_string(),
+            is_daemon: true,
         }
     }
 }
@@ -46,6 +57,7 @@ impl Clone for FqBuf {
             author: self.author.clone(),
             name: self.name.clone(),
             version: self.version.clone(),
+            is_daemon: self.is_daemon,
         }
     }
 }
@@ -56,6 +68,7 @@ impl From<ValidatedService> for FqBuf {
             name: service.0.name,
             author: service.0.author,
             version: service.0.version,
+            is_daemon: false,
         }
     }
 }
@@ -66,6 +79,7 @@ impl From<&ValidatedService> for FqBuf {
             name: service.0.name.clone(),
             author: service.0.author.clone(),
             version: service.0.version.clone(),
+            is_daemon: false,
         }
     }
 }
@@ -76,6 +90,7 @@ impl From<&ServicesAuthorServiceVersionPostPathParams> for FqBuf {
             name: value.service.clone(),
             author: value.author.clone(),
             version: value.version.clone(),
+            is_daemon: false,
         }
     }
 }
@@ -86,6 +101,7 @@ impl From<&ServicesAuthorServiceVersionDeletePathParams> for FqBuf {
             name: value.service.clone(),
             author: value.author.clone(),
             version: value.version.clone(),
+            is_daemon: false,
         }
     }
 }
@@ -96,6 +112,7 @@ impl From<&ServicesAuthorServiceVersionGetPathParams> for FqBuf {
             name: value.service.clone(),
             author: value.author.clone(),
             version: value.version.clone(),
+            is_daemon: false,
         }
     }
 }
@@ -106,6 +123,7 @@ impl From<&PipelinePostRequestInner> for FqBuf {
             name: service.name.clone(),
             author: service.author.clone(),
             version: service.version.clone(),
+            is_daemon: false,
         }
     }
 }
@@ -116,16 +134,24 @@ impl From<&LogsAuthorNameVersionGetPathParams> for FqBuf {
             name: value.name.clone(),
             author: value.author.clone(),
             version: value.version.clone(),
+            is_daemon: false,
         }
     }
 }
 
 impl FqBuf {
     pub fn path(&self) -> String {
-        format!(
-            "{}/{}/{}/{}/service.yaml",
-            ROVER_DIR, self.author, self.name, self.version
-        )
+        if self.is_daemon {
+            format!(
+                "{}/{}/{}/{}/service.yaml",
+                DAEMON_DIR, self.author, self.name, self.version
+            )
+        } else {
+            format!(
+                "{}/{}/{}/{}/service.yaml",
+                ROVER_DIR, self.author, self.name, self.version
+            )
+        }
     }
 
     pub fn log_file(&self) -> String {
@@ -143,10 +169,17 @@ impl FqBuf {
     }
 
     pub fn dir(&self) -> String {
-        format!(
-            "{}/{}/{}/{}",
-            ROVER_DIR, self.author, self.name, self.version
-        )
+        if self.is_daemon {
+            format!(
+                "{}/{}/{}/{}",
+                DAEMON_DIR, self.author, self.name, self.version
+            )
+        } else {
+            format!(
+                "{}/{}/{}/{}",
+                ROVER_DIR, self.author, self.name, self.version
+            )
+        }
     }
 
     pub fn exists(&self) -> bool {
@@ -210,6 +243,7 @@ impl TryFrom<String> for FqBuf {
             author: values.first().ok_or(Error::StringToFqConversion)?.clone(),
             name: values.get(1).ok_or(Error::StringToFqConversion)?.clone(),
             version: values.get(2).ok_or(Error::StringToFqConversion)?.clone(),
+            is_daemon: false,
         })
     }
 }
@@ -234,6 +268,7 @@ impl TryFrom<&String> for FqBuf {
             author: values.first().ok_or(Error::StringToFqConversion)?.clone(),
             name: values.get(1).ok_or(Error::StringToFqConversion)?.clone(),
             version: values.get(2).ok_or(Error::StringToFqConversion)?.clone(),
+            is_daemon: false,
         })
     }
 }

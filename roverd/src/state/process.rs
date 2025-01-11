@@ -1,3 +1,4 @@
+use anyhow::Context;
 use std::fs::{self, Permissions};
 use std::io::Write;
 use std::os::unix::fs::PermissionsExt;
@@ -97,7 +98,11 @@ impl ProcessManager {
                 warn!("could not write log_line to file: {:?}", p.log_file)
             };
 
-            let stdout = Stdio::from(log_file.try_clone()?);
+            let stdout = Stdio::from(
+                log_file
+                    .try_clone()
+                    .with_context(|| format!("failed to clone log file {:?}", log_file))?,
+            );
             let stderr = Stdio::from(log_file);
 
             let parsed_command = ParsedCommand::try_from(&p.command)?;
@@ -105,7 +110,8 @@ impl ProcessManager {
             let full_program_path = format!("{}/{}", p.fq.dir(), &parsed_command.program);
             info!("full path: {:?}", full_program_path);
 
-            fs::set_permissions(full_program_path.clone(), Permissions::from_mode(0o755))?;
+            fs::set_permissions(full_program_path.clone(), Permissions::from_mode(0o755))
+                .with_context(|| format!("failed to set permissions for {:?}", full_program_path))?;
 
             let mut command = Command::new(parsed_command.program);
             command

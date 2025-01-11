@@ -50,6 +50,9 @@ pub enum Error {
     Unimplemented,
 
     #[from]
+    Context(anyhow::Error),
+
+    #[from]
     YamlSerialization(serde_yaml::Error),
 
     #[from]
@@ -64,8 +67,8 @@ pub enum Error {
     #[from]
     Http(axum::http::StatusCode),
 
-    #[from]
-    Io(std::io::Error),
+    // #[from]
+    // Io(std::io::Error),
 
     #[from]
     Reqwest(reqwest::Error),

@@ -3,6 +3,11 @@ SHELL := /bin/bash
 
 # This Makefile entrypoint is used by CI
 
+# Ensures that the latest version from the changelog file is in the rover/Cargo.toml
+# Run this target before building anything
+version-update:
+	./scripts/update_cargo_version.sh `cat CHANGELOG.md | ./scripts/latest_changelog.sh` ./roverd/Cargo.toml 
+
 lint:
 	@cargo fmt
 	@cargo clippy
@@ -10,7 +15,7 @@ lint:
 test:
 	@cargo test
 
-build:
+build: version-update
 	@cargo build --release
 
 setup:
@@ -19,11 +24,13 @@ setup:
 dev: build
 	sudo ./target/release/roverd
 
-build-arm:
+build-arm: version-update
 	cargo build --target=aarch64-unknown-linux-gnu --release
 
 dev-arm: build-arm
-	sudo ./target
+	scp ./target/aarch64-unknown-linux-gnu/release/roverd rover07:/tmp/
+	ssh rover07 "echo debix | sudo -S mv /tmp/roverd /usr/local/bin/ ; echo debix | sudo -S chown root:root /usr/local/bin/roverd"
+
 
 clean:
 	@cargo clean

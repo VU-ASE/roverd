@@ -1,4 +1,5 @@
 use crate::Error;
+use anyhow::Context;
 use openapi::models::DaemonStatus;
 use std::path::Path;
 use std::{fs::read_to_string, time::SystemTime};
@@ -62,7 +63,8 @@ fn read_rover_info() -> Result<(i32, String, String), Error> {
         return Err(Error::RoverFileNotFound);
     }
 
-    let text = read_to_string(ROVER_INFO_FILE)?;
+    let text = read_to_string(ROVER_INFO_FILE)
+        .with_context(|| format!("failed to read_to_string on file {}", ROVER_INFO_FILE))?;
 
     let text = text.split_whitespace().collect::<Vec<&str>>();
     if text.len() < 3 {

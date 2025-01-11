@@ -41,6 +41,7 @@ RUN sudo apt install -y libssl-dev file git \
     gcc-aarch64-linux-gnu \
     binutils-aarch64-linux-gnu
 
+COPY --chown=dev:dev .devcontainer/scripts/ssh_config /home/dev/.ssh/config
 
 # Clean up
 # RUN apt-get clean && rm -rf /var/lib/apt/lists/*
