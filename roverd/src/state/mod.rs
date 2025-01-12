@@ -321,11 +321,6 @@ impl State {
     ) -> Result<(), Error> {
         let mut stats = self.process_manager.stats.write().await;
 
-        if incoming_pipeline.is_empty() {
-            stats.status = PipelineStatus::Empty;
-            return Err(Error::PipelineIsEmpty);
-        }
-
         let services = FqBufVec::from(incoming_pipeline).0;
 
         let mut valid_services = vec![];
@@ -352,6 +347,9 @@ impl State {
         update_config(&config)?;
 
         stats.status = PipelineStatus::Startable;
+        if config.enabled.is_empty() {
+            stats.status = PipelineStatus::Empty;
+        }
 
         Ok(())
     }

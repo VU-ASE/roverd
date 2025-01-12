@@ -5,7 +5,10 @@
     "context": "..",
     "options": [
       "--network=host"
-    ]
+    ],
+    "args": {
+      "HOST_UID": "1000"
+    }
   },
   "customizations": {
     "vscode": {
