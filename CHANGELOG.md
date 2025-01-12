@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.0.1](https://github.com/VU-ASE/roverd/compare/v1.1.5...v0.0.1) (2025-01-12)
+
+
+### Features
+
+* added version-update target ([28a9f50](https://github.com/VU-ASE/roverd/commit/28a9f504fe020f2607a41de0e804f2aa9667da92))
+* cross-compilation works ([a54c50c](https://github.com/VU-ASE/roverd/commit/a54c50c8a28bd43d339a6ab3c45b352f22b3e89b))
+
+
+### Bug Fixes
+
+* build action user ([eb23b73](https://github.com/VU-ASE/roverd/commit/eb23b733d031d0bbff0e3534f25d1499acd43bd8))
+* error handling and empty pipeline ([225661c](https://github.com/VU-ASE/roverd/commit/225661cfe673e82f8a1d3a402eb3a5db8dbcb9a8))
+
+
+### Miscellaneous Chores
+
+* release 0.0.1 ([bede967](https://github.com/VU-ASE/roverd/commit/bede967bc3ca50a03250249ee9b72efdd17e3870))
+
 ## [1.1.5](https://github.com/VU-ASE/roverd/compare/v1.1.4...v1.1.5) (2025-01-07)
 
 
