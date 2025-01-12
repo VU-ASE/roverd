@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.3](https://github.com/VU-ASE/roverd/compare/v0.0.2...v0.0.3) (2025-01-12)
+
+
+### Bug Fixes
+
+* added sentance ([8e7352f](https://github.com/VU-ASE/roverd/commit/8e7352f8411ada034869539508a41df79067936b))
+
 ## [0.0.2](https://github.com/VU-ASE/roverd/compare/v0.0.1...v0.0.2) (2025-01-12)
 
 
