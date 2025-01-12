@@ -20,8 +20,12 @@ apt-get install -y openjdk-17-jdk-headless
 # Python 3 install
 RUN apt-get install -y python3 python3-pip
 
+# This is to ensure that the host where the docker container is built has the same uid/gid
+# as the user used inside the container. Otherwise, permission issues.
+ARG HOST_UID
+
 RUN echo 'root:dev' | chpasswd
-RUN useradd -ms /bin/bash dev && echo 'dev:dev' | chpasswd && adduser dev sudo
+RUN useradd -u ${HOST_UID} -ms /bin/bash dev && echo 'dev:dev' | chpasswd && adduser dev sudo
 RUN echo 'dev ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
 COPY --chown=dev:dev .devcontainer/scripts/gu /usr/local/bin/gu

@@ -69,7 +69,7 @@ impl Roverd {
                     processes: Arc::new(RwLock::new(vec![])),
                     spawned: Arc::new(RwLock::new(vec![])),
                     stats: Arc::new(RwLock::new(PipelineStats {
-                        status: PipelineStatus::Empty,
+                        status: PipelineStatus::Startable,
                         last_start: None,
                         last_stop: None,
                         last_restart: None,
@@ -86,8 +86,20 @@ impl Roverd {
             },
         };
 
-        if roverd.info.status != DaemonStatus::Operational {
-            warn!("did not initialize successfully {:#?}", roverd.info);
+        // Validate the pipeline found in the yaml file, if it is not valid
+        // empty it.
+        let initial_pipieline_status = match roverd.state.get_valid_pipeline().await {
+            Ok(_) => PipelineStatus::Startable,
+            Err(_) => PipelineStatus::Empty,
+        };
+
+        {
+            let mut stats = roverd.state.process_manager.stats.write().await;
+            stats.status = initial_pipieline_status;
+
+            if roverd.info.status != DaemonStatus::Operational {
+                warn!("did not initialize successfully {:#?}", roverd.info);
+            }
         }
 
         Ok(roverd)
