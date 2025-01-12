@@ -11,7 +11,10 @@ permissions:
 
 jobs:
   build-and-upload:
-    runs-on: ase-runner
+    runs-on:
+      - self-hosted
+      - X64
+      - Linux
     steps:
     - uses: actions/checkout@v4
 
