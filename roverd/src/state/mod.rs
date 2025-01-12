@@ -69,7 +69,7 @@ impl Roverd {
                     processes: Arc::new(RwLock::new(vec![])),
                     spawned: Arc::new(RwLock::new(vec![])),
                     stats: Arc::new(RwLock::new(PipelineStats {
-                        status: PipelineStatus::Startable,
+                        status: PipelineStatus::Empty,
                         last_start: None,
                         last_stop: None,
                         last_restart: None,
@@ -195,7 +195,8 @@ impl State {
     }
 
     pub async fn get_service(&self, fq: FqBuf) -> Result<ValidatedService, Error> {
-        let contents = fs::read_to_string(fq.path()).map_err(|_| Error::ServiceNotFound)?;
+        let contents = fs::read_to_string(fq.path())
+            .map_err(|_| Error::ServiceNotFound(format!("Could not find {} on disk", fq.path())))?;
         let service =
             serde_yaml::from_str::<rovervalidate::service::Service>(&contents)?.validate()?;
 
@@ -231,7 +232,10 @@ impl State {
             std::fs::remove_dir_all(delete_fq.dir())
                 .with_context(|| format!("failed to remove {}", delete_fq.dir()))?;
         } else {
-            return Err(Error::ServiceNotFound);
+            return Err(Error::ServiceNotFound(format!(
+                "wanted to delete {}, but it never existed",
+                delete_fq.dir()
+            )));
         }
 
         Ok(should_reset)
@@ -315,8 +319,9 @@ impl State {
         let mut valid_services = vec![];
 
         for enabled in &services {
-            let service_file =
-                std::fs::read_to_string(enabled.path()).map_err(|_| Error::ServiceNotFound)?;
+            let service_file = std::fs::read_to_string(enabled.path()).map_err(|_| {
+                Error::ServiceNotFound(format!("could not find or read {}", enabled.path()))
+            })?;
             let service: Service = serde_yaml::from_str(&service_file)?;
             valid_services.push(service.validate()?);
         }
@@ -340,6 +345,12 @@ impl State {
     }
 
     pub async fn get_pipeline(&self) -> Result<Vec<PipelineGet200ResponseEnabledInner>, Error> {
+        let stats = self.process_manager.stats.read().await;
+        if stats.status == PipelineStatus::Empty {
+            let config = Configuration { enabled: vec![] };
+            update_config(&config)?;
+        }
+
         let conf = get_config().await?;
 
         let processes = self.process_manager.processes.read().await;
@@ -515,8 +526,9 @@ impl State {
 
         let res = {
             for enabled in &config.enabled {
-                let service_file =
-                    std::fs::read_to_string(enabled).map_err(|_| Error::ServiceNotFound)?;
+                let service_file = std::fs::read_to_string(enabled).map_err(|_| {
+                    Error::ServiceNotFound(format!("could not find or read {}", enabled))
+                })?;
                 let service: Service = serde_yaml::from_str(&service_file)?;
                 let validated = service.validate()?;
                 enabled_services.push(validated);

@@ -20,7 +20,7 @@ pub enum Error {
     EnabledPathInvalid,
 
     // --- Service Errors ---
-    ServiceNotFound,
+    ServiceNotFound(String),
     ServiceAlreadyExists,
     ServiceDownloadFailed,
     ServiceUploadBadPayload,

@@ -83,15 +83,35 @@ pub async fn download_service(url: &String) -> Result<(), Error> {
     let response = reqwest::get(url).await?;
     if response.status() != StatusCode::OK {
         let resp: axum::http::StatusCode = response.status();
+        // match response.status() {
+        //     StatusCode::NOT_FOUND => return Err(Error::ServiceNotFound),
+        //     StatusCode::BAD_REQUEST => return Err(Error::ServiceDownloadFailed),
+        //     StatusCode::FORBIDDEN => return Err(Error::Http(StatusCode::FORBIDDEN)),
+        //     _ => return Err(Error::Http(resp)),
+        // }
+
+        let fail_msg = format!("failed to download {}", url);
         match response.status() {
-            StatusCode::NOT_FOUND => return Err(Error::ServiceNotFound),
-            StatusCode::BAD_REQUEST => return Err(Error::ServiceDownloadFailed),
+            StatusCode::NOT_FOUND => {
+                return Err(Error::ServiceNotFound(format!(
+                    "HTTP ({}) - {}",
+                    StatusCode::NOT_FOUND,
+                    &fail_msg
+                )))
+            }
+            StatusCode::BAD_REQUEST => {
+                return Err(Error::ServiceNotFound(format!(
+                    "bad request ({}) - {}",
+                    StatusCode::BAD_REQUEST,
+                    &fail_msg
+                )))
+            }
             StatusCode::FORBIDDEN => return Err(Error::Http(StatusCode::FORBIDDEN)),
             _ => return Err(Error::Http(resp)),
         }
     }
 
-    std::fs::remove_file(ZIP_FILE).with_context(|| format!("failed to remove {}", ZIP_FILE))?;
+    std::fs::remove_file(ZIP_FILE).ok();
 
     let mut file = std::fs::File::create(ZIP_FILE)
         .with_context(|| format!("failed to create {}", ZIP_FILE))?;
@@ -156,8 +176,9 @@ pub async fn install_service(fq: &FqBuf) -> Result<(), Error> {
 }
 
 pub fn list_dir_contents(added_path: &str) -> Result<Vec<String>, Error> {
-    let paths = fs::read_dir(format!("{}/{}", ROVER_DIR, added_path))
-        .map_err(|_| Error::ServiceNotFound)?;
+    let path_string = format!("{}/{}", ROVER_DIR, added_path);
+    let paths = fs::read_dir(&path_string)
+        .map_err(|_| Error::ServiceNotFound(format!("Could not find {} on disk", path_string)))?;
     let mut contents: Vec<String> = vec![];
 
     for path in paths {

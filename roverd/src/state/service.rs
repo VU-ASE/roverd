@@ -1,8 +1,7 @@
 use std::{fmt::Display, path::Path};
 
-use crate::Error;
-
 use crate::error;
+use crate::error::*;
 
 use rovervalidate::service::ValidatedService;
 

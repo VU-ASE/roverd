@@ -1,4 +1,4 @@
-use crate::Error;
+use crate::error::Error;
 use anyhow::Context;
 use openapi::models::DaemonStatus;
 use std::path::Path;

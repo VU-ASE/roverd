@@ -1,4 +1,4 @@
-use crate::{error, Error};
+use crate::error;
 
 /// The service defines run and build commands which are encapsulated into this
 /// convenience struct.
@@ -18,7 +18,7 @@ impl TryFrom<&String> for ParsedCommand {
         let separated: Vec<&str> = command.split_whitespace().collect();
         let (program, arguments) = separated
             .split_first()
-            .ok_or_else(|| Error::ParsingRunCommand)?;
+            .ok_or_else(|| error::Error::ParsingRunCommand)?;
         let program = program.to_string();
         let arguments: Vec<String> = arguments.iter().map(|arg| arg.to_string()).collect();
 

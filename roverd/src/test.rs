@@ -1,4 +1,5 @@
 use anyhow::Context;
+use error::Error;
 use std::path::Path;
 
 use once_cell::sync::Lazy;

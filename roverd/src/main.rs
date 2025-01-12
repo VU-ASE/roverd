@@ -1,4 +1,4 @@
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 use axum::extract::{DefaultBodyLimit, Request, State};
 use axum::http::{self, StatusCode};
 use axum::middleware::{self, Next};
@@ -24,7 +24,6 @@ mod test;
 
 use constants::*;
 use error::Error::*;
-use error::*;
 use state::*;
 
 /// Not ideal, but an error wrapper work around since middleware::from_fn_with_state expects
@@ -48,7 +47,7 @@ async fn auth_wrapper(
 }
 
 /// Performs password check to hashed password stored on disk.
-fn check_auth(state: &Roverd, auth_str: &str) -> Result<(), Error> {
+fn check_auth(state: &Roverd, auth_str: &str) -> Result<(), error::Error> {
     let (user, password) = auth_str
         .split_once(':')
         .ok_or(Http(StatusCode::BAD_REQUEST))?;
@@ -61,21 +60,18 @@ fn check_auth(state: &Roverd, auth_str: &str) -> Result<(), Error> {
         }
     }
 
-    warn!(
-        "{}",
-        format!(
-            "Unauthorized access denied: missing credentials from {}",
-            ROVER_INFO_FILE
-        )
-        .as_str()
-    );
+    warn!("Unauthorized access denied");
 
     Err(Http(StatusCode::UNAUTHORIZED))
 }
 
 /// Main authentication logic requires authenticated requests for all endpoints
 /// except for "/status".
-async fn auth(State(state): State<Roverd>, req: Request, next: Next) -> Result<Response, Error> {
+async fn auth(
+    State(state): State<Roverd>,
+    req: Request,
+    next: Next,
+) -> Result<Response, error::Error> {
     info!("{} {}", req.method(), *req.uri());
 
     // the /status endpoint does not require authentication, all others do.
@@ -106,7 +102,7 @@ async fn auth(State(state): State<Roverd>, req: Request, next: Next) -> Result<R
             // Returns early if authentication fails
             check_auth(&state, auth_str)?;
         } else {
-            return Err(Error::RoverdNotOperational);
+            return Err(error::Error::RoverdNotOperational);
         }
     }
 
@@ -117,7 +113,7 @@ async fn auth(State(state): State<Roverd>, req: Request, next: Next) -> Result<R
 
 /// Entry of program, initializes logging and constructs app state used by axum router.
 #[tokio::main]
-async fn main() -> Result<(), Error> {
+async fn main() -> Result<(), error::Error> {
     log::init();
     info!("logging initialized");
 
@@ -151,7 +147,7 @@ async fn main() -> Result<(), Error> {
     Ok(())
 }
 
-async fn download_latest_roverd() -> Result<(), Error> {
+async fn download_latest_roverd() -> Result<(), error::Error> {
     info!("downloading latest roverd");
 
     let temp_file = "/tmp/roverd.incoming".to_string();
@@ -162,11 +158,21 @@ async fn download_latest_roverd() -> Result<(), Error> {
 
     if response.status() != StatusCode::OK {
         let resp: axum::http::StatusCode = response.status();
+
+        let fail_msg = format!("failed to download {}", ROVERD_DOWNLOAD_URL);
         match response.status() {
-            StatusCode::NOT_FOUND => return Err(Error::ServiceNotFound),
-            StatusCode::BAD_REQUEST => return Err(Error::ServiceDownloadFailed),
-            StatusCode::FORBIDDEN => return Err(Error::Http(StatusCode::FORBIDDEN)),
-            _ => return Err(Error::Http(resp)),
+            StatusCode::NOT_FOUND => {
+                return Err(Context(anyhow!("{}: {}", StatusCode::NOT_FOUND, fail_msg)))
+            }
+            StatusCode::BAD_REQUEST => {
+                return Err(Context(anyhow!(
+                    "{}: {}",
+                    StatusCode::BAD_REQUEST,
+                    fail_msg
+                )))
+            }
+            StatusCode::FORBIDDEN => return Err(error::Error::Http(StatusCode::FORBIDDEN)),
+            _ => return Err(error::Error::Http(resp)),
         }
     }
 

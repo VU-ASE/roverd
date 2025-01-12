@@ -15,7 +15,7 @@ use tracing::{error, info};
 
 use crate::util::*;
 use crate::{command::ParsedCommand, constants::*};
-use crate::{time_now, Error};
+use crate::{error::Error, time_now};
 
 use super::bootspec::{Input, Stream};
 use super::{
@@ -68,10 +68,12 @@ impl DaemonManager {
             }
         };
 
-        let display_service_file =
-            std::fs::read_to_string(display_fq.path()).map_err(|_| Error::ServiceNotFound)?;
-        let battery_service_file =
-            std::fs::read_to_string(battery_fq.path()).map_err(|_| Error::ServiceNotFound)?;
+        let display_service_file = std::fs::read_to_string(display_fq.path()).map_err(|_| {
+            Error::ServiceNotFound(format!("could not find {} on disk", display_fq.path()))
+        })?;
+        let battery_service_file = std::fs::read_to_string(battery_fq.path()).map_err(|_| {
+            Error::ServiceNotFound(format!("could not find {} on disk", battery_fq.path()))
+        })?;
 
         let display_service: Service = serde_yaml::from_str(&display_service_file)
             .with_context(|| format!("failed to parse {}", display_service_file))?;

@@ -9,7 +9,7 @@ use openapi::models::*;
 use tracing::warn;
 
 use crate::constants::*;
-use crate::{service::FqBuf, state::Roverd, warn_generic, Error};
+use crate::{error::Error, service::FqBuf, state::Roverd, warn_generic};
 
 #[async_trait]
 impl Pipeline for Roverd {
