@@ -31,15 +31,6 @@ pub struct FqBuf {
 }
 
 impl FqBuf {
-    pub fn new(author: &str, name: &str, version: &str) -> FqBuf {
-        FqBuf {
-            author: author.to_string(),
-            name: name.to_string(),
-            version: version.to_string(),
-            is_daemon: false,
-        }
-    }
-
     pub fn new_daemon(author: &str, name: &str, version: &str) -> FqBuf {
         FqBuf {
             author: author.to_string(),

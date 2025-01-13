@@ -24,6 +24,5 @@ pub const START_PORT: u32 = 5700;
 pub const DATA_ADDRESS: &str = "tcp://localhost";
 pub const DEFAULT_LOG_LINES: i32 = 50;
 
-pub const ROVERD_DOWNLOAD_URL: &str =
-    "https://github.com/VU-ASE/roverd/releases/latest/download/roverd";
-pub const ROVERD_INSTALL_PATH: &str = "/usr/local/bin/roverd";
+pub const DEBIX_UID: Option<u32> = Some(1000);
+pub const DEBIX_GID: Option<u32> = Some(1000);

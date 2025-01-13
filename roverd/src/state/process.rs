@@ -108,7 +108,7 @@ impl ProcessManager {
             let parsed_command = ParsedCommand::try_from(&p.command)?;
 
             let full_program_path = format!("{}/{}", p.fq.dir(), &parsed_command.program);
-            info!("full path: {:?}", full_program_path);
+            info!("executing {:?}", full_program_path);
 
             fs::set_permissions(full_program_path.clone(), Permissions::from_mode(0o755))
                 .with_context(|| format!("failed to set permissions for {:?}", full_program_path))?;

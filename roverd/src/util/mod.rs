@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use std::fs::{File, OpenOptions};
-
+use std::os::unix::fs::chown;
 use std::{
     fs,
     io::{self, Read, Write},
@@ -19,16 +19,34 @@ use crate::service::FqBuf;
 
 use crate::constants::*;
 
-/// Copy files from source to destination recursively.
-pub fn copy_recursively(source: impl AsRef<Path>, destination: impl AsRef<Path>) -> Result<()> {
-    fs::create_dir_all(&destination)?;
+/// Copies all files from source to destination recursively and sets ownership of all
+/// desitnation files to "debix:debix".
+pub fn copy_recursively(source: impl AsRef<Path>, destination_dir: impl AsRef<Path>) -> Result<()> {
+    fs::create_dir_all(&destination_dir)?;
+    chown(&destination_dir, DEBIX_UID, DEBIX_GID).with_context(|| {
+        format!(
+            "failed to set the ownership of directory: {:?}",
+            destination_dir.as_ref()
+        )
+    })?;
+
     for entry in fs::read_dir(source)? {
         let entry = entry?;
         let filetype = entry.file_type()?;
+        let destination_file = destination_dir.as_ref().join(entry.file_name());
+
+        // Make sure all files copied over have debix:debix permissions so
+        // that the build command succeeds
         if filetype.is_dir() {
-            copy_recursively(entry.path(), destination.as_ref().join(entry.file_name()))?;
+            copy_recursively(entry.path(), &destination_file)?;
         } else {
-            fs::copy(entry.path(), destination.as_ref().join(entry.file_name()))?;
+            fs::copy(entry.path(), &destination_file)?;
+            chown(&destination_file, DEBIX_UID, DEBIX_GID).with_context(|| {
+                format!(
+                    "failed to set the ownership of file: {:?}",
+                    &destination_file
+                )
+            })?;
         }
     }
     Ok(())
@@ -171,6 +189,9 @@ pub async fn install_service(fq: &FqBuf) -> Result<(), Error> {
             UNZIPPED_DIR, full_path
         )
     })?;
+
+    chown(&full_path, DEBIX_UID, DEBIX_GID)
+        .with_context(|| format!("failed to set the ownership of {}", &full_path))?;
 
     Ok(())
 }

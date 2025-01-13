@@ -273,9 +273,11 @@ impl State {
         let stderr = Stdio::from(log_file);
 
         let mut built_services = self.built_services.write().await;
+        let corrected_build_command = format!("cd {} ; {}", fq.dir(), build_string.as_str());
 
-        match Command::new("sh")
-            .args(["-c", build_string.as_str()])
+        // Run the build command in the login shell of the debix user (necessary for build deps)
+        match Command::new("su")
+            .args(["-", "debix", "-c", corrected_build_command.as_str()])
             .stdout(stdout)
             .stderr(stderr)
             .current_dir(fq.dir())

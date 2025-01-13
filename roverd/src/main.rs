@@ -1,13 +1,9 @@
-use anyhow::{anyhow, Context};
 use axum::extract::{DefaultBodyLimit, Request, State};
 use axum::http::{self, StatusCode};
 use axum::middleware::{self, Next};
 use axum::response::Response;
 use base64::Engine;
 use openapi::models::DaemonStatus;
-use std::fs::{self, Permissions};
-use std::io::Write;
-use std::os::unix::fs::PermissionsExt;
 use tower_http::cors::CorsLayer;
 use tracing::{error, info, warn};
 
@@ -143,59 +139,6 @@ async fn main() -> Result<(), error::Error> {
     info!("listening on {}", LISTEN_ADDRESS);
 
     axum::serve(listener, router).await.unwrap();
-
-    Ok(())
-}
-
-async fn download_latest_roverd() -> Result<(), error::Error> {
-    info!("downloading latest roverd");
-
-    let temp_file = "/tmp/roverd.incoming".to_string();
-
-    let response = reqwest::get(ROVERD_DOWNLOAD_URL)
-        .await
-        .with_context(|| format!("failed to perform get request to {}", ROVERD_DOWNLOAD_URL))?;
-
-    if response.status() != StatusCode::OK {
-        let resp: axum::http::StatusCode = response.status();
-
-        let fail_msg = format!("failed to download {}", ROVERD_DOWNLOAD_URL);
-        match response.status() {
-            StatusCode::NOT_FOUND => {
-                return Err(Context(anyhow!("{}: {}", StatusCode::NOT_FOUND, fail_msg)))
-            }
-            StatusCode::BAD_REQUEST => {
-                return Err(Context(anyhow!(
-                    "{}: {}",
-                    StatusCode::BAD_REQUEST,
-                    fail_msg
-                )))
-            }
-            StatusCode::FORBIDDEN => return Err(error::Error::Http(StatusCode::FORBIDDEN)),
-            _ => return Err(error::Error::Http(resp)),
-        }
-    }
-
-    let new_binary = response
-        .bytes()
-        .await
-        .context("failed unpacking downloaded response bytes")?;
-
-    let mut roverd_file = fs::OpenOptions::new()
-        .create(true)
-        .write(true)
-        .open(temp_file.clone())
-        .with_context(|| format!("failed to create/open {}", temp_file))?;
-
-    roverd_file
-        .write_all(&new_binary)
-        .with_context(|| format!("failed to write bytes to {}", temp_file))?;
-
-    fs::set_permissions(temp_file.clone(), Permissions::from_mode(0o755))
-        .with_context(|| format!("failed to set 755 permissions to {}", temp_file))?;
-
-    fs::rename(temp_file.clone(), ROVERD_INSTALL_PATH)
-        .with_context(|| format!("failed to rename {} to {}", temp_file, ROVERD_INSTALL_PATH))?;
 
     Ok(())
 }
