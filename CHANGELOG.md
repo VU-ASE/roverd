@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.5](https://github.com/VU-ASE/roverd/compare/v0.0.4...v0.0.5) (2025-01-13)
+
+
+### Bug Fixes
+
+* building works, done as debix user ([a85c0ca](https://github.com/VU-ASE/roverd/commit/a85c0ca1743acdb1af5c685e71bf08b5774b607e))
+
 ## [0.0.4](https://github.com/VU-ASE/roverd/compare/v0.0.3...v0.0.4) (2025-01-12)
 
 
