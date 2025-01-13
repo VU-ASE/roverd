@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.4](https://github.com/VU-ASE/roverd/compare/v0.0.3...v0.0.4) (2025-01-12)
+
+
+### Bug Fixes
+
+* set_pipeline allows empty ([d695029](https://github.com/VU-ASE/roverd/commit/d695029ee064ab0c42d46ef11690b69f413474d7))
+
 ## [0.0.3](https://github.com/VU-ASE/roverd/compare/v0.0.2...v0.0.3) (2025-01-12)
 
 
