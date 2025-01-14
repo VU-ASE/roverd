@@ -11,7 +11,7 @@ use std::{
 use openapi::models::ProcessStatus;
 use rovervalidate::{config::Validate, service::Service};
 use tokio::{process::Command, time::sleep};
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 use crate::util::*;
 use crate::{command::ParsedCommand, constants::*};
@@ -21,7 +21,6 @@ use super::bootspec::{Input, Stream};
 use super::{
     bootspec::{BootSpec, BootSpecTuning},
     process::Process,
-    service::FqBuf,
 };
 
 #[derive(Debug, Clone)]
@@ -39,32 +38,30 @@ impl DaemonManager {
         // First make sure the daemons are installed, this can fail which will
         // put roverd in a non operational state.
         let display_fq = {
-            let fq = FqBuf::new_daemon("vu-ase", "display", "1.1.1");
-            if fq.exists() {
-                info!("found daemon 'display'");
-                fq
-            } else {
-                download_and_install_service(
-                    &"https://github.com/VU-ASE/display/releases/download/v1.1.1/display.zip"
-                        .to_string(),
-                    true,
-                )
-                .await?
+            match download_and_install_service(&DISPLAY_FETCH_URL.to_string(), true).await {
+                Ok(fq) => fq,
+                Err(e) => {
+                    warn!(
+                        "was not able to get latest daemon at {}",
+                        DISPLAY_FETCH_URL
+                    );
+                    warn!("{:?}", e);
+                    find_latest_daemon("vu-ase", "display")?
+                }
             }
         };
 
         let battery_fq = {
-            let fq = FqBuf::new_daemon("vu-ase", "battery", "1.2.1");
-            if fq.exists() {
-                info!("found daemon 'battery'");
-                fq
-            } else {
-                download_and_install_service(
-                    &"https://github.com/VU-ASE/battery/releases/download/v1.2.1/battery.zip"
-                        .to_string(),
-                    true,
-                )
-                .await?
+            match download_and_install_service(&BATTERY_FETCH_URL.to_string(), true).await {
+                Ok(fq) => fq,
+                Err(e) => {
+                    warn!(
+                        "was not able to get latest daemon at {}",
+                        BATTERY_FETCH_URL
+                    );
+                    warn!("{:?}", e);
+                    find_latest_daemon("vu-ase", "battery")?
+                }
             }
         };
 

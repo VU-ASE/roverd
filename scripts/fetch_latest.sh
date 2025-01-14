@@ -1,8 +1,8 @@
 #!/bin/bash
 
 
-ROVER_IP=192.168.0.107
-ROVER_PW=alan
+ROVER_IP=localhost
+ROVER_PW=debix
 
 function check_roverd {
     status=`curl -s $ROVER_IP/status | jq -r '.status'`
@@ -14,7 +14,12 @@ function check_roverd {
 }
 
 function get_service {
-    curl -u debix:debix -X 'POST' "http://192.168.0.112/update"
+    curl -u debix:$ROVER_PW \
+        -X 'POST' \
+        "http://$ROVER_IP/fetch" \
+        -H 'accept: application/json' \
+        -H 'Content-Type: application/json' \
+        -d "{\"url\": \"https://github.com/VU-ASE/$1/releases/latest/download/$1.zip\"}"
 }
 
 check_roverd
@@ -22,4 +27,3 @@ check_roverd
 get_service imaging
 get_service controller
 get_service actuator
-get_service transceiver

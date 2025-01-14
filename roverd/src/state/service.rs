@@ -171,10 +171,6 @@ impl FqBuf {
             )
         }
     }
-
-    pub fn exists(&self) -> bool {
-        Path::new(&self.dir()).exists()
-    }
 }
 
 impl Display for FqBuf {

@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use std::fs::{File, OpenOptions};
 use std::os::unix::fs::chown;
 use std::{
@@ -12,7 +12,7 @@ use axum::http::StatusCode;
 use rovervalidate::config::{Configuration, Validate};
 
 use rovervalidate::service::Service;
-use tracing::info;
+use tracing::{info, warn};
 
 use crate::error::Error;
 use crate::service::FqBuf;
@@ -251,6 +251,53 @@ pub fn create_log_file(log_path: &PathBuf) -> Result<File, Error> {
         .with_context(|| format!("failed to create/open {:?}", log_path))?;
 
     Ok(log_file)
+}
+
+/// Given an array of Strings, it will return the latest.
+fn get_latest_version(versions: &[String]) -> Option<String> {
+    versions
+        .iter()
+        .filter_map(|v| semver::Version::parse(v).ok())
+        .max()
+        .map(|v| v.to_string())
+}
+
+/// Checks the filesystem for the latest daemon for a given author & service_name
+/// returns an error if it can't find it. If it can't find one, then this fails
+/// the init sequence and the rover is not operational.
+pub fn find_latest_daemon(author: &str, name: &str) -> Result<FqBuf, Error> {
+    // List the directory with all versions
+    let daemon_path = PathBuf::from(format!("{}/{}/{}", DAEMON_DIR, author, name));
+
+    // Collect all the entries of the daemon's directory and check which one is the
+    // newest
+    let mut versions = vec![];
+
+    for entry in fs::read_dir(&daemon_path)
+        .with_context(|| format!("failed to read daemon directory: {:?}", &daemon_path))?
+    {
+        let entry = entry.context("failed to unpack directory entry")?;
+        let filetype = entry
+            .file_type()
+            .with_context(|| format!("could not fetch file metadata of {:?}", entry.path()))?;
+
+        // Make sure all files copied over have debix:debix permissions so
+        // that the build command succeeds
+        if filetype.is_dir() {
+            versions.push(entry.file_name().to_string_lossy().into_owned());
+        } else {
+            warn!("found non-directory in {:?}", entry.path());
+        }
+    }
+
+    if let Some(latest_version) = get_latest_version(&versions) {
+        Ok(FqBuf::new_daemon(author, name, &latest_version))
+    } else {
+        Err(Error::Context(anyhow!(
+            "Could not find or parse any valid semver versions in {:?}",
+            daemon_path
+        )))
+    }
 }
 
 #[macro_export]

@@ -26,3 +26,8 @@ pub const DEFAULT_LOG_LINES: i32 = 50;
 
 pub const DEBIX_UID: Option<u32> = Some(1000);
 pub const DEBIX_GID: Option<u32> = Some(1000);
+
+pub const DISPLAY_FETCH_URL: &str =
+    "https://github.com/VU-ASE/display/releases/latest/download/display.zip";
+pub const BATTERY_FETCH_URL: &str =
+    "https://github.com/VU-ASE/battery/releases/latest/download/battery.zip";
