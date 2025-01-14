@@ -520,9 +520,14 @@ impl State {
     /// If the pipeline is started, it will be stopped.
     pub async fn stop(&self) -> Result<(), Error> {
         let mut stats = self.process_manager.stats.write().await;
-        if stats.status != PipelineStatus::Started {
-            return Err(Error::NoRunningServices);
+
+        match stats.status {
+            PipelineStatus::Empty => return Err(Error::PipelineIsEmpty),
+            PipelineStatus::Startable => return Err(Error::NoRunningServices),
+            _ => (),
         }
+        stats.status = PipelineStatus::Startable;
+
         stats.last_stop = Some(time_now!() as i64);
         self.process_manager.shutdown_tx.send(()).ok();
         let mut spawned = self.process_manager.spawned.write().await;
