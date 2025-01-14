@@ -115,9 +115,9 @@ impl Validate<ValidatedService> for gen::Service {
             }
         }
 
+        let pattern = Regex::new(r"^[a-z]+(-[a-z]+)*$").unwrap();
         // Validate all outputs
         for (index, output) in self.outputs.iter().enumerate() {
-            let pattern = Regex::new(r"^[a-z]+(-[a-z]+)*$").unwrap();
             if !pattern.is_match(output) {
                 errors.push(Error::FieldValidationError(crate::error::FieldError {
                     path: vec!["outputs".to_string(), index.to_string()],

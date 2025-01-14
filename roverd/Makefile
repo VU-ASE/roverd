@@ -1,15 +1,13 @@
 .PHONY: lint build-open-api build run test clean
 SHELL := /bin/bash
 
-BUILD_DIR=target/release
-BINARY_NAME=roverd
 
 lint:
 	@cargo fmt
 	@cargo clippy
 
 build-open-api:
-	@openapi-generator generate -i spec/apispec.yaml -g rust-axum -o openapi/
+	@openapi-generator-cli generate -i spec/apispec.yaml -g rust-axum -o openapi/
 	@cd openapi ; cargo fmt ; cargo clippy
 
 build: build-open-api lint

@@ -204,7 +204,7 @@ pub fn list_dir_contents(added_path: &str) -> Result<Vec<String>, Error> {
 
     for path in paths {
         contents.push(
-            path.with_context(|| format!("failed to unpack direntry"))?
+            path.with_context(|| "failed to unpack direntry".to_string())?
                 .file_name()
                 .to_os_string()
                 .into_string()?,

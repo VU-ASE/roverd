@@ -38,7 +38,7 @@ RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
 RUN /home/dev/.cargo/bin/rustup target add aarch64-unknown-linux-gnu
 
 # OpenAPI-cli install
-RUN pip install openapi-generator-cli==4.3.1
+RUN pip install openapi-generator-cli==7.10.0
 
 # Cross Compilation Dependencies
 RUN sudo apt install -y libssl-dev file git \

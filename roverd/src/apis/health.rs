@@ -8,21 +8,44 @@ use axum::extract::Host;
 use axum::http::Method;
 use axum_extra::extract::CookieJar;
 
-use openapi::models::GenericError;
 use tokio::process::Command;
-use tracing::{error, warn};
+use tracing::error;
 
 use sysinfo::{CpuRefreshKind, MemoryRefreshKind, RefreshKind};
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::state::Roverd;
-use crate::{time_now, warn_generic};
-
-use crate::error::Error;
+use crate::time_now;
 
 #[async_trait]
 impl Health for Roverd {
+    /// Retrieve the health and versioning information. Alias of /status
+    ///
+    /// RootGet - GET /
+    async fn root_get(
+        &self,
+        method: Method,
+        host: Host,
+        cookies: CookieJar,
+    ) -> Result<RootGetResponse, ()> {
+        match self.status_get(method, host, cookies).await {
+            Ok(r) => match r {
+                StatusGetResponse::Status200_TheHealthAndVersioningInformation(
+                    status_get200_response,
+                ) => Ok(
+                    RootGetResponse::Status200_TheHealthAndVersioningInformation(
+                        status_get200_response,
+                    ),
+                ),
+                StatusGetResponse::Status400_AnErrorOccurred(generic_error) => {
+                    Ok(RootGetResponse::Status400_AnErrorOccurred(generic_error))
+                }
+            },
+            Err(_) => Err(()),
+        }
+    }
+
     /// Retrieve the health and versioning information.
     ///
     /// StatusGet - GET /status
@@ -31,7 +54,7 @@ impl Health for Roverd {
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
-    ) -> Result<StatusGetResponse, String> {
+    ) -> Result<StatusGetResponse, ()> {
         let uptime = SystemTime::now()
             .duration_since(self.info.start_time)
             .unwrap()
@@ -97,9 +120,18 @@ impl Health for Roverd {
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
-    ) -> Result<UpdatePostResponse, String> {
-        let a = || Err(Error::Unimplemented);
-        warn_generic!(a(), UpdatePostResponse)
+    ) -> Result<UpdatePostResponse, ()> {
+        let mut update_cmd = Command::new("sh");
+        update_cmd
+            .arg("-c")
+            .arg("/home/debix/ase/bin/update-roverd");
+
+        match update_cmd.spawn() {
+            Ok(_) => (),
+            Err(e) => error!("unable to spawn the update command: {}", e),
+        }
+
+        Ok(UpdatePostResponse::Status200_TheRoverdDaemonProcessInitiatedASelf)
     }
 
     /// Shutdown the rover..
@@ -110,13 +142,13 @@ impl Health for Roverd {
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
-    ) -> Result<ShutdownPostResponse, String> {
+    ) -> Result<ShutdownPostResponse, ()> {
         let mut shutdown = Command::new("shutdown");
         shutdown.arg("-h").arg("now");
 
         match shutdown.spawn() {
             Ok(_) => (),
-            Err(e) => error!("Unable to run shutdown command: {}", e),
+            Err(e) => error!("unable to run shutdown command: {}", e),
         }
 
         Ok(ShutdownPostResponse::Status200_RoverShutdownSuccessfully)

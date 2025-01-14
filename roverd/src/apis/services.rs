@@ -29,7 +29,7 @@ impl Services for Roverd {
         _host: Host,
         _cookies: CookieJar,
         body: models::FetchPostRequest,
-    ) -> Result<FetchPostResponse, String> {
+    ) -> Result<FetchPostResponse, ()> {
         let (fq_buf, invalidated_pipeline) =
             warn_generic!(self.state.fetch_service(&body).await, FetchPostResponse);
 
@@ -52,7 +52,7 @@ impl Services for Roverd {
         _host: Host,
         _cookies: CookieJar,
         body: Multipart,
-    ) -> Result<UploadPostResponse, String> {
+    ) -> Result<UploadPostResponse, ()> {
         let (fq_buf, invalidated_pipeline) =
             warn_generic!(self.state.receive_upload(body).await, UploadPostResponse);
 
@@ -75,7 +75,7 @@ impl Services for Roverd {
         _host: Host,
         _cookies: CookieJar,
         path_params: ServicesAuthorServiceGetPathParams,
-    ) -> Result<ServicesAuthorServiceGetResponse, String> {
+    ) -> Result<ServicesAuthorServiceGetResponse, ()> {
         let versions = warn_generic!(
             self.state.get_versions(path_params).await,
             ServicesAuthorServiceGetResponse
@@ -93,7 +93,7 @@ impl Services for Roverd {
         _host: Host,
         _cookies: CookieJar,
         path_params: ServicesAuthorServiceVersionDeletePathParams,
-    ) -> Result<ServicesAuthorServiceVersionDeleteResponse, String> {
+    ) -> Result<ServicesAuthorServiceVersionDeleteResponse, ()> {
         let invalidated_pipeline = warn_generic!(
             self.state.delete_service(&path_params).await,
             ServicesAuthorServiceVersionDeleteResponse
@@ -115,7 +115,7 @@ impl Services for Roverd {
         _host: Host,
         _cookies: CookieJar,
         path_params: ServicesAuthorServiceVersionGetPathParams,
-    ) -> Result<ServicesAuthorServiceVersionGetResponse, String> {
+    ) -> Result<ServicesAuthorServiceVersionGetResponse, ()> {
         let fq = FqBuf::from(&path_params);
 
         let service = warn_generic!(
@@ -172,7 +172,7 @@ impl Services for Roverd {
         _host: Host,
         _cookies: CookieJar,
         path_params: ServicesAuthorServiceVersionPostPathParams,
-    ) -> Result<ServicesAuthorServiceVersionPostResponse, String> {
+    ) -> Result<ServicesAuthorServiceVersionPostResponse, ()> {
         let _ = if let Err(e) = self.state.build_service(path_params).await {
             warn!("{:#?}", &e);
             match e {
@@ -210,7 +210,7 @@ impl Services for Roverd {
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
-    ) -> Result<ServicesGetResponse, String> {
+    ) -> Result<ServicesGetResponse, ()> {
         let authors = warn_generic!(self.state.get_authors().await, ServicesGetResponse);
 
         Ok(ServicesGetResponse::Status200_TheListOfAuthors(authors))
@@ -225,7 +225,7 @@ impl Services for Roverd {
         _host: Host,
         _cookies: CookieJar,
         path_params: ServicesAuthorGetPathParams,
-    ) -> Result<ServicesAuthorGetResponse, String> {
+    ) -> Result<ServicesAuthorGetResponse, ()> {
         let services = warn_generic!(
             self.state.get_services(path_params).await,
             ServicesAuthorGetResponse

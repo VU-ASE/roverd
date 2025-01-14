@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use axum::extract::{DefaultBodyLimit, Request, State};
 use axum::http::{self, StatusCode};
 use axum::middleware::{self, Next};
@@ -70,8 +71,8 @@ async fn auth(
 ) -> Result<Response, error::Error> {
     info!("{} {}", req.method(), *req.uri());
 
-    // the /status endpoint does not require authentication, all others do.
-    if *req.uri() != *"/status" {
+    // the /status and / endpoints do not require authentication, all others do.
+    if *req.uri() != *"/status" && *req.uri() != *"/" {
         if state.info.status == DaemonStatus::Operational {
             let auth_header = req
                 .headers()
@@ -82,8 +83,10 @@ async fn auth(
             let basic_auth: Vec<&str> = auth_header.split(' ').collect();
 
             if basic_auth.len() != 2 || basic_auth[0] != "Basic" {
-                warn!("request is missing basic auth header");
-                return Err(Http(StatusCode::BAD_REQUEST));
+                // warn!("request is missing basic auth header");
+                return Err(Context(anyhow!(
+                    "basic_auth header != Basic or auth header did not contain exactly two items"
+                )));
             }
 
             let base64_data = basic_auth[1];
@@ -98,6 +101,7 @@ async fn auth(
             // Returns early if authentication fails
             check_auth(&state, auth_str)?;
         } else {
+            warn!("could not handle request since roverd not operational");
             return Err(error::Error::RoverdNotOperational);
         }
     }
@@ -139,6 +143,8 @@ async fn main() -> Result<(), error::Error> {
     info!("listening on {}", LISTEN_ADDRESS);
 
     axum::serve(listener, router).await.unwrap();
+
+    info!("exiting");
 
     Ok(())
 }

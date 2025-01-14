@@ -130,7 +130,7 @@ pub trait Services {
         host: Host,
         cookies: CookieJar,
         body: models::FetchPostRequest,
-    ) -> Result<FetchPostResponse, String>;
+    ) -> Result<FetchPostResponse, ()>;
 
     /// Retrieve the list of parsable services for a specific author.
     ///
@@ -141,7 +141,7 @@ pub trait Services {
         host: Host,
         cookies: CookieJar,
         path_params: models::ServicesAuthorGetPathParams,
-    ) -> Result<ServicesAuthorGetResponse, String>;
+    ) -> Result<ServicesAuthorGetResponse, ()>;
 
     /// Retrieve the list of parsable service versions for a specific author and service.
     ///
@@ -152,7 +152,7 @@ pub trait Services {
         host: Host,
         cookies: CookieJar,
         path_params: models::ServicesAuthorServiceGetPathParams,
-    ) -> Result<ServicesAuthorServiceGetResponse, String>;
+    ) -> Result<ServicesAuthorServiceGetResponse, ()>;
 
     /// Delete a specific version of a service.
     ///
@@ -163,7 +163,7 @@ pub trait Services {
         host: Host,
         cookies: CookieJar,
         path_params: models::ServicesAuthorServiceVersionDeletePathParams,
-    ) -> Result<ServicesAuthorServiceVersionDeleteResponse, String>;
+    ) -> Result<ServicesAuthorServiceVersionDeleteResponse, ()>;
 
     /// Retrieve the status of a specific version of a service.
     ///
@@ -174,7 +174,7 @@ pub trait Services {
         host: Host,
         cookies: CookieJar,
         path_params: models::ServicesAuthorServiceVersionGetPathParams,
-    ) -> Result<ServicesAuthorServiceVersionGetResponse, String>;
+    ) -> Result<ServicesAuthorServiceVersionGetResponse, ()>;
 
     /// Build a fully qualified service version.
     ///
@@ -185,7 +185,7 @@ pub trait Services {
         host: Host,
         cookies: CookieJar,
         path_params: models::ServicesAuthorServiceVersionPostPathParams,
-    ) -> Result<ServicesAuthorServiceVersionPostResponse, String>;
+    ) -> Result<ServicesAuthorServiceVersionPostResponse, ()>;
 
     /// Retrieve the list of all authors that have parsable services. With these authors you can query further for services.
     ///
@@ -195,7 +195,7 @@ pub trait Services {
         method: Method,
         host: Host,
         cookies: CookieJar,
-    ) -> Result<ServicesGetResponse, String>;
+    ) -> Result<ServicesGetResponse, ()>;
 
     /// Upload a new service or new version to the rover by uploading a ZIP file.
     ///
@@ -206,5 +206,5 @@ pub trait Services {
         host: Host,
         cookies: CookieJar,
         body: Multipart,
-    ) -> Result<UploadPostResponse, String>;
+    ) -> Result<UploadPostResponse, ()>;
 }

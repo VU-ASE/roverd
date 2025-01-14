@@ -69,7 +69,6 @@ pub enum Error {
 
     // #[from]
     // Io(std::io::Error),
-
     #[from]
     Reqwest(reqwest::Error),
 

@@ -10,6 +10,16 @@ use crate::{models, types::*};
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[must_use]
 #[allow(clippy::large_enum_variant)]
+pub enum RootGetResponse {
+    /// The health and versioning information
+    Status200_TheHealthAndVersioningInformation(models::StatusGet200Response),
+    /// An error occurred
+    Status400_AnErrorOccurred(models::GenericError),
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[must_use]
+#[allow(clippy::large_enum_variant)]
 pub enum ShutdownPostResponse {
     /// Rover shutdown successfully.
     Status200_RoverShutdownSuccessfully,
@@ -34,7 +44,7 @@ pub enum StatusGetResponse {
 #[allow(clippy::large_enum_variant)]
 pub enum UpdatePostResponse {
     /// The roverd daemon process initiated a self-update successfully. You should expect the process to terminate and restart soon.
-    Status200_TheRoverdDaemonProcessInitiatedASelf(models::UpdatePost200Response),
+    Status200_TheRoverdDaemonProcessInitiatedASelf,
     /// An error occurred
     Status400_AnErrorOccurred(models::GenericError),
     /// Unauthorized access (you need to set the Authorization header with a valid username and password)
@@ -45,6 +55,16 @@ pub enum UpdatePostResponse {
 #[async_trait]
 #[allow(clippy::ptr_arg)]
 pub trait Health {
+    /// Retrieve the health and versioning information.
+    ///
+    /// RootGet - GET /
+    async fn root_get(
+        &self,
+        method: Method,
+        host: Host,
+        cookies: CookieJar,
+    ) -> Result<RootGetResponse, ()>;
+
     /// Shutdown the rover..
     ///
     /// ShutdownPost - POST /shutdown
@@ -53,7 +73,7 @@ pub trait Health {
         method: Method,
         host: Host,
         cookies: CookieJar,
-    ) -> Result<ShutdownPostResponse, String>;
+    ) -> Result<ShutdownPostResponse, ()>;
 
     /// Retrieve the health and versioning information.
     ///
@@ -63,7 +83,7 @@ pub trait Health {
         method: Method,
         host: Host,
         cookies: CookieJar,
-    ) -> Result<StatusGetResponse, String>;
+    ) -> Result<StatusGetResponse, ()>;
 
     /// Self-update the roverd daemon process.
     ///
@@ -73,5 +93,5 @@ pub trait Health {
         method: Method,
         host: Host,
         cookies: CookieJar,
-    ) -> Result<UpdatePostResponse, String>;
+    ) -> Result<UpdatePostResponse, ()>;
 }

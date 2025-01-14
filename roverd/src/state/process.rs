@@ -111,7 +111,9 @@ impl ProcessManager {
             info!("executing {:?}", full_program_path);
 
             fs::set_permissions(full_program_path.clone(), Permissions::from_mode(0o755))
-                .with_context(|| format!("failed to set permissions for {:?}", full_program_path))?;
+                .with_context(|| {
+                    format!("failed to set permissions for {:?}", full_program_path)
+                })?;
 
             let mut command = Command::new(parsed_command.program);
             command

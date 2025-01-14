@@ -695,6 +695,9 @@ paths:
         "401":
           $ref: "#/components/responses/UnauthorizedError"
 
+
+
+
   #
   # Health
   #
@@ -799,22 +802,12 @@ paths:
       responses:
         "200":
           description: "The roverd daemon process initiated a self-update successfully. You should expect the process to terminate and restart soon."
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - "version"
-                properties:
-                  version:
-                    type: string
-                    description: "The version of the roverd daemon updated to"
-                    example: "v1.0.1"
-
         "400":
           $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+  /:
+    $ref: '#/paths/~1status'
   /shutdown:
     post:
       tags:

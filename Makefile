@@ -27,9 +27,11 @@ dev: build
 build-arm: version-update
 	cargo build --target=aarch64-unknown-linux-gnu --release
 
+TEST_ROVER=rover12
+
 dev-arm: build-arm
-	scp ./target/aarch64-unknown-linux-gnu/release/roverd rover07:/tmp/
-	ssh rover07 "echo debix | sudo -S mv /tmp/roverd /usr/local/bin/ ; echo debix | sudo -S chown root:root /usr/local/bin/roverd"
+	scp ./target/aarch64-unknown-linux-gnu/release/roverd $(TEST_ROVER):/tmp/
+	ssh $(TEST_ROVER) "echo debix | sudo -S mv /tmp/roverd /usr/local/bin/ ; echo debix | sudo -S chown root:root /usr/local/bin/roverd"
 
 
 clean:

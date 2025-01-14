@@ -23,7 +23,7 @@ impl Pipeline for Roverd {
         _cookies: CookieJar,
         path_params: LogsAuthorNameVersionGetPathParams,
         query_params: LogsAuthorNameVersionGetQueryParams,
-    ) -> Result<LogsAuthorNameVersionGetResponse, String> {
+    ) -> Result<LogsAuthorNameVersionGetResponse, ()> {
         let fq = FqBuf::from(&path_params);
         let lines = query_params.lines.unwrap_or(DEFAULT_LOG_LINES) as usize;
 
@@ -43,7 +43,7 @@ impl Pipeline for Roverd {
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
-    ) -> Result<PipelineGetResponse, String> {
+    ) -> Result<PipelineGetResponse, ()> {
         let enabled: Vec<PipelineGet200ResponseEnabledInner> =
             warn_generic!(self.state.get_pipeline().await, PipelineGetResponse);
         let stats = self.state.process_manager.stats.read().await;
@@ -69,7 +69,7 @@ impl Pipeline for Roverd {
         _host: Host,
         _cookies: CookieJar,
         body: Vec<PipelinePostRequestInner>,
-    ) -> Result<PipelinePostResponse, String> {
+    ) -> Result<PipelinePostResponse, ()> {
         let _ = match self.state.set_pipeline(body).await {
             Ok(a) => a,
             Err(e) => match e {
@@ -184,7 +184,7 @@ impl Pipeline for Roverd {
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
-    ) -> Result<PipelineStartPostResponse, String> {
+    ) -> Result<PipelineStartPostResponse, ()> {
         let _ = match self.state.start().await {
             Ok(data) => data,
             Err(e) => {
@@ -208,7 +208,7 @@ impl Pipeline for Roverd {
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
-    ) -> Result<PipelineStopPostResponse, String> {
+    ) -> Result<PipelineStopPostResponse, ()> {
         let _ = match self.state.stop().await {
             Ok(data) => data,
             Err(e) => {

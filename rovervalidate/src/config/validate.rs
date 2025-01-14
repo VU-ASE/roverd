@@ -18,6 +18,7 @@ impl Validate<ValidatedConfiguration> for gen::Configuration {
     fn validate(&self) -> Result<ValidatedConfiguration> {
         let mut errors = Vec::new();
 
+        let pattern = Regex::new(r"^\/.*$").unwrap();
         // Validate all enabled services, iterate and use the index for every error message
         for (index, enabled) in self.enabled.iter().enumerate() {
             if enabled.is_empty() {
@@ -27,7 +28,6 @@ impl Validate<ValidatedConfiguration> for gen::Configuration {
                 }));
             }
 
-            let pattern = Regex::new(r"^\/.*$").unwrap();
             if !pattern.is_match(enabled) {
                 errors.push(Error::FieldValidationError(crate::error::FieldError {
                     path: vec!["enabled".to_string(), index.to_string()],

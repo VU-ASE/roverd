@@ -83,7 +83,7 @@ pub trait Pipeline {
         cookies: CookieJar,
         path_params: models::LogsAuthorNameVersionGetPathParams,
         query_params: models::LogsAuthorNameVersionGetQueryParams,
-    ) -> Result<LogsAuthorNameVersionGetResponse, String>;
+    ) -> Result<LogsAuthorNameVersionGetResponse, ()>;
 
     /// Retrieve pipeline status and process execution information.
     ///
@@ -93,7 +93,7 @@ pub trait Pipeline {
         method: Method,
         host: Host,
         cookies: CookieJar,
-    ) -> Result<PipelineGetResponse, String>;
+    ) -> Result<PipelineGetResponse, ()>;
 
     /// Set the services that are enabled in this pipeline, by specifying the fully qualified services.
     ///
@@ -104,7 +104,7 @@ pub trait Pipeline {
         host: Host,
         cookies: CookieJar,
         body: Vec<models::PipelinePostRequestInner>,
-    ) -> Result<PipelinePostResponse, String>;
+    ) -> Result<PipelinePostResponse, ()>;
 
     /// Start the pipeline.
     ///
@@ -114,7 +114,7 @@ pub trait Pipeline {
         method: Method,
         host: Host,
         cookies: CookieJar,
-    ) -> Result<PipelineStartPostResponse, String>;
+    ) -> Result<PipelineStartPostResponse, ()>;
 
     /// Stop the pipeline.
     ///
@@ -124,5 +124,5 @@ pub trait Pipeline {
         method: Method,
         host: Host,
         cookies: CookieJar,
-    ) -> Result<PipelineStopPostResponse, String>;
+    ) -> Result<PipelineStopPostResponse, ()>;
 }

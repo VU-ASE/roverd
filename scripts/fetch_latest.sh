@@ -14,12 +14,7 @@ function check_roverd {
 }
 
 function get_service {
-    curl -u debix:$ROVER_PW \
-        -X 'POST' \
-        "http://$ROVER_IP/fetch" \
-        -H 'accept: application/json' \
-        -H 'Content-Type: application/json' \
-        -d "{\"url\": \"https://github.com/VU-ASE/$1/releases/latest/download/$1.zip\"}"
+    curl -u debix:debix -X 'POST' "http://192.168.0.112/update"
 }
 
 check_roverd

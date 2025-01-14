@@ -20,6 +20,7 @@ where
 {
     // build our application with a route
     Router::new()
+        .route("/", get(root_get::<I, A>))
         .route("/fetch", post(fetch_post::<I, A>))
         .route(
             "/logs/:author/:name/:version",
@@ -48,6 +49,100 @@ where
         .route("/update", post(update_post::<I, A>))
         .route("/upload", post(upload_post::<I, A>))
         .with_state(api_impl)
+}
+
+#[tracing::instrument(skip_all)]
+fn root_get_validation() -> std::result::Result<(), ValidationErrors> {
+    Ok(())
+}
+/// RootGet - GET /
+#[tracing::instrument(skip_all)]
+async fn root_get<I, A>(
+    method: Method,
+    host: Host,
+    cookies: CookieJar,
+    State(api_impl): State<I>,
+) -> Result<Response, StatusCode>
+where
+    I: AsRef<A> + Send + Sync,
+    A: apis::health::Health,
+{
+    #[allow(clippy::redundant_closure)]
+    let validation = tokio::task::spawn_blocking(move || root_get_validation())
+        .await
+        .unwrap();
+
+    let Ok(()) = validation else {
+        return Response::builder()
+            .status(StatusCode::BAD_REQUEST)
+            .body(Body::from(validation.unwrap_err().to_string()))
+            .map_err(|_| StatusCode::BAD_REQUEST);
+    };
+
+    let result = api_impl.as_ref().root_get(method, host, cookies).await;
+
+    let mut response = Response::builder();
+
+    let resp = match result {
+        Ok(rsp) => match rsp {
+            apis::health::RootGetResponse::Status200_TheHealthAndVersioningInformation(body) => {
+                let mut response = response.status(200);
+                {
+                    let mut response_headers = response.headers_mut().unwrap();
+                    response_headers.insert(
+                        CONTENT_TYPE,
+                        HeaderValue::from_str("application/json").map_err(|e| {
+                            error!(error = ?e);
+                            StatusCode::INTERNAL_SERVER_ERROR
+                        })?,
+                    );
+                }
+
+                let body_content = tokio::task::spawn_blocking(move || {
+                    serde_json::to_vec(&body).map_err(|e| {
+                        error!(error = ?e);
+                        StatusCode::INTERNAL_SERVER_ERROR
+                    })
+                })
+                .await
+                .unwrap()?;
+                response.body(Body::from(body_content))
+            }
+            apis::health::RootGetResponse::Status400_AnErrorOccurred(body) => {
+                let mut response = response.status(400);
+                {
+                    let mut response_headers = response.headers_mut().unwrap();
+                    response_headers.insert(
+                        CONTENT_TYPE,
+                        HeaderValue::from_str("application/json").map_err(|e| {
+                            error!(error = ?e);
+                            StatusCode::INTERNAL_SERVER_ERROR
+                        })?,
+                    );
+                }
+
+                let body_content = tokio::task::spawn_blocking(move || {
+                    serde_json::to_vec(&body).map_err(|e| {
+                        error!(error = ?e);
+                        StatusCode::INTERNAL_SERVER_ERROR
+                    })
+                })
+                .await
+                .unwrap()?;
+                response.body(Body::from(body_content))
+            }
+        },
+        Err(_) => {
+            // Application code returned an error. This should not happen, as the implementation should
+            // return a valid response.
+            response.status(500).body(Body::empty())
+        }
+    };
+
+    resp.map_err(|e| {
+        error!(error = ?e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })
 }
 
 #[tracing::instrument(skip_all)]
@@ -257,30 +352,9 @@ where
 
     let resp = match result {
         Ok(rsp) => match rsp {
-            apis::health::UpdatePostResponse::Status200_TheRoverdDaemonProcessInitiatedASelf(
-                body,
-            ) => {
+            apis::health::UpdatePostResponse::Status200_TheRoverdDaemonProcessInitiatedASelf => {
                 let mut response = response.status(200);
-                {
-                    let mut response_headers = response.headers_mut().unwrap();
-                    response_headers.insert(
-                        CONTENT_TYPE,
-                        HeaderValue::from_str("application/json").map_err(|e| {
-                            error!(error = ?e);
-                            StatusCode::INTERNAL_SERVER_ERROR
-                        })?,
-                    );
-                }
-
-                let body_content = tokio::task::spawn_blocking(move || {
-                    serde_json::to_vec(&body).map_err(|e| {
-                        error!(error = ?e);
-                        StatusCode::INTERNAL_SERVER_ERROR
-                    })
-                })
-                .await
-                .unwrap()?;
-                response.body(Body::from(body_content))
+                response.body(Body::empty())
             }
             apis::health::UpdatePostResponse::Status400_AnErrorOccurred(body) => {
                 let mut response = response.status(400);
