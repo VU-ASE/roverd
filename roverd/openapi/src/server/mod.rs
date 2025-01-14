@@ -22,6 +22,7 @@ where
     Router::new()
         .route("/", get(root_get::<I, A>))
         .route("/fetch", post(fetch_post::<I, A>))
+        .route("/fqns", get(fqns_get::<I, A>))
         .route(
             "/logs/:author/:name/:version",
             get(logs_author_name_version_get::<I, A>),
@@ -969,6 +970,104 @@ where
                 response.body(Body::from(body_content))
             }
             apis::services::FetchPostResponse::Status401_UnauthorizedAccess => {
+                let mut response = response.status(401);
+                response.body(Body::empty())
+            }
+        },
+        Err(_) => {
+            // Application code returned an error. This should not happen, as the implementation should
+            // return a valid response.
+            response.status(500).body(Body::empty())
+        }
+    };
+
+    resp.map_err(|e| {
+        error!(error = ?e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })
+}
+
+#[tracing::instrument(skip_all)]
+fn fqns_get_validation() -> std::result::Result<(), ValidationErrors> {
+    Ok(())
+}
+/// FqnsGet - GET /fqns
+#[tracing::instrument(skip_all)]
+async fn fqns_get<I, A>(
+    method: Method,
+    host: Host,
+    cookies: CookieJar,
+    State(api_impl): State<I>,
+) -> Result<Response, StatusCode>
+where
+    I: AsRef<A> + Send + Sync,
+    A: apis::services::Services,
+{
+    #[allow(clippy::redundant_closure)]
+    let validation = tokio::task::spawn_blocking(move || fqns_get_validation())
+        .await
+        .unwrap();
+
+    let Ok(()) = validation else {
+        return Response::builder()
+            .status(StatusCode::BAD_REQUEST)
+            .body(Body::from(validation.unwrap_err().to_string()))
+            .map_err(|_| StatusCode::BAD_REQUEST);
+    };
+
+    let result = api_impl.as_ref().fqns_get(method, host, cookies).await;
+
+    let mut response = Response::builder();
+
+    let resp = match result {
+        Ok(rsp) => match rsp {
+            apis::services::FqnsGetResponse::Status200_FullyQualifiedServices(body) => {
+                let mut response = response.status(200);
+                {
+                    let mut response_headers = response.headers_mut().unwrap();
+                    response_headers.insert(
+                        CONTENT_TYPE,
+                        HeaderValue::from_str("application/json").map_err(|e| {
+                            error!(error = ?e);
+                            StatusCode::INTERNAL_SERVER_ERROR
+                        })?,
+                    );
+                }
+
+                let body_content = tokio::task::spawn_blocking(move || {
+                    serde_json::to_vec(&body).map_err(|e| {
+                        error!(error = ?e);
+                        StatusCode::INTERNAL_SERVER_ERROR
+                    })
+                })
+                .await
+                .unwrap()?;
+                response.body(Body::from(body_content))
+            }
+            apis::services::FqnsGetResponse::Status400_AnErrorOccurred(body) => {
+                let mut response = response.status(400);
+                {
+                    let mut response_headers = response.headers_mut().unwrap();
+                    response_headers.insert(
+                        CONTENT_TYPE,
+                        HeaderValue::from_str("application/json").map_err(|e| {
+                            error!(error = ?e);
+                            StatusCode::INTERNAL_SERVER_ERROR
+                        })?,
+                    );
+                }
+
+                let body_content = tokio::task::spawn_blocking(move || {
+                    serde_json::to_vec(&body).map_err(|e| {
+                        error!(error = ?e);
+                        StatusCode::INTERNAL_SERVER_ERROR
+                    })
+                })
+                .await
+                .unwrap()?;
+                response.body(Body::from(body_content))
+            }
+            apis::services::FqnsGetResponse::Status401_UnauthorizedAccess => {
                 let mut response = response.status(401);
                 response.body(Body::empty())
             }

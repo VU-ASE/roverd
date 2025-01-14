@@ -385,6 +385,38 @@ paths:
   #
   # Services
   #
+  /fqns:
+    get:
+      tags:
+        - "Services"
+      summary: "Retrieve a list of all fully qualified services"
+      responses:
+        "200":
+          description: "Fully qualified services"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required:
+                    - "author"
+                    - "version"
+                    - "name"
+                  properties:
+                    author:
+                      type: string
+                      example: "vu-ase"
+                    name:
+                      type: string
+                      example: "imaging"
+                    version:
+                      type: string
+                      example: "1.0.0"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
   /services:
     get:
       tags:
@@ -581,14 +613,15 @@ paths:
                         tunable:
                           type: boolean
                           description: "Whether this configuration value is tunable"
-                    example: [
-                      {
-                        "name": "threshold",
-                        "type": "number",
-                        "value": 0.5,
-                        "tunable": true,
-                      },
-                    ]
+                    example:
+                      [
+                        {
+                          "name": "threshold",
+                          "type": "number",
+                          "value": 0.5,
+                          "tunable": true,
+                        },
+                      ]
         "400":
           $ref: "#/components/responses/Error"
         "404":
@@ -694,9 +727,6 @@ paths:
           $ref: "#/components/responses/NotFoundError"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
-
-
-
 
   #
   # Health
@@ -807,7 +837,7 @@ paths:
         "401":
           $ref: "#/components/responses/UnauthorizedError"
   /:
-    $ref: '#/paths/~1status'
+    $ref: "#/paths/~1status"
   /shutdown:
     post:
       tags:

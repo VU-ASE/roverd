@@ -20,6 +20,21 @@ use crate::warn_generic;
 
 #[async_trait]
 impl Services for Roverd {
+    /// Retrieve a list of all fully qualified services.
+    ///
+    /// FqnsGet - GET /fqns
+    async fn fqns_get(
+        &self,
+        _method: Method,
+        _host: Host,
+        _cookies: CookieJar,
+    ) -> Result<FqnsGetResponse, ()> {
+        // todo: filesystem read lock
+
+        let fqns = warn_generic!(self.state.get_fqns().await, FqnsGetResponse);
+        Ok(FqnsGetResponse::Status200_FullyQualifiedServices(fqns))
+    }
+
     /// Fetches the zip file from the given URL and installs the service onto the filesystem.
     ///
     /// FetchPost - POST /fetch
