@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/VU-ASE/roverd/compare/v0.1.0...v0.1.1) (2025-01-14)
+
+
+### Bug Fixes
+
+* latest daemons fetched on init ([c9bfacb](https://github.com/VU-ASE/roverd/commit/c9bfacbb3a36857701beed6a6ca6ea12ab6e7c86))
+
 ## [0.1.0](https://github.com/VU-ASE/roverd/compare/v0.0.5...v0.1.0) (2025-01-14)
 
 
