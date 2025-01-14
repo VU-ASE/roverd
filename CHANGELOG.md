@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.0](https://github.com/VU-ASE/roverd/compare/v0.0.5...v0.1.0) (2025-01-14)
+
+
+### Features
+
+* update endpoint works ([92760c3](https://github.com/VU-ASE/roverd/commit/92760c328208cb4caba4f9b7053f296a32eb1f81))
+
 ## [0.0.5](https://github.com/VU-ASE/roverd/compare/v0.0.4...v0.0.5) (2025-01-13)
 
 
