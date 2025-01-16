@@ -2,7 +2,7 @@ use anyhow::Context;
 use axum_extra::extract::Multipart;
 use daemons::DaemonManager;
 use openapi::models::*;
-use process::{PipelineStats, Process, ProcessManager};
+use process::{PipelineStats, Process, SpawnedProcess};
 use rovervalidate::config::{Configuration, ValidatedConfiguration};
 use rovervalidate::pipeline::interface::{Pipeline, RunnablePipeline};
 use rovervalidate::service::{Service, ValidatedService};
@@ -11,18 +11,21 @@ use service::{Fq, FqBuf, FqBufVec, FqVec};
 use std::cmp;
 use std::collections::HashMap;
 use std::fs::File;
-use std::fs::{self, remove_dir_all, remove_file};
+use std::fs::{self, remove_dir_all, remove_file, Permissions};
 use std::io::{BufRead, BufReader, Write};
 use std::io::{Read, Seek, SeekFrom};
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use sysinfo::{CpuRefreshKind, MemoryRefreshKind, Pid, ProcessRefreshKind, RefreshKind, System};
 use tokio::process::Command;
-use tokio::sync::{broadcast, RwLock};
-use tracing::{error, warn};
+use tokio::select;
+use tokio::sync::{broadcast, broadcast::Sender, Mutex, RwLock};
+use tracing::{error, info, warn};
 
+use crate::command::ParsedCommand;
 use crate::error::Error;
 use crate::util::*;
 use crate::{constants::*, time_now};
@@ -65,17 +68,15 @@ impl Roverd {
         let roverd = Self {
             info,
             state: State {
-                process_manager: ProcessManager {
-                    processes: Arc::new(RwLock::new(vec![])),
-                    spawned: Arc::new(RwLock::new(vec![])),
-                    stats: Arc::new(RwLock::new(PipelineStats {
-                        status: PipelineStatus::Startable,
-                        last_start: None,
-                        last_stop: None,
-                        last_restart: None,
-                    })),
-                    shutdown_tx: broadcast::channel::<()>(1).0,
-                },
+                processes: Arc::new(RwLock::new(vec![])),
+                spawned: Arc::new(RwLock::new(vec![])),
+                stats: Arc::new(RwLock::new(PipelineStats {
+                    status: PipelineStatus::Startable,
+                    last_start: None,
+                    last_stop: None,
+                    last_restart: None,
+                })),
+                shutdown_tx: broadcast::channel::<()>(1).0,
                 built_services: Arc::new(RwLock::new(HashMap::new())),
                 sysinfo: Arc::new(RwLock::new(System::new_with_specifics(
                     RefreshKind::nothing()
@@ -94,7 +95,7 @@ impl Roverd {
         };
 
         {
-            let mut stats = roverd.state.process_manager.stats.write().await;
+            let mut stats = roverd.state.stats.write().await;
             stats.status = initial_pipieline_status;
 
             if roverd.info.status != DaemonStatus::Operational {
@@ -114,8 +115,18 @@ impl AsRef<Roverd> for Roverd {
 
 #[derive(Debug, Clone)]
 pub struct State {
-    // Holds all necessary data structures for starting/stopping processes
-    pub process_manager: ProcessManager,
+    /// Contains the "application view" of process after validation. In-between start / stop
+    /// runs this vec remains unchanged.
+    pub processes: Arc<RwLock<Vec<Process>>>,
+
+    /// The "runtime" view of all processes, this contains handles to the spawned children.
+    pub spawned: Arc<RwLock<Vec<SpawnedProcess>>>,
+
+    /// Overall status of the pipeline.
+    pub stats: Arc<RwLock<PipelineStats>>,
+
+    /// Broadcast channel to send shutdown command for termination.
+    pub shutdown_tx: Sender<()>,
 
     // Look up the last built time of a service on disk.
     pub built_services: Arc<RwLock<HashMap<FqBuf, i64>>>,
@@ -321,7 +332,7 @@ impl State {
         &self,
         incoming_pipeline: Vec<PipelinePostRequestInner>,
     ) -> Result<(), Error> {
-        let mut stats = self.process_manager.stats.write().await;
+        let mut stats = self.stats.write().await;
 
         let services = FqBufVec::from(incoming_pipeline).0;
 
@@ -357,7 +368,7 @@ impl State {
     }
 
     pub async fn get_pipeline(&self) -> Result<Vec<PipelineGet200ResponseEnabledInner>, Error> {
-        let stats = self.process_manager.stats.read().await;
+        let stats = self.stats.read().await;
         if stats.status == PipelineStatus::Empty {
             let config = Configuration { enabled: vec![] };
             update_config(&config)?;
@@ -365,7 +376,7 @@ impl State {
 
         let conf = get_config().await?;
 
-        let processes = self.process_manager.processes.read().await;
+        let processes = self.processes.read().await;
 
         let mut responses = vec![];
 
@@ -446,7 +457,7 @@ impl State {
     ) -> Result<(), Error> {
         // Assign the new processes state each time, so first
         // clear the existing processes and then add them again
-        let mut processes = self.process_manager.processes.write().await;
+        let mut processes = self.processes.write().await;
 
         let bootspecs = bootspec::BootSpecs::new(runnable.services().clone()).0;
 
@@ -512,14 +523,206 @@ impl State {
         self.construct_managed_services(runnable).await?;
 
         // Start the actual processes
-        self.process_manager.start().await?;
+        self.spawn_procs().await?;
 
         Ok(())
     }
 
+    /// The main starting procedure of all processes.
+    pub async fn spawn_procs(&self) -> Result<(), Error> {
+        let mut stats = self.stats.write().await;
+
+        if stats.status == PipelineStatus::Started {
+            return Err(Error::PipelineAlreadyStarted);
+        } else if stats.status == PipelineStatus::Empty {
+            return Err(Error::PipelineIsEmpty);
+        }
+
+        let mut spawned_procs = self.spawned.write().await;
+        let mut procs = self.processes.write().await;
+
+        spawned_procs.clear();
+
+        for p in &mut *procs {
+            let mut log_file = create_log_file(&p.log_file)?;
+
+            let cur_time = chrono::Local::now().format("%H:%M:%S");
+            if writeln!(log_file, "[{}] roverd spawned {}", cur_time, p.name).is_err() {
+                warn!("could not write log_line to file: {:?}", p.log_file)
+            };
+
+            let stdout = Stdio::from(
+                log_file
+                    .try_clone()
+                    .with_context(|| format!("failed to clone log file {:?}", log_file))?,
+            );
+            let stderr = Stdio::from(log_file);
+
+            let parsed_command = ParsedCommand::try_from(&p.command)?;
+
+            let full_program_path = format!("{}/{}", p.fq.dir(), &parsed_command.program);
+            info!("executing {:?}", full_program_path);
+
+            fs::set_permissions(full_program_path.clone(), Permissions::from_mode(0o755))
+                .with_context(|| {
+                    format!("failed to set permissions for {:?}", full_program_path)
+                })?;
+
+            let mut command = Command::new(parsed_command.program);
+            command
+                .args(parsed_command.arguments)
+                .env(ENV_KEY, p.injected_env.clone())
+                .current_dir(p.fq.dir())
+                .stdout(stdout)
+                .stderr(stderr);
+            match command.spawn() {
+                Ok(child) => {
+                    p.status = ProcessStatus::Running;
+                    if let Some(id) = child.id() {
+                        info!("spawned process: {:?} at {}", p.name, id);
+                        p.last_pid = Some(id);
+                    } else {
+                        let err_msg = format!("process: {} exited immediately", p.name);
+                        warn!(err_msg);
+                        p.faults += 1;
+                        p.last_exit_code = 1;
+                        self.cancel_start(&mut stats, &mut procs, &mut spawned_procs)
+                            .await;
+                        return Err(Error::FailedToSpawnProcess(err_msg));
+                    }
+                    spawned_procs.push(SpawnedProcess {
+                        fq: p.fq.clone(),
+                        name: p.name.clone(),
+                        child: Arc::from(Mutex::from(child)),
+                    });
+                }
+                Err(e) => {
+                    let err_msg = format!("{}", e);
+                    warn!("failed to spawn process '{}': {}", p.name, &err_msg);
+                    p.faults += 1;
+                    p.last_exit_code = 1;
+                    self.cancel_start(&mut stats, &mut procs, &mut spawned_procs)
+                        .await;
+                    return Err(Error::FailedToSpawnProcess(err_msg));
+                }
+            }
+        }
+
+        stats.status = PipelineStatus::Started;
+        stats.last_start = Some(time_now!() as i64);
+
+        for spawned in spawned_procs.clone() {
+            let mut shutdown_rx = self.shutdown_tx.subscribe();
+            let process_shutdown_tx = self.shutdown_tx.clone();
+
+            let procs_clone = Arc::clone(&self.processes);
+            let stats_clone = Arc::clone(&self.stats);
+
+            tokio::spawn(async move {
+                let mut child = spawned.child.lock().await;
+                select! {
+                    // Wait for process completion
+                    result_status = child.wait() => {
+                        match result_status {
+                            Ok(exit_status) => {
+                                // Update the pipeline's status.
+                                let mut stats = stats_clone.write().await;
+                                stats.status = PipelineStatus::Startable;
+                                stats.last_restart = Some(time_now!() as i64);
+
+                                info!("child {} exited with status {}", spawned.name, exit_status);
+                                let exit_code = exit_status.code();
+                                let mut procs_guard = procs_clone.write().await;
+
+                                if let Some(proc) = procs_guard.iter_mut().find(|p| p.fq == spawned.fq) {
+                                    proc.status = ProcessStatus::Stopped;
+                                    if let Some(e) = exit_code {
+                                        proc.last_exit_code = e;
+                                    }
+                                    if !exit_status.success() {
+                                        proc.faults += 1
+                                    }
+                                }
+                                process_shutdown_tx.send(()).ok();
+                            }
+                            Err(e) => {
+                                error!("error waiting for process {}: {}", spawned.name, e);
+                                process_shutdown_tx.send(()).ok();
+                            }
+                        }
+                    }
+                    _ = shutdown_rx.recv() => {
+                        // We have been sent a terminate signal, so end the process
+
+                        // Update the pipeline's status.
+                        let mut stats = stats_clone.write().await;
+                        stats.status = PipelineStatus::Startable;
+
+                        let mut procs_guard = procs_clone.write().await;
+                        if let Some(proc) = procs_guard.iter_mut().find(|p| p.fq == spawned.fq) {
+                            proc.status = ProcessStatus::Terminated;
+                            proc.last_exit_code = 0;
+                        }
+
+                        if let Some(id) = child.id() {
+                            info!("terminating {} pid ({})", spawned.name, id);
+                            unsafe {
+                                libc::kill(id as i32, libc::SIGTERM);
+                            }
+                        }
+
+                        // Wait a short while before checking if child still exists
+                        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+
+                        // If the child has not terminated, kill it.
+                        match child.try_wait() {
+                            Ok(None) => {
+                                info!("process {} did not terminate, killing", spawned.name);
+                                if let Err(e) = child.kill().await {
+                                    error!("error killing process {:?}: {:?}", spawned.name, e);
+                                }
+                            },
+                            Ok(Some(_)) => {},
+                            Err(e) => {
+                                error!("Error: {:?}", e);
+                                if let Err(e) = child.kill().await {
+                                    error!("error killing process {:?}: {:?}", spawned.name, e);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        Ok(())
+    }
+
+    /// If one process fails during the beginning of the starting procedure, we need to
+    /// kill all started children manually, set their states and clear the spawned vec.
+    pub async fn cancel_start(
+        &self,
+        stats: &mut PipelineStats,
+        processes: &mut Vec<Process>,
+        spawned_procs: &mut Vec<SpawnedProcess>,
+    ) {
+        warn!("spawning process was cancelled");
+        stats.status = PipelineStatus::Startable;
+        for p in &mut *processes {
+            if let Some(pid) = p.last_pid {
+                unsafe {
+                    libc::kill(pid as i32, libc::SIGKILL);
+                }
+            }
+            p.status = ProcessStatus::Killed
+        }
+
+        spawned_procs.clear();
+    }
+
     /// If the pipeline is started, it will be stopped.
     pub async fn stop(&self) -> Result<(), Error> {
-        let mut stats = self.process_manager.stats.write().await;
+        let mut stats = self.stats.write().await;
 
         match stats.status {
             PipelineStatus::Empty => return Err(Error::PipelineIsEmpty),
@@ -529,8 +732,8 @@ impl State {
         stats.status = PipelineStatus::Startable;
 
         stats.last_stop = Some(time_now!() as i64);
-        self.process_manager.shutdown_tx.send(()).ok();
-        let mut spawned = self.process_manager.spawned.write().await;
+        self.shutdown_tx.send(()).ok();
+        let mut spawned = self.spawned.write().await;
         spawned.clear();
         Ok(())
     }
