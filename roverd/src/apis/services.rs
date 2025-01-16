@@ -274,4 +274,18 @@ impl Services for Roverd {
 
         Ok(ServicesAuthorGetResponse::Status200_TheListOfServicesForTheAuthor(services))
     }
+
+    /// Retrieve a list of all fully qualified services.
+    /// `RoverState` - This function can run *always*
+    /// TODO: fs_lock
+    /// FqnsGet - GET /fqns
+    async fn fqns_get(
+        &self,
+        _method: Method,
+        _host: Host,
+        _cookies: CookieJar,
+    ) -> Result<FqnsGetResponse, ()> {
+        let fqns = warn_generic!(self.app.get_fqns().await, FqnsGetResponse);
+        Ok(FqnsGetResponse::Status200_FullyQualifiedServices(fqns))
+    }
 }

@@ -1,4 +1,4 @@
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 use axum_extra::extract::Multipart;
 use daemons::DaemonManager;
 use openapi::models::*;
@@ -887,6 +887,97 @@ impl App {
         }
         Ok(())
     }
+
+
+    pub async fn get_fqns(&self) -> Result<Vec<FqnsGet200ResponseInner>, Error> {
+        let mut fqns = Vec::new();
+        let rover_dir = Path::new(ROVER_DIR);
+
+        // Ensure base directory exists
+        if !rover_dir.exists() {
+            return Ok(fqns);
+        }
+
+        // Iterate through author directories
+        for author_entry in
+            fs::read_dir(rover_dir).with_context(|| format!("failed to read {:?}", rover_dir))?
+        {
+            let author_entry = author_entry
+                .with_context(|| format!("failed to unpack an entry in {:?}", rover_dir))?;
+            if !author_entry
+                .file_type()
+                .with_context(|| {
+                    format!("failed to get file metadata of {:?}", author_entry.path())
+                })?
+                .is_dir()
+            {
+                continue;
+            }
+            let author_path = author_entry.path();
+            let author_name =
+                author_path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .ok_or(Error::Context(anyhow!(
+                        "failed to convert path: {:?}",
+                        author_path
+                    )))?;
+
+            // Iterate through service name directories
+            for service_entry in fs::read_dir(&author_path)
+                .with_context(|| format!("failed to unpack an entry in {:?}", author_path))?
+            {
+                let service_entry = service_entry
+                    .with_context(|| format!("failed to unpack an entry in {:?}", author_path))?;
+                if !service_entry
+                    .file_type()
+                    .with_context(|| {
+                        format!("failed to get file metadata of {:?}", service_entry.path())
+                    })?
+                    .is_dir()
+                {
+                    continue;
+                }
+                let service_path = service_entry.path();
+                let service_name =
+                    service_path
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .ok_or(Error::Context(anyhow!(
+                            "failed to convert path: {:?}",
+                            service_path
+                        )))?;
+
+                // Iterate through version directories
+                for version_entry in fs::read_dir(&service_path)
+                    .with_context(|| format!("failed to unpack an entry in {:?}", service_path))?
+                {
+                    let version_entry = version_entry.with_context(|| {
+                        format!("failed to unpack an entry in {:?}", service_path)
+                    })?;
+                    if !version_entry
+                        .file_type()
+                        .with_context(|| {
+                            format!("failed to get file metadata of {:?}", version_entry.path())
+                        })?
+                        .is_dir()
+                    {
+                        continue;
+                    }
+                    let version = version_entry.file_name().to_string_lossy().into_owned();
+
+                    fqns.push(FqnsGet200ResponseInner {
+                        author: author_name.to_string(),
+                        name: service_name.to_string(),
+                        version,
+                    });
+                }
+            }
+        }
+
+        Ok(fqns)
+    }
+
 }
 
 /// Retrieves rover.yaml file from disk, performs validation and returns object.

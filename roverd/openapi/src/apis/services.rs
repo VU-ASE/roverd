@@ -22,6 +22,18 @@ pub enum FetchPostResponse {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[must_use]
 #[allow(clippy::large_enum_variant)]
+pub enum FqnsGetResponse {
+    /// Fully qualified services
+    Status200_FullyQualifiedServices(Vec<models::FqnsGet200ResponseInner>),
+    /// An error occurred
+    Status400_AnErrorOccurred(models::GenericError),
+    /// Unauthorized access (you need to set the Authorization header with a valid username and password)
+    Status401_UnauthorizedAccess,
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[must_use]
+#[allow(clippy::large_enum_variant)]
 pub enum ServicesAuthorGetResponse {
     /// The list of services for the author
     Status200_TheListOfServicesForTheAuthor(Vec<String>),
@@ -131,6 +143,16 @@ pub trait Services {
         cookies: CookieJar,
         body: models::FetchPostRequest,
     ) -> Result<FetchPostResponse, ()>;
+
+    /// Retrieve a list of all fully qualified services.
+    ///
+    /// FqnsGet - GET /fqns
+    async fn fqns_get(
+        &self,
+        method: Method,
+        host: Host,
+        cookies: CookieJar,
+    ) -> Result<FqnsGetResponse, ()>;
 
     /// Retrieve the list of parsable services for a specific author.
     ///
