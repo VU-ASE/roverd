@@ -333,6 +333,30 @@ macro_rules! error_generic {
 }
 
 #[macro_export]
+macro_rules! rover_is_dormant {
+    ($error_type:ty) => {{
+        let msg = "unable to perform request, rover is not running";
+        warn!(msg);
+        return Ok(<$error_type>::Status400_AnErrorOccurred(GenericError {
+            message: Some(msg.to_string()),
+            code: Some(1),
+        }));
+    }};
+}
+
+#[macro_export]
+macro_rules! rover_is_operating {
+    ($error_type:ty) => {{
+        let msg = "unable to perform request, rover is running";
+        warn!(msg);
+        return Ok(<$error_type>::Status400_AnErrorOccurred(GenericError {
+            message: Some(msg.to_string()),
+            code: Some(1),
+        }));
+    }};
+}
+
+#[macro_export]
 macro_rules! time_now {
     () => {
         SystemTime::now()

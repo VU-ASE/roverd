@@ -8,12 +8,14 @@ use rovervalidate::pipeline::interface::{Pipeline, RunnablePipeline};
 use rovervalidate::service::{Service, ValidatedService};
 use rovervalidate::validate::Validate;
 use service::{Fq, FqBuf, FqBufVec, FqVec};
+use state::{Dormant, Operating, RoverState};
 use std::cmp;
 use std::collections::HashMap;
 use std::fs::File;
 use std::fs::{self, remove_dir_all, remove_file, Permissions};
 use std::io::{BufRead, BufReader, Write};
 use std::io::{Read, Seek, SeekFrom};
+use std::marker::PhantomData;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
@@ -32,11 +34,10 @@ use crate::{constants::*, time_now};
 
 mod bootspec;
 pub mod daemons;
+pub mod info;
 pub mod process;
 pub mod service;
-
-/// Start-up information, system clock and utilization
-pub mod info;
+pub mod state;
 
 /// The main struct that implements functions called from the api and holds all objects
 /// in memory necessary for operation. Info member holds static information derived mostly
@@ -48,7 +49,7 @@ pub struct Roverd {
 
     /// Run-time data structures of the Rover, interacts with the file system
     /// and spawns processes, so must be read/write locked.
-    pub state: State,
+    pub app: App,
 }
 
 impl Roverd {
@@ -67,7 +68,7 @@ impl Roverd {
 
         let roverd = Self {
             info,
-            state: State {
+            app: App {
                 processes: Arc::new(RwLock::new(vec![])),
                 spawned: Arc::new(RwLock::new(vec![])),
                 stats: Arc::new(RwLock::new(PipelineStats {
@@ -89,13 +90,13 @@ impl Roverd {
 
         // Validate the pipeline found in the yaml file, if it is not valid
         // empty it.
-        let initial_pipieline_status = match roverd.state.get_valid_pipeline().await {
+        let initial_pipieline_status = match roverd.app.get_valid_pipeline().await {
             Ok(_) => PipelineStatus::Startable,
             Err(_) => PipelineStatus::Empty,
         };
 
         {
-            let mut stats = roverd.state.stats.write().await;
+            let mut stats = roverd.app.stats.write().await;
             stats.status = initial_pipieline_status;
 
             if roverd.info.status != DaemonStatus::Operational {
@@ -104,6 +105,28 @@ impl Roverd {
         }
 
         Ok(roverd)
+    }
+
+    /// Checks the pipeline state for if the rover is currently dormant.
+    pub async fn try_get_dormant(&self) -> Option<RoverState<Dormant>> {
+        let stats = self.app.stats.read().await;
+        match stats.status {
+            PipelineStatus::Started => None,
+            _ => Some(RoverState {
+                _ignore: PhantomData,
+            }),
+        }
+    }
+
+    /// Checks the pipeline state for if the rover is currently operating.
+    pub async fn try_get_operating(&self) -> Option<RoverState<Operating>> {
+        let stats = self.app.stats.read().await;
+        match stats.status {
+            PipelineStatus::Started => Some(RoverState {
+                _ignore: PhantomData,
+            }),
+            _ => None,
+        }
     }
 }
 
@@ -114,7 +137,7 @@ impl AsRef<Roverd> for Roverd {
 }
 
 #[derive(Debug, Clone)]
-pub struct State {
+pub struct App {
     /// Contains the "application view" of process after validation. In-between start / stop
     /// runs this vec remains unchanged.
     pub processes: Arc<RwLock<Vec<Process>>>,
@@ -135,7 +158,7 @@ pub struct State {
     pub sysinfo: Arc<RwLock<System>>,
 }
 
-impl State {
+impl App {
     pub async fn should_invalidate(&self, fq_buf: &FqBuf) -> Result<bool, Error> {
         let mut config = get_config().await?;
         let enabled_fq = FqVec::try_from(&config.enabled)?;
@@ -149,13 +172,22 @@ impl State {
         Ok(pipeline_invalidated)
     }
 
-    pub async fn fetch_service(&self, body: &FetchPostRequest) -> Result<(FqBuf, bool), Error> {
+    /// Downloads the service from the specified url.
+    pub async fn fetch_service(
+        &self,
+        body: &FetchPostRequest,
+        _: RoverState<Dormant>,
+    ) -> Result<(FqBuf, bool), Error> {
         let fq_buf = download_and_install_service(&body.url, false).await?;
         let invalidate_pipline = self.should_invalidate(&fq_buf).await?;
         Ok((fq_buf, invalidate_pipline))
     }
 
-    pub async fn receive_upload(&self, mut body: Multipart) -> Result<(FqBuf, bool), Error> {
+    pub async fn receive_upload(
+        &self,
+        mut body: Multipart,
+        _: RoverState<Dormant>,
+    ) -> Result<(FqBuf, bool), Error> {
         if let Some(field) = body
             .next_field()
             .await
@@ -199,10 +231,12 @@ impl State {
         Err(Error::ServiceUploadBadPayload)
     }
 
+    /// Returns all authors from the rover directory
     pub async fn get_authors(&self) -> Result<Vec<String>, Error> {
         list_dir_contents("")
     }
 
+    /// Returns all services given an author
     pub async fn get_services(
         &self,
         path_params: ServicesAuthorGetPathParams,
@@ -210,6 +244,7 @@ impl State {
         list_dir_contents(&path_params.author.to_string())
     }
 
+    /// Returns all versions given a service
     pub async fn get_versions(
         &self,
         path_params: ServicesAuthorServiceGetPathParams,
@@ -217,6 +252,7 @@ impl State {
         list_dir_contents(format!("{}/{}", path_params.author, path_params.service).as_str())
     }
 
+    /// Returns a valid service given a fully qualified name
     pub async fn get_service(&self, fq: FqBuf) -> Result<ValidatedService, Error> {
         let contents = fs::read_to_string(fq.path())
             .map_err(|_| Error::ServiceNotFound(format!("Could not find {} on disk", fq.path())))?;
@@ -226,9 +262,13 @@ impl State {
         Ok(service)
     }
 
+    /// Deletes a service from the filesystem. Note: this only removes it from the final
+    /// version directory in the "author/service/version" hierarchy, so directories may
+    /// stick around
     pub async fn delete_service(
         &self,
         path_params: &ServicesAuthorServiceVersionDeletePathParams,
+        _: RoverState<Dormant>,
     ) -> Result<bool, Error> {
         let delete_fq = FqBuf::from(path_params);
 
@@ -264,9 +304,12 @@ impl State {
         Ok(should_reset)
     }
 
+    /// Performs the build command for a given service and does so by instantiating a login shell
+    /// of the debix user. It also first changes into the service's directory.
     pub async fn build_service(
         &self,
         params: ServicesAuthorServiceVersionPostPathParams,
+        _: RoverState<Dormant>,
     ) -> Result<(), Error> {
         let fq = FqBuf::from(&params);
         let service = self.get_service(fq.clone()).await?.0;
@@ -328,12 +371,13 @@ impl State {
         }
     }
 
+    /// Updates the pipeline if it is valid. Updating the pipeline is only allowed when
+    /// the rover is not currently running.
     pub async fn set_pipeline(
         &self,
         incoming_pipeline: Vec<PipelinePostRequestInner>,
+        _: RoverState<Dormant>,
     ) -> Result<(), Error> {
-        let mut stats = self.stats.write().await;
-
         let services = FqBufVec::from(incoming_pipeline).0;
 
         let mut valid_services = vec![];
@@ -359,14 +403,18 @@ impl State {
 
         update_config(&config)?;
 
-        stats.status = PipelineStatus::Startable;
+        let mut stats = self.stats.write().await;
+
         if config.enabled.is_empty() {
             stats.status = PipelineStatus::Empty;
+        } else {
+            stats.status = PipelineStatus::Startable;
         }
 
         Ok(())
     }
 
+    /// Gets the current pipeline along with the list of processes if they are running.
     pub async fn get_pipeline(&self) -> Result<Vec<PipelineGet200ResponseEnabledInner>, Error> {
         let stats = self.stats.read().await;
         if stats.status == PipelineStatus::Empty {
@@ -451,6 +499,9 @@ impl State {
         Ok(responses)
     }
 
+    /// We want to start a pipeline since we are given a valid pipieline, however first we must
+    /// construct the ASE_SERVICE environment variable to each service. This function prepares
+    /// that variable and updates the vector of processes internally, making it ready to start.
     pub async fn construct_managed_services(
         &self,
         runnable: RunnablePipeline,
@@ -509,7 +560,9 @@ impl State {
         Ok(())
     }
 
-    pub async fn start(&self) -> Result<(), Error> {
+    /// This function is called by the API handler. It gets the runnable pipeline from disk,
+    /// constructs the processes and finally spawns the processes.
+    pub async fn start(&self, _: RoverState<Dormant>) -> Result<(), Error> {
         let enabled_services = get_config().await?.enabled;
 
         if enabled_services.is_empty() {
@@ -532,10 +585,10 @@ impl State {
     pub async fn spawn_procs(&self) -> Result<(), Error> {
         let mut stats = self.stats.write().await;
 
-        if stats.status == PipelineStatus::Started {
-            return Err(Error::PipelineAlreadyStarted);
-        } else if stats.status == PipelineStatus::Empty {
-            return Err(Error::PipelineIsEmpty);
+        match stats.status {
+            PipelineStatus::Startable => (),
+            PipelineStatus::Empty => return Err(Error::PipelineIsEmpty),
+            PipelineStatus::Started => return Err(Error::PipelineAlreadyStarted),
         }
 
         let mut spawned_procs = self.spawned.write().await;
@@ -706,7 +759,7 @@ impl State {
         processes: &mut Vec<Process>,
         spawned_procs: &mut Vec<SpawnedProcess>,
     ) {
-        warn!("spawning process was cancelled");
+        warn!("cancelled spawning process");
         stats.status = PipelineStatus::Startable;
         for p in &mut *processes {
             if let Some(pid) = p.last_pid {
@@ -721,7 +774,7 @@ impl State {
     }
 
     /// If the pipeline is started, it will be stopped.
-    pub async fn stop(&self) -> Result<(), Error> {
+    pub async fn stop(&self, _: RoverState<Operating>) -> Result<(), Error> {
         let mut stats = self.stats.write().await;
 
         match stats.status {
@@ -807,6 +860,32 @@ impl State {
         // Reverse the lines to restore their original order
         lines.reverse();
         Ok(lines.into_iter().take(num_lines).collect())
+    }
+
+    /// Spawns a separate shell to run the update script
+    pub async fn update_rover(&self, _: RoverState<Dormant>) -> Result<(), Error> {
+        let mut update_cmd = Command::new("sh");
+        update_cmd
+            .arg("-c")
+            .arg("/home/debix/ase/bin/update-roverd");
+
+        match update_cmd.spawn() {
+            Ok(_) => (),
+            Err(e) => error!("unable to spawn the update command: {}", e),
+        }
+        Ok(())
+    }
+
+    /// Spawns a process to shutdown the rover
+    pub async fn shutdown_rover(&self, _: RoverState<Dormant>) -> Result<(), Error> {
+        let mut shutdown = Command::new("shutdown");
+        shutdown.arg("-h").arg("now");
+
+        match shutdown.spawn() {
+            Ok(_) => (),
+            Err(e) => error!("unable to run shutdown command: {}", e),
+        }
+        Ok(())
     }
 }
 

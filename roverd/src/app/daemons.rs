@@ -41,10 +41,7 @@ impl DaemonManager {
             match download_and_install_service(&DISPLAY_FETCH_URL.to_string(), true).await {
                 Ok(fq) => fq,
                 Err(e) => {
-                    warn!(
-                        "was not able to get latest daemon at {}",
-                        DISPLAY_FETCH_URL
-                    );
+                    warn!("was not able to get latest daemon at {}", DISPLAY_FETCH_URL);
                     warn!("{:?}", e);
                     find_latest_daemon("vu-ase", "display")?
                 }
@@ -55,10 +52,7 @@ impl DaemonManager {
             match download_and_install_service(&BATTERY_FETCH_URL.to_string(), true).await {
                 Ok(fq) => fq,
                 Err(e) => {
-                    warn!(
-                        "was not able to get latest daemon at {}",
-                        BATTERY_FETCH_URL
-                    );
+                    warn!("was not able to get latest daemon at {}", BATTERY_FETCH_URL);
                     warn!("{:?}", e);
                     find_latest_daemon("vu-ase", "battery")?
                 }
