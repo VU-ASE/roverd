@@ -1,6 +1,8 @@
 use anyhow::{anyhow, Context, Result};
+use reqwest::Client;
 use std::fs::{File, OpenOptions};
 use std::os::unix::fs::chown;
+use std::time::Duration;
 use std::{
     fs,
     io::{self, Read, Write},
@@ -97,49 +99,62 @@ fn prepare_dirs(fq: &FqBuf) -> Result<String, Error> {
 /// /tmp/name-version.zip.
 pub async fn download_service(url: &String) -> Result<(), Error> {
     info!("Downloading: {}", url);
+    let client = Client::new();
 
-    let response = reqwest::get(url).await?;
-    if response.status() != StatusCode::OK {
-        let resp: axum::http::StatusCode = response.status();
-        // match response.status() {
-        //     StatusCode::NOT_FOUND => return Err(Error::ServiceNotFound),
-        //     StatusCode::BAD_REQUEST => return Err(Error::ServiceDownloadFailed),
-        //     StatusCode::FORBIDDEN => return Err(Error::Http(StatusCode::FORBIDDEN)),
-        //     _ => return Err(Error::Http(resp)),
-        // }
+    let res = client
+        .get(url)
+        .timeout(Duration::from_secs(DOWNLOAD_TIMEOUT))
+        .send()
+        .await;
 
-        let fail_msg = format!("failed to download {}", url);
-        match response.status() {
-            StatusCode::NOT_FOUND => {
-                return Err(Error::ServiceNotFound(format!(
-                    "HTTP ({}) - {}",
-                    StatusCode::NOT_FOUND,
-                    &fail_msg
-                )))
+    match res {
+        Ok(res) => {
+            if res.status() != StatusCode::OK {
+                let resp: axum::http::StatusCode = res.status();
+
+                let fail_msg = format!("failed to download {}", url);
+                match res.status() {
+                    StatusCode::NOT_FOUND => {
+                        return Err(Error::ServiceNotFound(format!(
+                            "HTTP ({}) - {}",
+                            StatusCode::NOT_FOUND,
+                            &fail_msg
+                        )))
+                    }
+                    StatusCode::BAD_REQUEST => {
+                        return Err(Error::ServiceNotFound(format!(
+                            "bad request ({}) - {}",
+                            StatusCode::BAD_REQUEST,
+                            &fail_msg
+                        )))
+                    }
+                    StatusCode::FORBIDDEN => return Err(Error::Http(StatusCode::FORBIDDEN)),
+                    _ => return Err(Error::Http(resp)),
+                }
             }
-            StatusCode::BAD_REQUEST => {
-                return Err(Error::ServiceNotFound(format!(
-                    "bad request ({}) - {}",
-                    StatusCode::BAD_REQUEST,
-                    &fail_msg
-                )))
+            std::fs::remove_file(ZIP_FILE).ok();
+
+            let mut file = std::fs::File::create(ZIP_FILE)
+                .with_context(|| format!("failed to create {}", ZIP_FILE))?;
+
+            let bytes = res.bytes().await?;
+
+            file.write_all(&bytes)
+                .with_context(|| format!("failed to failed to write to {}", ZIP_FILE))?;
+            Ok(())
+        }
+        Err(err) => {
+            if err.is_timeout() {
+                let msg = format!("request timed out after {} seconds", DOWNLOAD_TIMEOUT);
+                warn!(msg);
+                Err(Error::Context(anyhow!(msg)))
+            } else {
+                let msg = format!("request failed {:?}", err);
+                warn!(msg);
+                Err(Error::Context(anyhow!(msg)))
             }
-            StatusCode::FORBIDDEN => return Err(Error::Http(StatusCode::FORBIDDEN)),
-            _ => return Err(Error::Http(resp)),
         }
     }
-
-    std::fs::remove_file(ZIP_FILE).ok();
-
-    let mut file = std::fs::File::create(ZIP_FILE)
-        .with_context(|| format!("failed to create {}", ZIP_FILE))?;
-
-    let bytes = response.bytes().await?;
-
-    file.write_all(&bytes)
-        .with_context(|| format!("failed to failed to write to {}", ZIP_FILE))?;
-
-    Ok(())
 }
 
 /// Downloads a service to /tmp and moves it into the correct place on disk.
