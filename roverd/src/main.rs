@@ -9,19 +9,19 @@ use tower_http::cors::CorsLayer;
 use tracing::{error, info, warn};
 
 mod apis;
+mod app;
 mod command;
 mod constants;
 mod error;
 mod log;
-mod state;
 mod util;
 
 #[cfg(test)]
 mod test;
 
+use app::*;
 use constants::*;
 use error::Error::*;
-use state::*;
 
 /// Not ideal, but an error wrapper work around since middleware::from_fn_with_state expects
 /// Result<Response, StatusCode>. But ideally, we want to use custom Error to propogate our custom

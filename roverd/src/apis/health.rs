@@ -1,6 +1,6 @@
 use axum::async_trait;
 
-use openapi::{apis::health::*, models::DaemonStatus};
+use openapi::{apis::health::*, models::DaemonStatus, models::GenericError};
 
 use openapi::models::{self, StatusGet200ResponseCpuInner, StatusGet200ResponseMemory};
 
@@ -8,20 +8,18 @@ use axum::extract::Host;
 use axum::http::Method;
 use axum_extra::extract::CookieJar;
 
-use tokio::process::Command;
-use tracing::error;
+use tracing::warn;
 
 use sysinfo::{CpuRefreshKind, MemoryRefreshKind, RefreshKind};
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::state::Roverd;
-use crate::time_now;
+use crate::app::Roverd;
+use crate::{rover_is_operating, time_now, warn_generic};
 
 #[async_trait]
 impl Health for Roverd {
     /// Retrieve the health and versioning information. Alias of /status
-    ///
     /// RootGet - GET /
     async fn root_get(
         &self,
@@ -47,7 +45,8 @@ impl Health for Roverd {
     }
 
     /// Retrieve the health and versioning information.
-    ///
+    /// `RoverState` - This function can run *always*
+    /// TODO: fs_lock
     /// StatusGet - GET /status
     async fn status_get(
         &self,
@@ -71,7 +70,7 @@ impl Health for Roverd {
             DaemonStatus::Operational => None,
         };
 
-        let mut sysinfo = self.state.sysinfo.write().await;
+        let mut sysinfo = self.app.sysinfo.write().await;
 
         sysinfo.refresh_specifics(
             RefreshKind::nothing()
@@ -113,7 +112,8 @@ impl Health for Roverd {
     }
 
     /// Self-update the roverd daemon process.
-    ///
+    /// `RoverState` - This function can run *only when dormant*
+    /// TODO: fs_lock
     /// UpdatePost - POST /update
     async fn update_post(
         &self,
@@ -121,21 +121,17 @@ impl Health for Roverd {
         _host: Host,
         _cookies: CookieJar,
     ) -> Result<UpdatePostResponse, ()> {
-        let mut update_cmd = Command::new("sh");
-        update_cmd
-            .arg("-c")
-            .arg("/home/debix/ase/bin/update-roverd");
-
-        match update_cmd.spawn() {
-            Ok(_) => (),
-            Err(e) => error!("unable to spawn the update command: {}", e),
+        if let Some(rover_state) = self.try_get_dormant().await {
+            let _ = warn_generic!(self.app.update_rover(rover_state).await, UpdatePostResponse);
+            Ok(UpdatePostResponse::Status200_TheRoverdDaemonProcessInitiatedASelf)
+        } else {
+            rover_is_operating!(UpdatePostResponse)
         }
-
-        Ok(UpdatePostResponse::Status200_TheRoverdDaemonProcessInitiatedASelf)
     }
 
     /// Shutdown the rover..
-    ///
+    /// `RoverState` - This function can run *only when dormant*
+    /// TODO: fs_lock
     /// ShutdownPost - POST /shutdown
     async fn shutdown_post(
         &self,
@@ -143,14 +139,14 @@ impl Health for Roverd {
         _host: Host,
         _cookies: CookieJar,
     ) -> Result<ShutdownPostResponse, ()> {
-        let mut shutdown = Command::new("shutdown");
-        shutdown.arg("-h").arg("now");
-
-        match shutdown.spawn() {
-            Ok(_) => (),
-            Err(e) => error!("unable to run shutdown command: {}", e),
+        if let Some(rover_state) = self.try_get_dormant().await {
+            let _ = warn_generic!(
+                self.app.shutdown_rover(rover_state).await,
+                ShutdownPostResponse
+            );
+            Ok(ShutdownPostResponse::Status200_RoverShutdownSuccessfully)
+        } else {
+            rover_is_operating!(ShutdownPostResponse)
         }
-
-        Ok(ShutdownPostResponse::Status200_RoverShutdownSuccessfully)
     }
 }

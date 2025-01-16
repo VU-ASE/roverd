@@ -1890,8 +1890,6 @@ pub enum PipelineStatus {
     Startable,
     #[serde(rename = "started")]
     Started,
-    #[serde(rename = "restarting")]
-    Restarting,
 }
 
 impl std::fmt::Display for PipelineStatus {
@@ -1900,7 +1898,6 @@ impl std::fmt::Display for PipelineStatus {
             PipelineStatus::Empty => write!(f, "empty"),
             PipelineStatus::Startable => write!(f, "startable"),
             PipelineStatus::Started => write!(f, "started"),
-            PipelineStatus::Restarting => write!(f, "restarting"),
         }
     }
 }
@@ -1913,7 +1910,6 @@ impl std::str::FromStr for PipelineStatus {
             "empty" => std::result::Result::Ok(PipelineStatus::Empty),
             "startable" => std::result::Result::Ok(PipelineStatus::Startable),
             "started" => std::result::Result::Ok(PipelineStatus::Started),
-            "restarting" => std::result::Result::Ok(PipelineStatus::Restarting),
             _ => std::result::Result::Err(format!("Value not valid: {}", s)),
         }
     }

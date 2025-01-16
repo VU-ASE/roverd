@@ -7,6 +7,8 @@ info:
 servers:
   - url: "http://localhost"
     description: "Local rover instance"
+  - url: "http://192.168.0.112"
+    description: "rover12"
 
 tags:
   - name: "Pipeline"
@@ -581,14 +583,15 @@ paths:
                         tunable:
                           type: boolean
                           description: "Whether this configuration value is tunable"
-                    example: [
-                      {
-                        "name": "threshold",
-                        "type": "number",
-                        "value": 0.5,
-                        "tunable": true,
-                      },
-                    ]
+                    example:
+                      [
+                        {
+                          "name": "threshold",
+                          "type": "number",
+                          "value": 0.5,
+                          "tunable": true,
+                        },
+                      ]
         "400":
           $ref: "#/components/responses/Error"
         "404":
@@ -694,9 +697,6 @@ paths:
           $ref: "#/components/responses/NotFoundError"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
-
-
-
 
   #
   # Health
@@ -807,7 +807,7 @@ paths:
         "401":
           $ref: "#/components/responses/UnauthorizedError"
   /:
-    $ref: '#/paths/~1status'
+    $ref: "#/paths/~1status"
   /shutdown:
     post:
       tags:
@@ -839,7 +839,6 @@ components:
         - empty
         - startable
         - started
-        - restarting
 
     # PipelineValidationError:
     #   type: object
