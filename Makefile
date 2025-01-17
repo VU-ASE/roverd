@@ -27,7 +27,7 @@ dev: build
 build-arm: version-update
 	cargo build --target=aarch64-unknown-linux-gnu --release
 
-TEST_ROVER=rover01
+TEST_ROVER=rover12
 
 dev-arm: build-arm
 	scp ./target/aarch64-unknown-linux-gnu/release/roverd $(TEST_ROVER):/tmp/

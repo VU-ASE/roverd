@@ -1,6 +1,5 @@
 use anyhow::{anyhow, Context};
 use axum_extra::extract::Multipart;
-use daemons::DaemonManager;
 use openapi::models::*;
 use process::{PipelineStats, Process, SpawnedProcess};
 use rovervalidate::config::{Configuration, ValidatedConfiguration};
@@ -54,17 +53,7 @@ pub struct Roverd {
 
 impl Roverd {
     pub async fn new() -> Result<Self, Error> {
-        let mut info = info::Info::new();
-
-        // todo when implementing daemons properly, add state here
-        let _ = match DaemonManager::init().await {
-            Ok(d) => Some(d),
-            Err(e) => {
-                error!("Unable to start daemons: {:?}", e);
-                info.status = DaemonStatus::Unrecoverable;
-                None
-            }
-        };
+        let info = info::Info::new();
 
         let roverd = Self {
             info,
@@ -888,7 +877,6 @@ impl App {
         Ok(())
     }
 
-
     pub async fn get_fqns(&self) -> Result<Vec<FqnsGet200ResponseInner>, Error> {
         let mut fqns = Vec::new();
         let rover_dir = Path::new(ROVER_DIR);
@@ -977,7 +965,6 @@ impl App {
 
         Ok(fqns)
     }
-
 }
 
 /// Retrieves rover.yaml file from disk, performs validation and returns object.

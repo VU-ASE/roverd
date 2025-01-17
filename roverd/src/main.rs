@@ -1,9 +1,12 @@
-use anyhow::anyhow;
+use std::sync::Arc;
+
+use anyhow::{anyhow, Context};
 use axum::extract::{DefaultBodyLimit, Request, State};
 use axum::http::{self, StatusCode};
 use axum::middleware::{self, Next};
 use axum::response::Response;
 use base64::Engine;
+use daemons::DaemonManager;
 use openapi::models::DaemonStatus;
 use tower_http::cors::CorsLayer;
 use tracing::{error, info, warn};
@@ -117,34 +120,48 @@ async fn main() -> Result<(), error::Error> {
     log::init();
     info!("logging initialized");
 
-    // Download latest version of roverd from github
-    // match download_latest_roverd().await {
-    //     Err(e) => {
-    //         error!("Unable to download latest roverd");
-    //         error!("{:?}", e);
-    //     }
-    //     _ => (),
-    // };
-
     // All app initialization happens in new()
-    let rover_state = Roverd::new().await?;
+    let mut roverd = Roverd::new().await?;
 
-    // Hand-off to axum with a max upload limit of 100MB
-    let router = openapi::server::new(rover_state.clone())
-        .layer(middleware::from_fn_with_state(
-            rover_state.clone(),
-            auth_wrapper,
-        ))
-        .layer(CorsLayer::permissive())
-        .layer(DefaultBodyLimit::max(100000000));
+    // If our daemons are downloaded
+    match DaemonManager::new().await {
+        Ok(d) => {
+            let daemon_manager = Arc::new(d);
+            let dm_arc = Arc::clone(&daemon_manager);
 
-    let listener = tokio::net::TcpListener::bind(LISTEN_ADDRESS).await.unwrap();
+            // Hand-off to axum with a max upload limit of 100MB
+            let router = openapi::server::new(roverd.clone())
+                .layer(middleware::from_fn_with_state(roverd, auth_wrapper))
+                .layer(CorsLayer::permissive())
+                .layer(DefaultBodyLimit::max(100000000));
 
-    info!("listening on {}", LISTEN_ADDRESS);
+            let listener = tokio::net::TcpListener::bind(LISTEN_ADDRESS).await.unwrap();
 
-    axum::serve(listener, router).await.unwrap();
+            info!("listening on {}", LISTEN_ADDRESS);
 
-    info!("exiting");
+            axum::serve(listener, router)
+                .with_graceful_shutdown(async move {
+                    dm_arc.shutdown_signal().await;
+                })
+                .await
+                .context("axum error")?;
+        }
+        Err(e) => {
+            error!("unable to start daemons: {:?}", e);
+            roverd.info.status = DaemonStatus::Unrecoverable;
 
+            // Hand-off to axum with a max upload limit of 100MB
+            let router = openapi::server::new(roverd.clone())
+                .layer(middleware::from_fn_with_state(roverd, auth_wrapper))
+                .layer(CorsLayer::permissive())
+                .layer(DefaultBodyLimit::max(100000000));
+
+            let listener = tokio::net::TcpListener::bind(LISTEN_ADDRESS).await.unwrap();
+
+            axum::serve(listener, router).await.context("axum error")?;
+        }
+    }
+
+    info!("roverd exiting");
     Ok(())
 }

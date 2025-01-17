@@ -10,7 +10,12 @@ use std::{
 
 use openapi::models::ProcessStatus;
 use rovervalidate::{config::Validate, service::Service};
-use tokio::{process::Command, time::sleep};
+use tokio::{
+    process::Command,
+    signal::unix::{signal, SignalKind},
+    sync::broadcast,
+    time::sleep,
+};
 use tracing::{error, info, warn};
 
 use crate::util::*;
@@ -25,8 +30,7 @@ use super::{
 
 #[derive(Debug, Clone)]
 pub struct DaemonManager {
-    // When refactoring it, we will have to save the state of processes
-    // pub processes: Arc<RwLock<Vec<Process>>>,
+    shutdown_tx: broadcast::Sender<()>,
 }
 
 /// Here are two hard coded daemons, ideally we make this extensible by specifying
@@ -34,30 +38,59 @@ pub struct DaemonManager {
 /// via the API, but getters would be nice. For now, this is hardcoded and error prone,
 /// but it also will not change for the forseeable future.
 impl DaemonManager {
-    pub async fn init() -> Result<(), Error> {
+    pub async fn new() -> Result<Self, Error> {
+        let shutdown_tx = broadcast::channel::<()>(1).0;
+
+        // Set up signal handler
+        let shutdown_tx_clone = shutdown_tx.clone();
+        tokio::spawn(async move {
+            let mut sigterm = signal(SignalKind::terminate()).unwrap();
+            let mut sigint = signal(SignalKind::interrupt()).unwrap();
+
+            tokio::select! {
+                _ = sigterm.recv() => {
+                    info!("received SIGTERM signal");
+                }
+                _ = sigint.recv() => {
+                    info!("received SIGINT signal");
+                }
+            }
+
+            info!("sending shutdown");
+            let _ = shutdown_tx_clone.send(()).ok();
+            // info!("waiting");
+            // sleep(Duration::from_secs(2)).await;
+            // info!("exiting");
+        });
+
         // First make sure the daemons are installed, this can fail which will
         // put roverd in a non operational state.
-        let display_fq = {
+        let display_download = async move {
             match download_and_install_service(&DISPLAY_FETCH_URL.to_string(), true).await {
-                Ok(fq) => fq,
+                Ok(fq) => Ok(fq),
                 Err(e) => {
                     warn!("was not able to get latest daemon at {}", DISPLAY_FETCH_URL);
                     warn!("{:?}", e);
-                    find_latest_daemon("vu-ase", "display")?
+                    find_latest_daemon("vu-ase", "display")
                 }
             }
         };
 
-        let battery_fq = {
+        let battery_download = async move {
             match download_and_install_service(&BATTERY_FETCH_URL.to_string(), true).await {
-                Ok(fq) => fq,
+                Ok(fq) => Ok(fq),
                 Err(e) => {
                     warn!("was not able to get latest daemon at {}", BATTERY_FETCH_URL);
                     warn!("{:?}", e);
-                    find_latest_daemon("vu-ase", "battery")?
+                    find_latest_daemon("vu-ase", "battery")
                 }
             }
         };
+
+        let (display_result, battery_result) = tokio::join!(display_download, battery_download);
+
+        let display_fq = display_result?;
+        let battery_fq = battery_result?;
 
         let display_service_file = std::fs::read_to_string(display_fq.path()).map_err(|_| {
             Error::ServiceNotFound(format!("could not find {} on disk", display_fq.path()))
@@ -136,68 +169,97 @@ impl DaemonManager {
             },
         ];
 
-        start_daemons(procs).await?;
+        let daemon_manager = DaemonManager { shutdown_tx };
+        daemon_manager.start_daemons(procs).await?;
+
+        Ok(daemon_manager)
+    }
+
+    #[allow(unreachable_code)]
+    pub async fn start_daemons(&self, procs: Vec<Process>) -> Result<(), Error> {
+        for proc in procs {
+            let parsed_command = ParsedCommand::try_from(&proc.command)?;
+            let mut shutdown_rx = self.shutdown_tx.subscribe();
+
+            let log_file = create_log_file(&proc.log_file)?;
+            let stdout = Stdio::from(
+                log_file
+                    .try_clone()
+                    .with_context(|| format!("failed to clone log file {:?}", log_file))?,
+            );
+            let stderr = Stdio::from(log_file);
+            let full_path = format!("{}/{}", proc.fq.dir(), &parsed_command.program);
+            fs::set_permissions(&full_path, Permissions::from_mode(0o755))
+                .with_context(|| format!("failed to set 755 permissions to {}", full_path))?;
+            let mut command = Command::new(&parsed_command.program);
+            command
+                .args(&parsed_command.arguments)
+                .env(ENV_KEY, &proc.injected_env)
+                .current_dir(proc.fq.dir())
+                .stdout(stdout)
+                .stderr(stderr);
+
+            tokio::spawn(async move {
+                loop {
+                    tokio::select! {
+                        _ = shutdown_rx.recv() => {
+                            info!("shutdown signal received in daemon {}", proc.name);
+                            break;
+                        }
+                        result = async {
+                        match command.spawn() {
+                            Ok(mut child) => {
+                                info!("daemon '{}' started", proc.name);
+                                match child.wait().await {
+                                    Ok(status) => {
+                                        info!(
+                                            "daemon '{}' exited with status: {}",
+                                            proc.name, status
+                                        )
+                                    }
+                                    Err(e) => info!("daemon '{}' error: {}", proc.name, e),
+                                }
+                            }
+                            Err(e) => {
+                                error!("could not start daemon '{}': {}", proc.name, e);
+                            }
+                        }
+                        Ok::<(), Error>(())
+                        } => {
+                            if let Err(e) = result {
+                                error!("error in daemon '{}': {:?}", proc.name, e);
+                            }
+
+                            // Check shutdown signal before restarting
+                            if shutdown_rx.try_recv().is_ok() {
+                                info!("shutdown signal received for daemon '{}', not restarting", proc.name);
+                                break;
+                            }
+
+                            info!("restarting daemon '{}'", proc.name);
+                            sleep(Duration::from_secs(3)).await;
+                        }
+                    }
+                }
+            });
+        }
 
         Ok(())
     }
-}
 
-#[allow(unreachable_code)]
-pub async fn start_daemons(procs: Vec<Process>) -> Result<(), Error> {
-    for proc in procs {
-        let parsed_command = ParsedCommand::try_from(&proc.command)?;
+    pub async fn shutdown_signal(&self) {
+        let mut sigterm = signal(SignalKind::terminate()).unwrap();
+        let mut sigint = signal(SignalKind::interrupt()).unwrap();
 
-        tokio::spawn(async move {
-            loop {
-                let result: Result<(), Error> = async {
-                    let log_file = create_log_file(&proc.log_file)?;
-
-                    let stdout = Stdio::from(
-                        log_file
-                            .try_clone()
-                            .with_context(|| format!("failed to clone log file {:?}", log_file))?,
-                    );
-                    let stderr = Stdio::from(log_file);
-
-                    let full_path = format!("{}/{}", proc.fq.dir(), &parsed_command.program);
-                    fs::set_permissions(&full_path, Permissions::from_mode(0o755)).with_context(
-                        || format!("failed to set 755 permissions to {}", full_path),
-                    )?;
-                    let mut command = Command::new(&parsed_command.program);
-                    command
-                        .args(&parsed_command.arguments)
-                        .env(ENV_KEY, &proc.injected_env)
-                        .current_dir(proc.fq.dir())
-                        .stdout(stdout)
-                        .stderr(stderr);
-
-                    match command.spawn() {
-                        Ok(mut child) => {
-                            info!("daemon '{}' started", proc.name);
-                            match child.wait().await {
-                                Ok(status) => {
-                                    info!("daemon '{}' exited with status: {}", proc.name, status)
-                                }
-                                Err(e) => info!("daemon '{}' error: {}", proc.name, e),
-                            }
-                        }
-                        Err(e) => {
-                            error!("could not start daemon '{}': {}", proc.name, e);
-                        }
-                    }
-                    Ok(())
-                }
-                .await;
-
-                if let Err(e) = result {
-                    error!("error in daemon '{}': {:?}", proc.name, e);
-                }
-
-                info!("restarting daemon '{}'", proc.name);
-                sleep(Duration::from_secs(3)).await;
+        tokio::select! {
+            _ = sigterm.recv() => {
+                info!("received SIGTERM signal");
             }
-        });
-    }
+            _ = sigint.recv() => {
+                info!("received SIGINT signal");
+            }
+        }
 
-    Ok(())
+        self.shutdown_tx.send(()).ok();
+    }
 }

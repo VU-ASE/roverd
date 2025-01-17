@@ -146,11 +146,9 @@ pub async fn download_service(url: &String) -> Result<(), Error> {
         Err(err) => {
             if err.is_timeout() {
                 let msg = format!("request timed out after {} seconds", DOWNLOAD_TIMEOUT);
-                warn!(msg);
                 Err(Error::Context(anyhow!(msg)))
             } else {
                 let msg = format!("request failed {:?}", err);
-                warn!(msg);
                 Err(Error::Context(anyhow!(msg)))
             }
         }
