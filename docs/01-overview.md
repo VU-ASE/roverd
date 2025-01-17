@@ -17,11 +17,14 @@ Roverd is an always running process on the rover (daemon) which exposes endpoint
 
 ## Development
 
+<!-- 
+TODO: remove absolute links
+
 All dependencies are bundled in the devcontainer, as well as a debix user and filesystem setup identical to that of a rover. Run `make dev` for development. If changes are made to [`apispec.yaml`](/roverd/spec/apispec.yaml), then the openapi definitions must be generated again with `cd roverd ; make build`.
 
 > Important: due to bugs in the openapi generator, some tuple structs have private members, which needs to be updated manually after re-generating the openapi definitions. After running `make build` the following need to be edited by hand after which everything should compile.
 
-[`roverd/openapi/src/models.rs`](/roverd/openapi/src/models.rs)
+ [`roverd/openapi/src/models.rs`](/roverd/openapi/src/models.rs) -->
 ```
                                  +++
 pub struct DuplicateServiceError(pub String);
