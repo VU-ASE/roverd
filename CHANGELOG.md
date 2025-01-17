@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.2.0](https://github.com/VU-ASE/roverd/compare/v0.1.1...v0.2.0) (2025-01-17)
+
+
+### Features
+
+* get fqns ([c7b32ec](https://github.com/VU-ASE/roverd/commit/c7b32ec23492e379c666007d582299795670ef3f))
+
+
+### Bug Fixes
+
+* added error case for stopping pipeline ([30ef2e4](https://github.com/VU-ASE/roverd/commit/30ef2e4e2a9fc23b0f8ce32f394a2bf2bb12ac9f))
+* added timeout to downloads ([3f5f246](https://github.com/VU-ASE/roverd/commit/3f5f246a37d016cdf2128db817ef46ad450f4657))
+* api correctness ([c45b7e1](https://github.com/VU-ASE/roverd/commit/c45b7e17e3e32342b9bf42828632b2b530e928af))
+* downloads parallel ([bd4f448](https://github.com/VU-ASE/roverd/commit/bd4f44863f99bcf7ea1ecebb2845bd12c1e7e7aa))
+
 ## [0.1.1](https://github.com/VU-ASE/roverd/compare/v0.1.0...v0.1.1) (2025-01-14)
 
 
