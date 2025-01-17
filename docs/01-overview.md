@@ -12,8 +12,11 @@ The file system (with the `/etc/roverd/rover.yaml`) holds the source of truth in
 
 ## roverd
 
-Roverd is an always running process on the rover (daemon) which exposes endpoints that allow programs like `roverctl` or `web-monitor` to interact with the rover. This repo also defines the API specification which clients need to implement in order to use the provided functionality ([apispec.yaml](../roverd/spec/apispec.yaml)). In short, roverd lets you view system status, upload services and start/stop a collection of services (a pipeline).
+<!-- 
+TODO: remove absolute links
 
+Roverd is an always running process on the rover (daemon) which exposes endpoints that allow programs like `roverctl` or `web-monitor` to interact with the rover. This repo also defines the API specification which clients need to implement in order to use the provided functionality ([apispec.yaml](../roverd/spec/apispec.yaml)). In short, roverd lets you view system status, upload services and start/stop a collection of services (a pipeline).
+-->
 
 ## Development
 
